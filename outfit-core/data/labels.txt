@@ -1,0 +1,252 @@
+Drg0AM_c002 ShadowLord  64   1
+Drg0AF_c052 ShadowLord  64   2
+Sdp0A   ShadowPrincess  64   2
+Sds0A   ShadowLord  64   3
+Drg0A DragonLord  64  3
+Drg1A DragonKing  64   3
+Sdk0A ShadowKing 64  1
+Avn Avenir 64 1
+Flr Fleurage 64   2
+Scs Successeur 64 1
+Trl Tirailleur 64 1
+Lnd Lindwurm    64  2
+Slp Sleipnir    64  2
+Cpd Cupido  64  1
+Pcf Pitchfork 64    2
+Dnc0AM  Dancer 64 1
+Msn0D Melusine    64   2
+END
+Swd0A   SwordFighter    0   3   604 605 720 721
+Swd1A   SwordMaster 0   3
+Swd2A   BraveHero   0   3
+Lnc0A   LanceFighter    0   3   610 611 722 723
+Lnc1A   Halberdier  0   3
+Lnc2B   RoyalKnight 0   3   617 618 724 725
+Axe0A   AxFighter   0   3
+Axe1A   Berserker   0   3
+Axe2A   Warrior 0   3
+Bow0A   Archer  0   3   623 624 726 727
+Bow1A   Sniper  0   3
+Bow2B   BowKnight   0   3
+Amr0A   MBSID_Heavy  32   3 630 631 728 729
+Amr1A   General 0   3
+Amr2B   GreatKnight  0   3
+Cav0B   MBSID_Horse  32  3  637 638 730 731
+Cav1B   Paladin 0   3
+Cav2C   WolfKnight  0   3
+Wng0E  MBSID_Fly  32  2 645 646 - 732
+Wng1F   GriffonKnight   0   3   652 653 733 734
+Wng2D   DragonKnight    0   3
+Mag0A   Mage    0   3   659 660 737 738
+Mag1A   Sage    0   3
+Mag2B   MageKnight  0   3
+Rod0A   Monk    0   3   666 667 739 740
+Rod1A   MasterMonk  0   3
+Rod2A   HighPriest  0   3
+Dge0A Thief  0   3  657 658 735 736
+Bbr0A   Barbarian   0   3   681 682
+Ect3A Enchant 0   3 697 698
+Mcn3A MageCannon  0   3 695 696
+Wlf0CT  MorphWolf   0   0
+Fyd0DT MorphFlyingDragon   0   0
+File    MID_PLACE_File  32 0
+Brod    MID_PLACE_Brodia   32 0
+Irci    MID_PLACE_Ircion    32 0
+Solu   MID_PLACE_Solum 32 0
+Mar0A   MPID_Marth 32 0
+Sig0B   MPID_Siglud 32  0
+Lei0A   MPID_Leaf   32  0
+Roy0A   MPID_Roy    32  0
+Eir0A   MPID_Eirik  32  0
+Mic0A   MPID_Micaiah    32  0
+Luc0A   MPID_Lucina 32  0
+Cor0A   MPID_Kamui  32  0
+Byl0A   MPID_Byleth 32  0
+Ede0A   MPID_Edelgard   32  0
+Tik0A   MPID_Tiki   32  0
+Hec0A   MPID_Hector 32  0
+Sor0A   MPID_Senerio 32 0
+Ver0A   MPID_Veronica   32  0
+Chr0A   MPID_Chrom  32  0
+Rbi0A   MPID_Reflet 32  0
+Cmi0D   MPID_Camilla    32  0
+Dim0A   MPID_Dimitri    32  0
+Cla0A   MPID_Claude 32  0
+Eph0AM  MGID_Epharim 32 0
+END
+null    MID_SYS_None   32  1   uHead_c999  uBody_null  uHair_null
+001	Lueur	1	1   uBody_Drg0AM_c001   uBody_Drg1AM_c001   Wear    voice=PlayerM
+002	PastLueur	1	1   uBody_Drg0AM_c002   voice=PlayerM_Boss  voice=PlayerM_Boss
+003	Lueur	1025	1   uBody_Drg0AM_c003
+004	Lueur	17	1   uHead_c004  uHead_h004  oHair_h003
+049c	Il	4	1
+049b	Il	0	1   voice=DLC_43_1
+049	Rafale	0	1   uBody_Sds0AM_c049   uBody_WearM_c049    voice=DLC_43_2
+051	Lueur	2	2   uBody_Drg0AF_c051   uBody_Drg1AF_c051   Wear    uHead_h051h skin=255,215,204    voice=PlayerF
+052	PastLueur	2	2   uBody_Drg0AF_c052       skin=255,215,204    voice=PlayerF_Boss
+053	Lueur	1026	2   uBody_Drg0AF_c053   skin=255,215,204
+054	Lueur	18	2   uHead_c054  uAcc_spine2_Hair054 oHair_h053
+099	El	0	2   uBody_Sds0AF_c099   Wear    skin=255,242,226    voice=DLC_42    voice2=DLC_42_2
+100b	Alfred	4	1   voice=Alfred_E
+100	Alfred	0	1   uHead_c100b uBody_Avn0BM_c100   uBody_Avn1BM_c100   Wear
+101	Boucheron	0	1   uBody_Axe0AM_c101   Wear    AOC_Info_c101b
+102	Louis 	0	1   uBody_Amr0AM_c102   Wear
+103	Jean	0	1   uBody_Rod0AM_c103   Wear    skin=245,215,200
+150b	Celine	4	2   uHead_c150b skin=254,236,231    voice=Celine_E
+150	Celine	0	2   uBody_Flr0AF_c150   uBody_Flr1AF_c150   Wear    skin=254,236,231
+151	Eve	0	2   uBody_Rod2AF_c151   skin=249,226,217
+152	Etie	0	2   uBody_Bow0AF_c152   Wear    skin=255,231,225
+153	Chloe	0	2   uBody_Wng0EF_c153   Wear    skin=254,236,231
+200b	Diamand	4	1   voice=Diamand_E
+200	Diamand	0	1   uBody_Scs0AM_c200   uBody_Scs1AM_c200   Wear
+201b	Staluke	4	1   AOC_Info_c201c  voice=Staluke_E
+201	Staluke	0	1   uBody_Trl0AM_c201   uBody_Trl1AM_c201   Wear    AOC_Info_c201b
+202	Morion	0	1   uBddy_Swd2AM_c202
+203	Umber	0	1   uBody_Cav0B_c203    Wear
+204	MorphMorion	0	2   voice=Morion_Boss
+250	Jade	0	2   uBody_Amr0AF_c250   Wear    skin=255,228,215
+251b	Lapis	16	2
+251	Lapis	0	2   uBody_Swd0AF_c251   Wear    skin=255,228,215
+252	Citrinica	0	2   uBody_Mag0AF_c252   Wear    skin=255,223,219
+253	Yunaka	0	2   uBody_Dge0AF_c253   Wear    skin=255,224,209
+254	Saphir	0	2   uBody_Axe2AF_c254   Wear
+300	Hyacinth	0	1   uBody_Rod1AM_c300
+301	Zelkova	0	1   uBody_Dge0AM_c301   Wear
+302	Kagetsu	0	1   uBody_Swd1AM_c302   Wear
+303	Rosado	0	2   uBody_Wng2DF_c303   Wear    skin=255,231,225
+304	Linden	0	1   uBody_Mag1AM_c304   Wear    skin=227,169,151
+350b	Ivy	4	2   AOC_Info_c350c  skin=255,244,243    voice=Ivy_E
+350	Ivy	0	2	uBody_Lnd0DF_c350   uBody_Lnd1DF_c350   AOC_Info_c350b     Wear skin=255,244,243
+351b	Hortensia	4	2   skin=255,230,232    voice=Hortensia_E
+351	Hortensia	0	2   uBody_Slp0EF_c351   uBody_Slp1EF_c351   Wear skin=255,230,232
+352	Goldmary	0	2   uBody_Swd2AF_c352   Wear    skin=255,228,209
+353	Hortensia	16	1   skin=255,230,232    voice=Hortensia_Boss
+400b	Fogato	4	1   voice=Fogato_E
+400c	Fogato	20	1   uBody_Dct0AM_c400
+400	Fogato	0	1	uBody_Cpd0BM_c400   uBody_Cpd1BM_c400   Wear    skin=129,76,68
+401	Pandoro	0	1   uBody_Rod2AM_c402   Wear
+402	Bonet	0	1   uBody_Amr2BM_c403   Wear
+403	Seadas	0	1   uBody_Dnc0AM_c403   Wear    AOC_Info_c403b
+450b	Misutira	4	2   skin=129,76,68  voice=Misutira_E
+450	Misutira	0	2   uBody_Pcf0AF_c450  uBody_Pcf1AF_c450 Wear   skin=129,76,68
+451	Sfoglia	0	2   uBody_Wng2DF_c451   skin=142,72,64
+452	Merin	0	2   uBody_Cav2CF_c452      Wear skin=255,230,210
+453	Panetone	0	2   uBody_Axe1AF_c453   Wear    skin=255,231,225
+500	Vandre	0	1   uBody_Cav1BM_c500   Wear
+501	Clan	0	1   uBody_Mag0AM_c501   Wear    skin=255,222,203
+502	Mauve	0	1   uBody_Lnc2BM_c502   Wear
+503b	Gregory	0	1	uBody_Mag1AM_c503b   uBody_WearM_c503   voice=DLC_45
+503	Gris	0	1   uBody_Mag1AM_c503
+504	Sombre	0	1   uBody_Sdk0AM_c504   skin=154,142,189    skinb
+510	Hector	0	1   uBody_Hec0AM_c510   voice=DLC_48
+511	Senerio	0	1   uBody_Sor0AM_c511   voice=DLC_49
+512 Chrom 0 1   uBody_Chr0AM_c512      voice=DLC_50
+513 Reflet  0   1   uBody_Rbi0AM_c513      voice=DLC_51
+514	Dimitri	0	1   uBody_Dim0AM_c515   voice=DLC_54
+515	Claude	0	1   uBody_Cla0AM_c516   voice=DLC_55
+517	Hector	4	1   uBody_Hec0AM_c517
+518	Senerio	4	1   uBody_Sor0AM_c518
+519 Chrom 4 1   uBody_Chr0AM_c519
+520 Reflet  4   1   uBody_Rbi0AM_c520
+521	Dimitri	4	1   uBody_Dim0AM_c521
+522	Claude	4	1   uBody_Cla0AM_c522
+530	Marth	0	1	uBody_Mar0AM_c530 uBody_Mar0AM_c000
+531	Siglud	0	1	uBody_Sig0BM_c531 uBody_Sig0BM_c000
+532	Leaf	0	1	uBody_Lei0AM_c532  uBody_Lei0AM_c000
+533	Roy	0	1	uBody_Roy0AM_c533 uBody_Roy0AM_c000
+534	Ike	0	1	uBody_Ike0AM_c534 uBody_Ike0AM_c000
+535	Byleth	0	1	uBody_Byl0AM_c535 uBody_Byl0AM_c000
+536	MGID_Ephraim	32	1	uBody_Eph0AM_c536   uBody_Eph0AM_c000   voice=Ephraim
+537	Marth	4	1   uBody_Mar0AM_c537
+538	Siglud	4	1   uBody_Sig0BM_c538
+539	Leaf	4	1   uBody_Lei0AM_c539
+540	Roy	4	1   uBody_Roy0AM_c540
+541	Ike	4	1   uBody_Ike0AM_c541
+542	Byleth	4	1   uBody_Byl0AM_c542
+543	MGID_Ephraim	36	1   uBody_Eph0AM_c543
+550	Fram	0	2	uBody_Rod0AF_c550   Wear    skin=255,223,219
+551b	Veyre	16	2   skin=255,231,225
+551	Veyre	0	2		uBody_Sdp0AF_c551   Wear    skin=255,231,225
+552	Anna	0	2   uBody_Axe0AF_c552   Wear    skin=255,236,223
+553c	Selestia	16	2    skin=238,187,160
+553b	Selestia	0	2	uBody_Msn0DF_c553b	uAcc_spine2_Hair553e	uAcc_spine2_Hair553h    uBody_WearF_c553     skin=238,187,160   voice=DLC_44
+553	Sepia	0	2   uBody_Msn0DF_c553   skin=238,187,160    voice=Sepia
+554b	Madeline	0	2	uBody_Amr1AF_c554b  uAcc_head_Dress554h	uHair_h554h	uAcc_head_Hat554h	uBody_WearF_c554    skin=254,236,231    voice=DLC_46
+554	Marron	0	2   uBody_Amr1AF_c554   skin=254,236,231
+555	Lumiere	0	2   uBody_Drg1AF_c555   skin=254,236,231
+556	Veyre	4	2   uBody_Sdp0AF_c556   skin=255,231,225    voice=Veyre_Boss
+557	Veyre	20	2   uBody_Sdp0AF_c557   skin=255,231,225
+558	MorphLumiere	0	2   uHead_c558  skin=254,236,231    voice=Lumiere_Boss
+559	Veyre	68	2   uBody_Sdp0AF_c559
+560	Tiki	0	2   uBody_Tik0AF_c560   voice=DLC_47
+561	Camilla	0	2   uBody_Cmi0DF_c561   voice=DLC_52
+562	Veronica	0	2   uBody_Ver0AF_c562   voice=DLC_56
+563	Edelgard	0	2   uBody_Ede0AF_c563   voice=DLC_53
+567	Tiki	4	2   uBody_Tik0AF_c567
+568	Camilla	4	2   uBody_Cmi0DF_c568
+569	Veronica	4	2   uBody_Ver0AF_c569
+570	Edelgard	4	2   uBody_Ede0AF_c570
+580	Celica	0	2	uBody_Cel0AF_c580 uBody_Cel0AF_c000
+581	Lin	0	2	uBody_Lyn0AF_c581 uBody_Lyn0AF_c000
+582	Eirik	0	2	uBody_Eir0AF_c582 uBody_Eir0AF_c000
+583	Micaiah	0	2	uBody_Mic0AF_c583 uBody_Mic0AF_c000
+584	Lucina	0	2	uBody_Luc0AF_c584 uBody_Luc0AF_c000
+585	Kamui	0	2	uBody_Cor0AF_c585 uBody_Cor0AF_c000
+587	Celica	4	2   uBody_Cel0AF_c587
+588	Lin	4	2   uBody_Lyn0AF_c588
+589	Eirik	4	2   uBody_Eir0AF_c589
+590	Micaiah	4	2   uBody_Mic0AF_c590
+591	Lucina	4	2   uBody_Luc0AF_c591
+592	Kamui	4	2   uBody_Cor0AF_c592
+711	MID_TUT_BMAP_DARKHERALDIC_TITLE	32	1   uBody_Dct0AM_c711
+809	FileneVillager	0	1	uBody_File4M_c809 uHair_h814    oHair_h814
+811	M004_Boss	0	1	uBody_Amr0AM_c811 uHair_h818    voice=Boss1
+812	M005_Boss	0	1	uBody_Axe0AM_c812 uHair_h819    voice=Boss2
+813	M013_BossA	0	1	uBody_Bbr0AM_c813 uHair_h820    voice=Boss6
+814	M013_BossB	0	1	uBody_Bbr0AM_c814 uHair_h821    voice=Boss7
+815	M006_Boss	0	1	uBody_Bbr0AM_c813 uHair_h822    voice=Boss4
+817	WeaponShop	0	1   uBody_File4M_c817   voice=Shop1
+818	AccessoriesShop	0	1	uBody_Brod4M_c818 uHair_h824    voice=Shop4
+819	JeanFather	0	1	Rod0AM_c819 uHair_h825
+855	M003_Boss	0	2	uBody_Axe1AF_c855   uHair_h867  voice=Boss3
+856	ItemShop	0	2	uBody_File4F_c856   uHair_h868  skin=121,95,78  voice=Shop2
+857	BlackSmith	0	2	uBody_Brod4F_c857 uHair_h869    voice=Shop3
+858	JeanMother	0	2	uBody_File4F_c858 uAcc_spine2_Hair870   skin=244,218,200
+859	S002_Boss	0	2	uBody_Bbr0AF_c859    uHair_h871 voice=Boss5
+F_c699d	Rosado	0	0
+M_c699d	Rafale	0	0
+F_c699c	Saphir	0	0
+F_c699b	Etie	0	0
+M_c699c	Vandre	0	0
+000 56  512 1
+050 56  512 2
+699	59	512	0
+702 Morph   1   1
+703 Morph   2   2
+704 Morph   17  1
+705 Morph   18  2
+707 Morph   0   0
+713 Phantom 1   1
+714 Phantom 2   2
+750 Morph   16  0
+751 Phantom 16  0
+END
+Ike0AM_c000b	MAID_Costume_Ike
+CstmM_c000	MAID_MascotM
+CstmM_c699	MAID_MascotM
+KimnM_c000	MAID_Kimono
+ExerM1_c000	MAID_Exercisewear
+SwimM1_c000 MAID_Swimwear1
+SwimM2_c000 MAID_Swimwear2
+SwimM3_c000 MAID_Swimwear3
+END
+CstmF_c000	MAID_MascotF
+CstmF_c699	MAID_MascotF
+KimnF_c000	MAID_Kimono
+ExerF1_c000	MAID_Exercisewear
+SwimF1_c000	MAID_Swimwear1F
+SwimF2_c000	MAID_Swimwear2F
+SwimF3_c000	MAID_Swimwear3F
+END
+uHead_dummy1    -1  Box oHair_Box
+uHead_dummy2    -1  Box oHair_Box
