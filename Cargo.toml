@@ -16,7 +16,6 @@ skyline = { git = "https://github.com/ultimate-research/skyline-rs", version="0.
 unity = { version = "0.3.0", git = "https://github.com/triabolicals/unity", branch = "macro" }
 engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 cobapi = { git = "https://github.com/triabolicals/cobapi", branch = "test" }
-bitflags = "2.10.0"
 
 [profile.dev]
 panic = "abort"
