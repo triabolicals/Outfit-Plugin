@@ -232,7 +232,6 @@ dependencies = [
 name = "outfits"
 version = "0.1.0"
 dependencies = [
- "bitflags",
  "cobapi",
  "engage",
  "outfit_core",

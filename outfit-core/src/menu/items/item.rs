@@ -58,7 +58,6 @@ impl CustomAssetMenuItemKind {
             Pause => -2,
             Item => -3,
             NoItem => -1,
-
         }
     }
     pub fn from_index(index: i32) -> Self {
@@ -201,11 +200,18 @@ impl CustomAssetMenuItemKind {
                         UnitAssetMenuData::get().preview.preview_data.set_from_preset(appearance);
                     }
                 }
+                else {
+                    let data = UnitAssetMenuData::get();
+                    let box_state = data.loaded_data.equipment_box_state;
+                    if box_state == EquipmentBoxPage::Flags {
+                        data.loaded_data.equipment_box_state = EquipmentBoxPage::Assets;
+                    }
+                    EquipmentBoxMode::LoadData(data.loaded_data.equipment_box_state).set_preset_appearance(menu_item.hash);
+                }
                 UnitAssetMenuData::get().is_changed = true;
             }
             Pause => {
-                if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager)
-                {
+                if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager) {
                     if let Some(pause) = dispos.current_dispos_info.pause_data_list.get(menu_item.index as usize){
                         dispos.current_dispos_info.current_pause_data = Some(pause);
                         dispos.current_dispos_info.set_up_pause();
@@ -409,11 +415,14 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { help }
             }
+            /*
             PresetAppearance => {
                 let help = MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into());
                 let id = if menuitem.padding & 1 != 0 { "Emblem #" } else { "Person #" };
                 format!("{}\n{}{}", help, id, menuitem.padding >> 1).into()
             }
+            
+             */
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
     }
@@ -778,7 +787,15 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                         UnitAssetMenuData::reload_unit(ReloadPreview::Preset(menuitem.hash as usize), true, None);
                     }
                 }
-                BasicMenuResult::new()
+                let left = Pad::is_trigger(NpadButton::l_key());
+                let right = Pad::is_trigger(NpadButton::r_key());
+                if left || right {
+                    let box_state = menu.loaded_data.equipment_box_state.get_preset_appearance(right);
+                    EquipmentBoxMode::LoadData(box_state).set_preset_appearance(menuitem.hash);
+                    menu.loaded_data.equipment_box_state = box_state;
+                    BasicMenuResult::se_cursor()
+                }
+                else { BasicMenuResult::new() }
             }
             _ => { BasicMenuResult::new() }
         }

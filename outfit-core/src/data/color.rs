@@ -25,10 +25,12 @@ impl AssetColor{
             self.values[x] = c;
         }
     }
-    pub fn has_color(&self) -> bool { self.values[0] != 0 || self.values[1] != 0 || self.values[2] != 0 }
+    pub fn has_color(&self) -> bool { self.values[0] > 0 || self.values[1] > 0 || self.values[2] > 0 }
     pub fn is_zero(&self) -> bool { self.values[0] == 0 && self.values[1] == 0 && self.values[2] == 0 }
     pub fn set_result_color(&self, result: &mut AssetTableResult, result_index: usize) {
-        if self.has_color() { result.unity_colors[result_index] = self.to_unity_color(); }
+        if self.has_color() {
+            result.unity_colors[result_index] = self.to_unity_color();
+        }
     }
     pub fn from_stream(stream: &mut Stream) -> Self {
         let mut values = [0; 4];
@@ -94,9 +96,12 @@ impl ColorPreset {
         color.b = (((value >> 16) & 255) as f32) / 255.0;
     }
     pub fn get_name(&self) -> &'static Il2CppString {
-        let s =
+        let s =  Mess::get(self.label.as_str());
+        /*
             if self.count == 0 { Mess::get(self.label.as_str()) }
             else { format!("{} {}", Mess::get(self.label.as_str()), self.count+1).into() };
+            
+         */
         if self.engaged { format!("{} {}", MenuTextCommand::Engage, s).into() } else { s }
     }
 }

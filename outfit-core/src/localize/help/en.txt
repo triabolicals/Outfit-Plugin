@@ -7,7 +7,7 @@
 5 Export current AssetTable.Result to'sd:/engage/outfits/results'\nand outfit parameters to 'sd:/engage/outfit/data'
 6 Select an outfit parameter file from 'sd:/engage/outfits/input/'\nto load data into an asset profile.
 7 The current asset profile data.
-8 Viewing preset character assets.$(Minus)Remove all current asset parameters.
+8 $(L)$(R)Change data page.\n$(Minus)Remove all current asset parameters.
 10 Asset profile to use in battle/map.
 11 Asset profile to when engaged.
 12 Asset profile to use in the Somniel.

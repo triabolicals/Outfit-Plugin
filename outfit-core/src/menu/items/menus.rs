@@ -197,19 +197,6 @@ impl CustomAssetMenuKind {
             Personal => { Some(MenuTextCommand::Personal.get()) }
             ItemList => { Some(MenuTextCommand::Weapons.get()) }
             _ => { Some(MenuText::get_command(idx)) }
-            /*
-            Hair => { Some(MenuText::get_command(16))}
-
-            ShopMount(0) => { Some(MenuText::get_command(25)) }
-            ShopAoc(0) => { Some(MenuText::get_command(24)) }
-            ScaleMenu => { Some(MenuText::get_command(36)) }
-            ColorKindSelection => { Some(DVCLocalizer::get_command(77)) }
-            ColorSelection(kind) => { Some(MenuText::get_command(70+*kind as i32)) }
-            RGBAMenu(_) => { Some(DVCLocalizer::get_command(90)) }
-            Rig => { Some("Body Rigs".into())}
-            _ => None,
-
-             */
         }
     }
     pub fn get_save_select_index(&self) -> Option<usize> {
@@ -611,7 +598,7 @@ impl CustomAssetMenuKind {
                 });
             }
             RGBAMenu(page) => {
-                let k = *page as u8;
+                let k = *page;
                 this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page)));
                 for x in 0..4 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA {kind: k, color: x})); }
                 let preview = UnitAssetMenuData::get_preview();

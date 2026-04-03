@@ -437,22 +437,9 @@ pub fn create_char_model(this: &mut UnitInfoWindowCharaModelDisplayClass103, _op
         this.this.updater.is_request_to_offset = true;
         this.this.updater.late_update();
         this.this.updater.try_update_offset(char);
-        char.play_facial(crate::FACIAL_STATES[UnitAssetMenuData::get().facial].into());
+        char.play_facial(FACIAL_STATES[UnitAssetMenuData::get().facial].into());
         let menu_data = UnitAssetMenuData::get();
         let trans = char.get_transform();
-        /*
-        let (x, y, z) = if this.this.padding & 1 != 0 {
-            (0.0, 0.80, -2.25)
-        }
-        else if menu_data.model_pos[16] > -5.0 {
-            let v = (menu_data.model_pos[16], menu_data.model_pos[17], menu_data.model_pos[18]);
-            menu_data.model_pos[16] = -10.0;
-            menu_data.model_pos[17] = -10.0;
-            menu_data.model_pos[18] = -10.0;
-            v
-        }
-        else { (menu_data.model_pos[0], menu_data.model_pos[1], menu_data.model_pos[2]) };
-        */
         trans.set_position(menu_data.control.current_character.pos);
         trans.set_local_rotation(menu_data.control.current_character.rotation);
     }

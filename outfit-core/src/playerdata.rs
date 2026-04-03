@@ -112,6 +112,26 @@ impl PlayerOutfitData {
             ubody: 0, colors: [AssetColor::new(); 8], rig: 0, aoc_alt: [0; 4],
         }
     }
+    pub fn from_appearance(appearance: &PersonalDressData) -> Self {
+        let mut new = Self::new();
+        new.ubody = appearance.ubody;
+        new.uhead = appearance.uhead;
+        new.uhair = appearance.uhair;
+        new.voice = appearance.voice;
+        if let Some(m) = appearance.mount.as_ref() {
+            if (m.0 as i32) > 0 { 
+                new.mount[m.0 as usize - 1] = m.1;
+            }
+        }
+        for x in 0..4 { 
+            new.aoc[x] = appearance.aoc[x]; 
+            new.aoc_alt[x] = appearance.aoc[x];
+        }
+        for x in 0..5 { new.acc[x] = appearance.acc[x]; }
+        for x in 0..16 { new.scale[x] = appearance.scale[x]; }
+        for x in 0..8 { new.colors[x].set_by_i32(appearance.color[x]); }
+        new
+    }
     pub fn new_with_flag(flag: i32) -> Self {
         Self {
             flag, ubody: 0, uhead: 0, aoc: [0; 4], scale: [0; 18],

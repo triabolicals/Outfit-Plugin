@@ -246,7 +246,6 @@ impl PersonalDressData {
         let ubody;
         let uhead;
         let mut uhair = 0;
-        // let mut engage_hair;
         if result.dress_model.str_contains("uBody_Swd0A") && result.dress_model.str_contains("c000") { generic_count += 1; }
         let hash = result.dress_model.get_hash_code();
         if hash_list.body.contains_key(&hash) { ubody = hash; } else { return false; }
@@ -259,16 +258,12 @@ impl PersonalDressData {
             let hash = result.hair_model.get_hash_code();
             if hash_list.hair.contains_key(&hash) {
                 uhair = hash;
-                // let model_str = result.hair_model.to_string();
-                // engage_hair = hash_list.hair.iter().find(|x| x.1.contains(model_str.as_str()) && x.1.ends_with("e")).map(|x| *x.0).unwrap_or(0);
             }
         }
         if let Some(model) = result.accessory_list.list.iter().find_map(|x| x.model.filter(|x| x.str_contains("_Hair"))){
             let hashscode = model.get_hash_code();
             if hash_list.hair.contains_key(&hashscode) {
                 uhair = hashscode;
-                // let model_str = model.to_string();
-                // engage_hair = hash_list.hair.iter().find(|x| x.1.contains(model_str.as_str()) && x.1.ends_with("e")).map(|x| *x.0).unwrap_or(0);
             }
         }
         if generic_count >= 2 || ubody == 0 || uhair == 0 || uhead == 0 { return false; }
@@ -302,12 +297,11 @@ impl PersonalDressData {
             let mount = Mount::from(ride_dress.to_string().as_str());
             self.mount = Some((mount, hash));
         }
-        if let Some(v) = result.info_anims.map(|v| v.get_hash_code()).filter(|x| hash_list.aoc.contains_key(x)){ self.aoc[0] = v; }
-        if let Some(v) = result.talk_anims.map(|v| v.get_hash_code()).filter(|x| hash_list.aoc.contains_key(x)){ self.aoc[1] = v; }
-        if let Some(v) = result.demo_anims.map(|v| v.get_hash_code()).filter(|x| hash_list.aoc.contains_key(x)){ self.aoc[2] = v; }
-        if let Some(v) = result.hub_anims.map(|v| v.get_hash_code()).filter(|x| hash_list.aoc.contains_key(x)){ self.aoc[3] = v; }
+        if let Some(v) = result.info_anims.map(|v| v.get_hash_code()) { self.aoc[0] = v; }
+        if let Some(v) = result.talk_anims.map(|v| v.get_hash_code()) { self.aoc[1] = v; }
+        if let Some(v) = result.demo_anims.map(|v| v.get_hash_code()) { self.aoc[2] = v; }
+        if let Some(v) = result.hub_anims.map(|v| v.get_hash_code()) { self.aoc[3] = v; }
         if let Some(v) = result.sound.voice.map(|v| v.get_hash_code()).filter(|x| hash_list.voice.contains_key(x)){ self.voice = v; }
-
         true
     }
     pub fn from_asset_table(result: &AssetTableResult, hash_list: &OutfitHashes, hash: i32, emblem: bool) -> Option<PersonalDressData> {
@@ -426,16 +420,15 @@ impl PersonalDressData {
         if mode == 2 {
             if let Some(uhead) = outfit_hashes.head.get(&self.uhead) { result.head_model = uhead.into(); }
             if let Some(uhair) = outfit_hashes.hair.get(&self.uhair) { apply_hair(uhair, result); }
-            for x in 0..5 {
+            for x in 0..4 {
                 if let Some(acc) = outfit_hashes.acc.get(&self.acc[x]){
-                    let accessory = new_asset_table_accessory(acc, ACC_LOC[x]);
-                    result.commit_accessory(&accessory);
+                    result.commit_accessory(&new_asset_table_accessory(acc, ACC_LOC[x]));
                 }
                 else if remove_empty_acc {
-                    let accessory = new_asset_table_accessory("null", ACC_LOC[x]);
-                    result.commit_accessory(&accessory);
+                    result.commit_accessory(&new_asset_table_accessory("null", ACC_LOC[x]));
                 }
             }
+            result.commit_accessory(&new_asset_table_accessory("null", ACC_LOC[4]));
             for x in 0..16 {
                 let v = self.scale[x];
                 if v > 0 { result.scale_stuff[x] = self.scale[x] as f32 / 100.0; }
@@ -446,8 +439,7 @@ impl PersonalDressData {
             else if self.uhair != 0 { result.head_model = if self.is_female { "oHair_h850" } else { "oHair_h800" }.into() }
             for x in 0..4 {
                 if let Some(acc) = outfit_hashes.get_oacc(self.acc[x]){
-                    let accessory = new_asset_table_accessory(acc, ACC_LOC[x]);
-                    result.commit_accessory(&accessory);
+                    result.commit_accessory(&new_asset_table_accessory(acc, ACC_LOC[x]));
                 }
             }
         }

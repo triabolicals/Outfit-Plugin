@@ -62,6 +62,13 @@ impl EquipmentBoxPage {
             }
         }
     }
+    pub fn get_preset_appearance(self, increase: bool) -> EquipmentBoxPage {
+        let mut new = self;
+        loop {
+            new = if increase { new.get_next() } else { new.get_previous() };
+            if new != EquipmentBoxPage::Flags { return  new; }
+        }
+    }
 }
 
 impl EquipmentBoxMode {
@@ -177,9 +184,10 @@ impl EquipmentBoxMode {
                     for x in 0..4 {
                         let color = x + offset;
                         let color_str =
-                            if data.colors[color].has_color() && enable {
+                            if data.colors[color].has_color() && (!no_data || enable) {
                                 format!("{}: {}", MenuText::get_command(1140 + color as i32), data.colors[color])
-                            } else if no_data {
+                            }
+                            else if no_data {
                                 format!("{}: {}/{}/{}",
                                     MenuText::get_command(1140 + color as i32),
                                     preview.original_color[4 * color],
@@ -242,6 +250,21 @@ impl EquipmentBoxMode {
                 }
                 else { Self::set_data(equipment, page, None); }
             }
+        }
+    }
+    pub fn set_preset_appearance(self, appearance_index: i32) {
+        if let Some(appearance) = get_outfit_data().dress.personal.get(appearance_index as usize) {
+            let data = PlayerOutfitData::from_appearance(appearance);
+            match self {
+                Self::CurrentProfilePage(page)|Self::LoadData(page) => {
+                    if let Some(equipment) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) {
+                        Self::set_data(equipment, page, Some(&data));
+                        set_content_data_slot(equipment, 0, None, Some(appearance.get_name()));
+                    }
+                }
+                _ => {}
+            }
+
         }
     }
     pub fn update(self) {
