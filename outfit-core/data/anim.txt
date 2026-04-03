@@ -1,0 +1,74 @@
+Wng2DM-Mg1_c000_M   Cmi0DF-Mg1_c561_M   Wng2DM-Sw1_c000_M
+Wng2DR-Mg1_c000_M   Lnd0DR-Mg1_c350_M   Lnd0DR-Mg1_c350_M
+Wng2DM-Bw1_c000_L   Com0AM-Bw1_c000_L   Wng2DM-Lc1_c000_L
+Wng2DF-Bw1_c000_L   Com0AF-Bw1_c000_L   Wng2DF-Lc1_c000_L
+Wng2DR-Bw1_c000_L   Wng2DR-Lc1_c000_L   Wng2DR-Lc1_c000_L
+Wng1FM-Bw1_c000_L   Com0AM-Bw1_c000_L   Wng1FM-Lc1_c000_L
+Wng1FF-Bw1_c000_L   Com0AF-Bw1_c000_L   Wng1FM-Lc1_c000_L
+Wng1FR-Bw1_c000_L   Wng1FR-Lc1_c000_L   Wng1FR-Lc1_c000_L
+Wng0EF-Bw1_c000_L   Bow2BF-Bw1_c000_L   Wng0EF-Lc1_c000_L
+Wng0ER-Bw1_c000_L   Wng0ER-Lc1_c000_L   Wng0ER-Lc1_c000_L
+Com0AM-No2_c000_N   Sds0AM-No2_c049_N
+Com0AF-No2_c000_N   Sds0AF-No2_c099_N
+Dnc0AF-No1_c000_N   Rod0AF-Ft1_c000_N
+Dnc0AF-Ft1_c000_N   Rod0AF-Ft1_c000_N
+END
+Mcn3A   Amr0A Sw1 Lc1 Ax1 Rd1
+Wng0E   Slp0E   Mg1
+Cav0B   Bow2B   Bw1
+Cav1B   Bow2B   Bw1
+Wng2DF  Cmi0DF  Mg1
+END
+JID_神竜ノ子,JID_M000_神竜ノ子 Drg0A*
+JID_邪竜ノ子 Drg0AM-#_c002
+JID_邪竜ノ子 Drg0AF-#_c052
+JID_神竜ノ王    Drg1A*
+JID_M002_神竜ノ王   Drg1AF-#_c555
+JID_邪竜ノ娘,JID_邪竜ノ娘_敵 Sdp0AF  no_tome
+JID_邪竜ノ王,JID_M000_邪竜ノ王  Sdk0AM no_tome
+JID_アヴニール   Avn#BM  ride=Avn1BR
+JID_フロラージュ  Flr#AF
+JID_スュクセサール Scs#AM
+JID_ティラユール Trl#AM
+JID_リンドブルム  Lnd#DF  ride=Lnd1DR
+JID_スレイプニル  Slp#EF  ride=Slp1ER
+JID_クピードー   Cpd#BM  ride=Cpd1BR
+JID_ピッチフォーク Pcf#AF
+JID_ソードファイター    Swd0A*
+JID_ソードマスター Swd1A*
+JID_ブレイブヒーロー    Swd2A*
+JID_ランスファイター    Lnc0A*
+JID_ハルバーディア Lnc1A*
+JID_ロイヤルナイト Lnc2B*  ride=Lnc2BR M_c504
+JID_アクスファイター    Axe0A*
+JID_ベルセルク   Axe1A*  M_c453
+JID_ウォーリアー  Axe2A*  F_c254
+JID_アーチャー   Bow0A*  F_c152
+JID_スナイパー   Bow1A*
+JID_ボウナイト   Bow2B*  ride=Bow2BR
+JID_ソードアーマー,JID_ランスアーマー,JID_アクスアーマー Amr0A*
+JID_ジェネラル   Amr1A*
+JID_グレートナイト Amr2B*  ride=Amr2BR
+JID_ソードナイト,JID_ランスナイト,JID_アクスナイト    Cav0B*  ride=Cav0BR
+JID_パラディン   Cav1B*  ride=Cav1BR
+JID_ウルフナイト  Cav2C*  ride=Cav2CR
+JID_マージ Mag0A*
+JID_セイジ Mag1A*
+JID_マージナイト  Mag2B*  ride=Mag2BR
+JID_モンク Rod0A*
+JID_マスターモンク Rod1A*
+JID_ハイプリースト Rod2A*
+JID_ソードペガサス,JID_ランスペガサス,JID_アクスペガサス Wng0EF  ride=Wng0ER
+JID_グリフォンナイト    Wng1F*  ride=Wng1FR
+JID_ドラゴンナイト Wng2D*  ride=Wng2DR
+JID_シーフ Dge0A*
+JID_ダンサー    Dnc0AM
+JID_蛮族  Bbr0A*
+JID_村人  Com0A*
+JID_裏邪竜ノ娘   Sds0AF
+JID_裏邪竜ノ子,JID_裏邪竜ノ子_E1-4,JID_裏邪竜ノ子_E5   Sds0AM
+JID_メリュジーヌ  Msn1DF  no_tome ride=Msn0DR
+JID_メリュジーヌ_味方   Msn1DF  no_tome ride=Msn0DR
+JID_エンチャント  Ect3A*
+JID_マージカノン  Mcn3A*
+END

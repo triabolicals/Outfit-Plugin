@@ -1,0 +1,62 @@
+1 Profile
+7 Current Data
+20 Custom Colors
+22 Custom Scaling
+23 Break Outfit
+24 Cross Gender
+25 Random Appearance
+26 Preview in
+27 Replace Engage Anim
+30 Reset Color
+60 Head 1
+61 Head 2
+62 Spine
+63 Effect
+64 Shield
+70 Horse
+71 Wolf
+72 Wyvern
+73 Pegasus
+74 Griffin
+80 Info
+81 Talk
+82 Demo
+83 Hub
+90 Red
+91 Green
+92 Blue
+93 Alpha
+150 All
+151 Head
+152 Neck
+153 Torso
+154 Shoulder
+155 Arms
+156 Hand
+157 Legs
+158 Feet
+159 V. Bust
+160 V. Abdomen
+161 V. Torso
+162 V. Base Arms
+163 V. Base Legs
+164 V. Arms
+165 V. Legs
+1001 Assign Profiles
+1004 Hair
+1006 Colors
+1007 Scaling
+1009 Rigs
+1012 Preset Appearances
+1013 Poses
+1120 Ride Mounts
+1130 Anim Sets
+1140 Hair
+1141 Hair Grad
+1142 Skin
+1143 Toon
+1144 Mask 100
+1145 Mask 75
+1146 Mask 50
+1147 Mask 25
+1150 Custom RGB

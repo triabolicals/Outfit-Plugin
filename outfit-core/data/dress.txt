@@ -1,0 +1,218 @@
+JID_神竜ノ子,JID_M000_神竜ノ子 Drg0AM_c001 Drg0AF_c051
+JID_邪竜ノ子    Drg0AM_c002 Drg0AF_c052 hair=161,42,48
+JID_神竜ノ王    Drg1AM_c001 Drg1AF_c051
+JID_M002_神竜ノ王   Drg1AF_c555
+JID_邪竜ノ娘    Sdp0AF_c551
+JID_邪竜ノ娘_敵  Sdp0AF_c556
+JID_邪竜ノ王,JID_M000_邪竜ノ王  Sdk0AM_c504
+JID_アヴニール   Avn#BM_c100  ride=Avn0BR_c100
+JID_フロラージュ  Flr#AF_c150
+JID_スュクセサール Scs#AM_c200
+JID_ティラユール Trl#AM_c201
+JID_リンドブルム  Lnd#DF_c350  ride=Lnd0DR_c350
+JID_スレイプニル  Slp#EF_c351  ride=Slp0ER_c351
+JID_クピードー   Cpd#BM_c400  ride=Cpd0BR_c400
+JID_ピッチフォーク Pcf#AF_c450
+JID_裏邪竜ノ娘   Sds0AF_c099
+JID_裏邪竜ノ子,JID_裏邪竜ノ子_E1-4,JID_裏邪竜ノ子_E5   Sds0AM_c049
+JID_ソードファイター    Swd0A*
+JID_ソードマスター Swd1A*
+JID_ブレイブヒーロー    Swd2A*
+JID_ランスファイター    Lnc0A*
+JID_ハルバーディア Lnc1A*
+JID_ロイヤルナイト Lnc2B*  ride=Lnc2BR
+JID_アクスファイター    Axe0A*
+JID_ベルセルク   Axe1A*
+JID_ウォーリアー  Axe2A*
+JID_アーチャー   Bow0A*
+JID_スナイパー   Bow1A*
+JID_ボウナイト   Bow2B*  ride=Bow2BR
+JID_ソードアーマー,JID_ランスアーマー,JID_アクスアーマー Amr0A*
+JID_ジェネラル   Amr1A*
+JID_グレートナイト Amr2B*  ride=Amr2BR
+JID_ソードナイト,JID_ランスナイト,JID_アクスナイト    Cav0B*  ride=Cav0BR
+JID_パラディン   Cav1B*  ride=Cav1BR
+JID_ウルフナイト  Cav2C*  ride=Cav2CR
+JID_マージ Mag0A*
+JID_セイジ Mag1A*
+JID_マージナイト  Mag2B*  ride=Mag2BR
+JID_モンク Rod0A*
+JID_マスターモンク Rod1A*
+JID_ハイプリースト Rod2A*
+JID_ソードペガサス,JID_ランスペガサス,JID_アクスペガサス Wng0EF  ride=Wng0ER
+JID_グリフォンナイト    Wng1F*  ride=Wng1FR
+JID_ドラゴンナイト Wng2D*  ride=Wng2DR
+JID_シーフ Dge0A*
+JID_ダンサー    Dnc0AM
+JID_蛮族  Bbr0A*
+JID_メリュジーヌ_味方   Msn0DF_c553b    ride=Msn0DR_c553b    oride=Msn0DR_c553
+JID_メリュジーヌ  Msn0DF_c553    ride=Msn0DR_c553 oride=Msn0DR_c553
+JID_エンチャント  Ect3A*
+JID_マージカノン  Mcn3A*
+END
+マルス Mar1A  129,198,255	123,162,255
+シグルド    Sig1A  237,208,255	201,216,255
+セリカ Cel1A  255,212,245 253,143,118
+ミカヤ Mic1A  255,240,197	255,181,48
+ロイ  Roy1A  254,200,140	241,60,67
+リーフ Lei1A  251,254,209	183,248,154
+ルキナ Luc1A 182,234,255	1,214,255
+リン  Lyn1A 216,241,178	1,190,71
+アイク Ike1A  88,90,229	136,238,185
+ベレト Byl1A  236,141,255	191,107,255
+カムイ Cor1A  188,188,188	255,255,255
+エイリーク   Eir1A  255,245,199	175,246,230
+チキ  Tik0AF_c560
+エーデルガルト Thr1A  78,74,107 117,72,153
+ディミトリ   Thr1A  78,74,107 117,72,153
+クロード  Thr1A  78,74,107 117,72,153
+ヘクトル Hec1A  46,51,143 50,146,255
+ヴェロニカ   Ver1A  214,207,197	144,126,112
+セネリオ    Sor1A  85,134,113	63,72,69
+カミラ Cmi1A  191,183,224	121,81,170
+クロム Chr1A 48,92,129	68,154,229
+ルフレ Chr1A  48,92,129	68,154,229
+リュール    Ler1A  97,184,231	255,51,107
+END
+MPID_Lueur uBody_Drg0AM_c001 uHead_c001 uHair_c001  PID_リュール
+MPID_Lueur uBody_Drg0AF_c051 uHead_c051 uAcc_spine2_Hair051 PID_青リュール
+PID_ヴァンドレ
+PID_クラン
+PID_フラン
+PID_アルフレッド  body2=uBody_Avn1BM_c100 ride=Avn0BR_c100
+PID_ブシュロン
+PID_エーティエ
+PID_セリーヌ    body2=uBody_Flr1AF_c150
+PID_クロエ
+PID_ルイ
+PID_ユナカ
+PID_スタルーク   body2=uBody_Trl1AM_c201
+PID_シトリニカ
+PID_ラピス
+PID_ディアマンド  body2=uBody_Scs1AM_c200
+PID_アンバー
+PID_ジェーデ
+PID_アイビー    body2=uBody_Lnd1DF_c350 ride=Lnd0DR_c350
+PID_カゲツ
+PID_ゼルコバ
+PID_フォガート
+PID_パンドロ
+PID_ボネ
+PID_ミスティラ
+PID_パネトネ
+PID_メリン
+PID_オルテンシア  body2=uBody_Slp1EF_c351 ride=Slp0ER_c351
+PID_セアダス
+PID_ロサード    ride=Wng2DR_c303
+PID_ゴルドマリー
+PID_リンデン
+PID_ザフィーア
+PID_ヴェイル
+PID_モーヴ
+PID_ジャン
+PID_アンナ
+PID_エル
+PID_ラファール
+PID_セレスティア  ride=Msn0DR_553b
+PID_グレゴリー
+PID_マデリーン
+PID_E002_Boss
+PID_E002_Hide
+PID_E006_Hide3
+PID_E006_Hide4
+PID_E006_Hide5
+PID_E006_Hide6
+PID_E006_Hide7
+PID_E006_Hide8
+PID_ルミエル
+PID_ソンブル    PID_M000_ソンブル
+PID_イヴ
+PID_モリオン
+PID_ハイアシンス
+PID_スフォリア
+PID_M025_ルミエル
+PID_M010_異形兵_モリオン
+PID_M018_イルシオン兵_ボス
+PID_M004_イルシオン兵_ボス
+PID_M005_Irc_ボス
+PID_M013_蛮族_お頭Ａ
+PID_M013_蛮族_お頭Ｂ
+PID_S002_蛮族_お頭
+PID_S001_ジャン_父親
+PID_S001_ジャン_母親
+PID_セピア ride=Msn0DR_c553
+PID_マロン
+PID_グリ
+PID_武器屋
+PID_道具屋
+PID_錬成屋
+PID_アクセ屋
+PID_S001_村人_青年男
+PID_S001_村人_青年女
+PID_M012_村人Ａ
+PID_M012_村人Ｂ
+PID_M012_村人Ｃ
+PID_M004_村人おじいさん
+PID_E001_Boss name=MPID_Fogato
+PID_M021_ヴェイル
+PID_E005_Boss
+PID_M002_幻影兵_アクスファイター_イベント  generic
+PID_M002_幻影兵_アーチャー_イベント generic
+PID_M016_イルシオン兵_ランスファイター    generic
+PID_M016_イルシオン兵_ソードペガサス generic
+PID_S002_蛮族_モンク_中央  generic
+PID_イル
+PID_青リュール_男性    uHead_c004 uBody_Drg0AM_c001
+PID_青リュール_女性    uHead_c054 uBody_Drg0AF_c051
+MPID_PastLueur uBody_Drg0AM_c002 uHead_c002 uHair_h002    color=3156641,0,12505855,0,14474460,7874580,3155148,8767691   PID_M024_リュール
+MPID_PastLueur uBody_Drg0AF_c052 uHead_c052 uAcc_spine2_Hair002   color=3156641,0,12505855,0,14474460,7874580,3155148,8767691   PID_M024_リュール
+GID_M026_敵メディウス name=MPID_Hide  uHead_null  uHair_null
+GID_マルス
+GID_シグルド    ride=Sig0BR_c531
+GID_セリカ
+GID_ミカヤ
+GID_ロイ
+GID_リーフ
+GID_ルキナ
+GID_リン
+GID_アイク
+GID_ベレト
+GID_カムイ
+GID_エイリーク
+GID_エーデルガルト
+GID_ディミトリ
+GID_クロード
+GID_チキ
+GID_ヘクトル
+GID_ヴェロニカ
+GID_セネリオ
+GID_カミラ ride=Cmi0DR_c561
+GID_クロム
+PID_ルフレ
+GID_マルス dark
+GID_シグルド    dark    ride=Sig0BR_c538
+GID_セリカ dark
+GID_ミカヤ dark
+GID_ロイ  dark
+GID_リーフ dark
+GID_ルキナ dark
+GID_リン  dark
+GID_アイク dark
+GID_ベレト dark
+GID_カムイ dark
+GID_エイリーク dark
+GID_E006_敵チキ    name=MGID_Tiki
+GID_E006_敵ヘクトル  name=MGID_Hector
+GID_E006_敵ヴェロニカ name=MGID_Veronica
+GID_E006_敵セネリオ  name=MGID_Senerio
+GID_E006_敵カミラ   name=MGID_Camilla   ride=Cmi0DR_c568
+GID_E006_敵クロム   name=MGID_Chrom
+GID_E006_敵エーデルガルト   name=MGID_Edelgard
+GID_E006_敵ディミトリ name=MGID_Dimitri
+GID_E006_敵クロード  name=MGID_Claude
+PID_闇ルフレ
+END
+JID_異形飛竜    IID_氷のブレス   Fyd2DM-Mg1_c707_M
+JID_幻影飛竜    IID_瘴気のブレス  Fyd2DM-Mg1_c715_M
+JID_異形竜 IID_火のブレス
+JID_幻影竜 IID_炎塊
