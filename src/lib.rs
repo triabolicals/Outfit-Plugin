@@ -30,10 +30,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                 UnitAssetMenuData::get().init = true;
                                 GameMessage::create_key_wait(
                                     main_sequence,
-                                    "Outfit plugin will not be installed.\n
-                                    Draconic Vibe Crystal's version will be used instead.\n
-                                    Remove the Outfit plugin to improve performance."
-                                );
+                                    "Outfit plugin will not be installed.\nDraconic Vibe Crystal's version will be used instead.\nRemove the Outfit plugin to improve performance.");
                             }
                         }
                     }
