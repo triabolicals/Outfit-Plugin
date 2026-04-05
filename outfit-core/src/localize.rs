@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::sync::{OnceLock, RwLock};
-use engage::language::Language;
+use engage::language::{Language, LanguageLangs};
 use engage::mess::Mess;
 use unity::prelude::Il2CppString;
 
@@ -179,15 +179,21 @@ impl MenuText {
                 .and_then(|x| x.0.parse::<i32>().ok().zip(Some(x.1)))
         }).collect()
     }
-    fn get_help_text() -> &'static str { include_str!("localize/help/en.txt") }
+    fn get_help_text() -> &'static str {
+        match Language::get_lang() {
+            LanguageLangs::CNTraditional => include_str!("localize/help/tw.txt"),
+            _ => include_str!("localize/help/en.txt"),
+        }
+    }
     fn get_command_text() -> &'static str {
         match Language::get_lang() {
+            LanguageLangs::CNTraditional => include_str!("localize/command/tw.txt"),
             /*
             LanguageLangs::JPJapanese => include_str!("localize/command/ja.txt"),
             LanguageLangs::USFrench|LanguageLangs::EUFrench => include_str!("localize/command/fr.txt"),
             LanguageLangs::USSpanish|LanguageLangs::EUSpanish => include_str!("localize/command/es.txt"),
             LanguageLangs::EUItalian => include_str!("localize/command/it.txt"),
-            LanguageLangs::CNTraditional => include_str!("localize/command/tw.txt"),
+
             LanguageLangs::CNSimplified =>
             LanguageLangs::KRKorean => {}
             */
