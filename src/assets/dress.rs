@@ -32,7 +32,9 @@ pub fn commit_for_unit_dress(
             result.setup_for_person(1, PersonData::get("PID_G001_チキ_竜化"),conds);
         }
         else if !get_outfit_data().apply_monster_asset(result, unit, mode) {
-            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == Gender::Male { result.setup_for_person_job_item(1, PersonData::get("PID_ラファール_竜化"), Some(condition_unit.job), None, conds); }
+            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == Gender::Male {
+                result.setup_for_person_job_item(1, PersonData::get("PID_ラファール_竜化"), Some(condition_unit.job), None, conds);
+            }
             else { result.setup_for_person_job_item(1, PersonData::get("PID_エル_竜化"), Some(condition_unit.job), None, conds); }
         }
         return

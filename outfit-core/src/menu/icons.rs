@@ -74,7 +74,11 @@ impl CustomMenuIcon {
         if let Some(system_label) = self.get_system_label() { GameIcon::try_get_system(system_label) }
         else {
             match self {
-                Self::Engaged(i) => { GameIcon::class().get_static_fields::<GameIconStaticFields>().god_symbol.try_get(crate::EMBLEM[*i as usize].0) }
+                Self::Engaged(i) => {
+                    let idx = if *i < 13 { *i as usize } else { *i as usize + 1 };  // Skip Tiki
+                    if *i < 19 { GameIcon::class().get_static_fields::<GameIconStaticFields>().god_symbol.try_get(crate::EMBLEM[idx].0) }
+                    else { GameIcon::try_get_system("EngCommon") }
+                }
                 Self::UnitAccessory {kind} => { GameIcon::try_get_accessory_kind(*kind as i32) }
                 Self::Shield => { GameIcon::try_get_item("Byleth_AegisShield") }
                 Self::Mount(i) => {

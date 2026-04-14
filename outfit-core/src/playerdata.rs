@@ -8,7 +8,7 @@ use engage::mess::Mess;
 use engage::stream::Stream;
 use unity::prelude::*;
 use crate::assets::new_asset_table_accessory;
-use crate::{apply_hair, get_outfit_data, AssetColor, AssetType, ColorPreset, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA};
+use crate::{apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA};
 use crate::AssetType::Acc;
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
@@ -254,17 +254,19 @@ impl PlayerOutfitData {
             let original_dress_gender = db.get_dress_gender(result.dress_model);
             if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.body_model = rig.into(); }
             if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.head_model = head.into(); }
-            if let Some(skin) = db.list.skin.get(&self.uhead) { ColorPreset::set_color(&mut result.unity_colors[2], *skin); }
+            if !self.colors[2].has_color() || self.flag & 1 == 0 {
+                let head_hash = result.head_model.get_hash_code();
+                if let Some(color) = db.list.skin.get(&head_hash) {
+                    color.set_result_color(result, 2);
+                }
+            }
             if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_hair(hair, result); }
             if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
                 let allow_cross_dress = self.flag & 128 != 0;
-                let b = if self.flag & 32 != 0 && stun {
-                    self.break_body
-                } else { self.ubody };
+                let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
                 if let Some(body) = db.try_get_asset(AssetType::Body, b)
                     .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
                 {
-
                     let new_dress_gender = db.get_dress_gender(body.into());
                     if original_dress_gender == new_dress_gender { result.dress_model = body.into(); }
                     else if allow_cross_dress { result.dress_model = body.into(); }
@@ -311,7 +313,7 @@ impl PlayerOutfitData {
             result.replace(2);
         }
         else {
-            if let Some(skin) = db.list.skin.get(&self.uhead) { ColorPreset::set_color(&mut result.unity_colors[2], *skin); }
+            // if let Some(skin) = db.list.skin.get(&self.uhead) { ColorPreset::set_color(&mut result.unity_colors[2], *skin); }
             if !engaged || (engaged && self.flag & 2 != 0) {
                 let original_dress_gender = db.get_dress_gender(result.body_model);
                 let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };

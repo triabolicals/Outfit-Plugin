@@ -10,62 +10,51 @@ mod conditions;
 
 pub use accessory::*;
 pub use conditions::{AssetFlags, AssetConditions, CharacterAssetMode};
-pub fn search_by_2_keys<'a>(mode: i32, key1: impl Into<&'static Il2CppString>,  key2: impl Into<&'static Il2CppString>) -> Option<&'static &'static mut AssetTable> {
-    let asset_table_sf = AssetTableStaticFields::get();
-    let key1_index  = AssetTableStaticFields::get_condition_index(key1);
-    let key2_index  = AssetTableStaticFields::get_condition_index(key2);
-    if key1_index < 1 || key2_index < 1 { return None; }
-    asset_table_sf.search_lists[mode as usize].iter().find(|entry|
-        entry.mode == mode && has_condition(entry, key1_index) && has_condition(entry, key2_index)
-    )
-}
-pub fn get_aid_condition(entry: &AssetTable) -> Option<(String, Gender)> {
+
+pub fn find_aid_condition_prefix(entry: &AssetTable, prefix: &str, with_gender: bool) -> Option<(String, Gender)> {
     let asset_table_sf = AssetTableStaticFields::get();
     let entries = &asset_table_sf.condition_indexes.entries;
     let male  = AssetTableStaticFields::get_condition_index("男装");
     let female  = AssetTableStaticFields::get_condition_index("女装");
+    let gender =
+        if with_gender{
+            if entry.condition_indexes.list.iter().any(|i| i.iter().any(|i| *i == male)) { Some(Gender::Male) }
+            else if entry.condition_indexes.list.iter().any(|i| i.iter().any(|i| *i == female)) { Some(Gender::Female) }
+            else { None }
+        } else { Some(Gender::None) };
 
-    let gender = if entry.condition_indexes.list.iter().any(|i| i.iter().any(|i| *i == male)) { Gender::Male }
-    else if entry.condition_indexes.list.iter().any(|i| i.iter().any(|i| *i == female)) { Gender::Female }
-    else { Gender::None };
-    let ss =
-        entry.condition_indexes.list.iter()
-            .filter(|i| i.len() == 1)
-            .find_map(|l|
-                entries.iter().find(|e| l[0] == e.value &&
-                    e.key.is_some_and(|a|{
-                        let a_key = a.to_string();
-                        a_key.starts_with("AID_") || a_key.starts_with("PID_") || a_key.starts_with("GID_") || a_key.starts_with("JID_")
-                    })
-                )
-            )
-            .map(|s| s.key.unwrap().to_string())
-            .or_else(|| get_name_condition(entry));
-    if gender == Gender::None {
-        if let Some(s) = ss.as_ref() {
-            let gender =
-                if s.contains("AID_") {
-                    AccessoryData::get(s.as_str()).map(|a| a.condition_gender)
-                        .or_else(|| PersonData::get_list().unwrap().iter()
-                            .find(|p| p.aid.is_some_and(|aid| aid.to_string() == *s))
-                            .map(|p| p.get_gender() as i32)
-                        ).unwrap_or(0)
+    entry.condition_indexes.list.iter()
+        .filter(|i| i.len() == 1)
+        .find_map(|l| entries.iter().find(|e| l[0] == e.value && e.key.is_some_and(|a|a.str_contains(prefix))))
+        .map(|s| s.key.unwrap().to_string())
+        .or_else(|| get_name_condition(entry)).zip(gender)
+}
+
+pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool,) -> Option<(String, Gender)> {
+    let s: Vec<_> = asset_table_indexes.into_iter().flat_map(|v| AssetTable::try_index_get(v)).collect();
+    for prefix in ["EID_", "AID_", "GID_", "MPID_", "PID_", "JID_"]{
+        let s = s.iter().find_map(|x| find_aid_condition_prefix(x, prefix, with_gender));
+        if s.as_ref().is_some_and(|s| get_condition_label(&s.0).is_some()) { return s; }
+    }
+    None
+}
+pub fn get_condition_label(label: &String) -> Option<String> {
+    if let Some(pos) = ["EID_", "AID_", "GID_", "MPID_", "PID_", "JID_"].iter().position(|x| label.starts_with(x)){
+        match pos {
+            0|2 => {  GodData::get(label.replace("EID_", "GID_")).map(|v| v.mid.to_string()) }
+            1 => {
+                if let Some(acc) = AccessoryData::get(label.as_str()) { Some(acc.name.to_string()) }
+                else if let Some(person) = PersonData::get_list().unwrap().iter().find(|p| p.name.is_some() && p.aid.is_some_and(|s| s.to_string() == *label)){
+                    person.name.map(|v| v.to_string())
                 }
-                else if s.contains("JID_") {
-                    JobData::get(s.as_str()).map(|j| {
-                        if j.flag.value & 4 != 0 || (j.unit_icon_id_m.is_none() && j.unit_icon_id_f.is_some()) { 2 } else if j.flag.value & 16 != 0 || (j.unit_icon_id_m.is_some() && j.unit_icon_id_f.is_none()) { 1 } else { 0 }
-                    }).unwrap_or(0)
-                }
-                else if s.contains("PID_") { PersonData::get(s.as_str()).map(|p| p.get_gender() as i32).unwrap_or(0) }
-                else if s.contains("GID_") { GodData::get(s.as_str()).map(|p| if p.female == 0 { 1 } else { 2 }).unwrap_or(0) }
-                else { 0 };
-            return
-                if gender == 1 {ss.zip(Some(Gender::Male)) }
-                else if gender == 2 { return ss.zip(Some(Gender::Female)) }
-                else { ss.zip(Some(Gender::None)) };
+                else { None }
+            }
+            3 => Some(label.clone()),
+            4 => PersonData::get(label.as_str()).filter(|p| p.parent.index > 1 && p.belong.is_none()).and_then(|p| p.name).map(|v| v.to_string()),
+            _ => JobData::get(label.as_str()).map(|j| j.name.to_string()),
         }
     }
-    ss.zip(Some(gender))
+    else { None }
 }
 pub fn get_name_condition(entry: &AssetTable, ) -> Option<String>  {
     let asset_table_sf = AssetTableStaticFields::get();
@@ -73,13 +62,9 @@ pub fn get_name_condition(entry: &AssetTable, ) -> Option<String>  {
     entry.condition_indexes.list.iter()
         .filter(|l| l.len() == 1)
         .find_map(|l| entries.iter()
-            .find(|e| l[0] == e.value && e.key.is_some_and(|a| a.str_contains("PID") || a.str_contains("GID") || a.str_contains("JID"))))
+            .find(|e| l[0] == e.value && e.key.is_some_and(|a| a.str_contains("PID") || a.str_contains("GID") )))
         .map(|s| s.key.unwrap().to_string())
 }
-pub fn has_condition(entry: &AssetTable, condition_index: i32) -> bool {
-    entry.condition_indexes.list.iter().any(|s| s.iter().any(|&index| index ==  condition_index))
-}
-
 pub fn new_result_get_hash_code(this: &AssetTableResult, optional_method: OptionalMethod) -> i32 {
     let original = unsafe { result_get_hash_code(this, optional_method) };
     let mut new_hash = Wrapping(original);
@@ -106,5 +91,14 @@ pub fn find_entries_with_model_field(mode: i32, model: &str, filter: impl Fn(&As
         .map(|entry| entry.parent.index ).collect()
 }
 
+pub fn find_mode_1_body(condition_index: i32, gender: Gender) -> Option<String> {
+    let asset_table_sf = AssetTableStaticFields::get();
+    let gender = if gender == Gender::Female { AssetTableStaticFields::get_condition_index("女装") }
+    else { AssetTableStaticFields::get_condition_index("男装") };
+    asset_table_sf.search_lists[1].iter().find(|a|{
+        a.condition_indexes.has_condition_index(condition_index) && a.body_model.is_some() &&
+            a.condition_indexes.has_condition_index(gender)
+    })?.body_model.map(|v| v.to_string())
+}
 #[skyline::from_offset(0x1bb4fa0)]
 fn result_get_hash_code(this: &AssetTableResult, optional_method: OptionalMethod) -> i32;

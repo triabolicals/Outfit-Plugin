@@ -1,0 +1,196 @@
+MJID_SwordFighter	Swd0A	604	605	720	721	721
+MJID_SwordMaster	Swd1A
+MJID_BraveHero	Swd2A
+MJID_LanceFighter	Lnc0A	610	611	722	723	723
+MJID_Halberdier	Lnc1A
+MJID_RoyalKnight	Lnc2B	617	618	724	725
+MJID_AxFighter	Axe0A
+MJID_Berserker	Axe1A
+MJID_Warrior	Axe2A
+MJID_Archer	Bow0A	623	624	726	727
+MJID_Sniper	Bow1A
+MJID_BowKnight	Bow2B
+MBSID_Heavy	Amr0A	630	631	728	729
+MJID_General	Amr1A
+MJID_GreatKnight	Amr2B
+MBSID_Horse	Cav0B	637	638	730	731
+MJID_Paladin	Cav1B
+MJID_WolfKnight	Cav2C
+MJID_MBSID_Fly	Wng0E	645	646	-	732
+MJID_GriffonKnight	Wng1F	652	653	733	734
+MJID_DragonKnight	Wng2D	652	653	733	734
+MJID_Mage	Mag0A	659	660	737	738	738
+MJID_Sage	Mag1A
+MJID_MageKnight	Mag2B
+MJID_Monk	Rod0A	666	667	739	740	740
+MJID_MasterMonk	Rod1A
+MJID_HighPriest	Rod2A
+MJID_Thief	Dge0A	657	658	735	736
+MJID_Barbarian	Bbr0A	681	682
+MJID_Enchant	Ect3A	697	698
+MJID_MageCannon	Mcn3A	695	696
+MJID_PhantomWolf Wlf0CT_c715
+MJID_PhantomFlyingDragon Fyd0DT_c715
+MJID_MorphWolf	Wlf0CT_c707 Wlf0CT_c751
+MJID_MorphFlyingDragon	Fyd0DT_c707 Fyd0DT_c750
+END
+MPID_Lueur	c001:1	Drg0AM	w	PlayerM	c003:9 Drg0AM c004:1
+MPID_PastLueur	c002:1	Drg0AM	PlayerM_Boss
+MPID_Rafale	c049	Sds0AM	w	DLC_43_2
+MPID_Il	c049b	DLC_43_1	c049c:4
+MPID_Alfred	c100	Avn0BM	Avn0BR	w   c100b:4	    Alfred_E:4
+MPID_Boucheron	c101	Axe0AM	w	Info_c101b
+MPID_Louis	c102	Amr0AM	w
+MPID_Jean	c103	Rod0AM	w
+MPID_Diamand	c200	Scs0AM	w	c200b:4
+MPID_Staluke	c201	Trl0AM	w	Info_c201b c201b:4 Info_c201c:4
+MPID_Morion	c202	Swd2AM
+MPID_Umber	c203	Cav0BM	w
+MPID_MorphMorion	c204	Morion_Boss
+MPID_Hyacinth	c300	Rod1AM
+MPID_Zelkova	c301	Dge0AM	w
+MPID_Kagetsu	c302	Swd1AM	w
+MPID_Linden	c304	Mag1AM	w
+MPID_Fogato	c400	Cpd0BM	Mag0AM	w	Cpd0BR	Dct0AM:4 c400b:4
+MPID_Pandoro	c401	Rod2AM	w
+MPID_Bonet	c402	Amr2BM	w
+MPID_Seadas	c403	Dnc0AM	w	Info_c403b	Hair403
+MPID_Vandre	c500	Cav1BM	w
+MPID_Clan	c501	Mag0AM	w
+MPID_Mauve	c502	Lnc2BM	w
+MPID_Gregory	c503b	Mag1AM	WearM_c503	DLC_45
+MPID_Gris	c503	Mag1AM
+MPID_Sombre	c504	Sdk0AM
+MPID_Hector	c510	Hec0AM	DLC_48
+MPID_Senerio	c511	Sor0AM	DLC_49
+MPID_Chrom	c512	Chr0AM	DLC_50
+MPID_Reflet	c513	Rbi0AM	DLC_51
+MPID_Dimitri	c514	Dim0AM	DLC_54
+MPID_Claude	c515	Cla0AM	DLC_55
+MPID_Marth	c530	Mar0AM
+MPID_Siglud	c531	Sig0BM  Sig0BR
+MPID_Leaf	c532	Lei0AM  Info_c532_Smn
+MPID_Roy	c533	Roy0AM
+MPID_Ike	c534	Ike0AM  Info_c534_Smn
+MPID_Byleth	c535	Byl0AM
+MGID_Ephraim 	c536	Eph0AM
+MID_TUT_BMAP_DARKHERALDIC_TITLE	c711	Dct0AM
+MPID_FileneVillager	c809	File4M	h814
+MPID_M004_Boss	c811	Amr0AM	h818	Boss1
+MPID_M005_Boss	c812	Axe0AM	h819	Boss2
+MPID_M013_BossA	c813	Brb0AM	h820	Boss6
+MPID_M013_BossB	c814	Brb0AM	h821	Boss7
+MPID_M006_Boss	c815	h822	Boss4
+MPID_WeaponShop	c817	File4M	Shop1
+MPID_AccessoriesShop	c818	Brod4M	h824	Shop4
+MPID_JeanFather	c819	Rod0AM	h825
+END
+MPID_Lueur	c051:2	Drg0AF	w	PlayerF	Band051	c053:10 Drg0AF c054:2
+MPID_PastLueur	c052:2	Drg0AF	PlayerF_Boss	Band052
+MPID_El	c099	Sds0AF	w	DLC_42	DLC_42_2
+MPID_Celine	c150	Flr0AF	w	c150b:4
+MPID_Eve	c151	Rod2AF
+MPID_Etie	c152	Bow0AF	w
+MPID_Chloe	c153	Wng0EF	w
+MPID_Jade	c250	Amr0AF	w
+MPID_Lapis	c251	Swd0AF	w   Info_c251b
+MPID_Citrinica	c252	Mag0AF	w
+MPID_Yunaka	c253	Dge0AF	w
+MPID_Saphir	c254	Axe2AF	w
+MPID_Rosado	c303	Wng2DF	Wng2DR  w
+MPID_Ivy	c350	Lnd0DF	Lnd0DR	w	Info_c350b	c350b:4	Info_c350c
+MPID_Hortensia	c351	Slp0EF	Slp0ER	w	c351b:4	c353:4 c353b:4
+MPID_Goldmary	c352	Swd2AF	w
+MPID_Misutira	c450	Pcf0AF	w   Cav2CF	c450b:4
+MPID_Sfoglia	c451	Wng2DF
+MPID_Merin	c452	Cav2CF	Cav2CR	w
+MPID_Panetone	c453	Axe1AF	w
+MPID_Fram	c550	Rod0AF	w
+MPID_Veyre	c551	Sdp0AF	w	Info_c551b c556:4	Dress556b Dress556c Dress557 Sdp0AF	Sdp0AF_c557
+MPID_Anna	c552	Axe0AF	w
+MPID_Selestia	c553b	Msn0DF	Hair553e	Hair553h	WearF_c553	DLC_44	Msn0DR c553c:16
+MPID_Sepia	c553	Msn0DF	Msn0DR
+MPID_Madeline	c554b	Amr1AF	Dress554h	h554h	Hat554h	WearF_c554	DLC_46
+MPID_Marron	c554	Amr1AF
+MPID_Lumiere	c555	Drg1AF
+MPID_MorphLumiere	c558
+MPID_Tiki	c560	Tik0AF	DLC_47
+MPID_Camilla	c561	Cmi0DF	Cmi0DR	DLC_52
+MPID_Veronica	c562	Ver0AF	DLC_56
+MPID_Edelgard	c563	Ede0AF	DLC_53
+MPID_Celica	c580	Cel0AF
+MPID_Lin	c581	Lyn0AF
+MPID_Eirik	c582	Eir0AF
+MPID_Micaiah	c583	Mic0AF  Info_c583_Smn
+MPID_Lucina	c584	Luc0AF
+MPID_Kamui	c585	Cor0AF
+MPID_M003_Boss	c855	Axe1AF	h867	Boss3
+MPID_ItemShop	c856	File4F	h868	Shop2
+MPID_BlackSmith	c857	Brod4F	h869	Shop3
+MPID_JeanMother	c858	File4F	Hair870
+MPID_S002_Boss	c859	Bbr0AF	h871	Boss5
+END
+MPID_Morph	c707	c702:1	c703:2  c704:1  c705:2
+MPID_Phantom	c713:1	c714:2
+PCCMID_Player	c699
+MID_Hub_DragonRide_Target_Normals	c000
+END
+Exercisewear	Exer
+Kimono	Kimn
+BigSunglasses	BigSunglass
+ColoredSunglasses	ColorGlass
+FancyDressMask	DisguiseMask
+Eyepatch	Eyepatch
+SkullMask	SkullMask
+LowerEdgeGlasses	SquareGlass
+NormalGlasses	StandardGlass
+BlackTabbyGlasses	ThickGlass
+JpHeadDress	DlcBand
+JpRibbon	DlcRibbon
+JpEarrings	DlcEarring
+JpGlasses	DlcGlass
+SolaHead	Cstm
+CatEar	DlcSora
+DogEar	DlcDog
+RabbitEar	DlcRabbit
+FoxEar	DlcFox
+END
+MBSID_Prana	spine2_FormChain
+MBSID_Heavy	spine2_FormDefense
+MBSID_Dragon	spine2_FormDragon
+MBSID_Magic	spine2_FormMagic
+MBSID_Fly	spine2_FormWing
+MBSID_Horse	spine2_FormCavalry
+MBSID_Covert	head_FormSecrecy
+END
+h003	c004
+h053	Hair054
+Box	dummy1	dummy2	c999
+null	null
+END
+051,052,053,054 255,215,204
+099 255,242,226
+103 245,215,200
+150,150b,153 254,236,231
+151 249,226,217
+250,251 255,228,215
+252 255,223,219
+253 255,224,209
+152,303,453 255,231,225
+304 227,169,151
+350,350b 255,244,243
+351,351b,353 255,230,232
+352 255,228,209
+400,400b,400c,450,450b 129,76,68
+451 154,142,189
+452 255,230,210
+501 255,222,203
+504 154,142,189
+550 255,223,219
+552 255,236,223
+551,556,557,557 255,231,225
+553,553b,553c 238,187,160
+554,554b,555,558 254,236,231
+856 121,95,78
+858 244,218,200
+END

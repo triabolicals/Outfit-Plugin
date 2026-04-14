@@ -1,5 +1,4 @@
 use std::sync::OnceLock;
-use skyline::install_hook;
 pub use unity::prelude::*;
 use unity::system::{Dictionary, List};
 pub use utils::Randomizer;
@@ -57,136 +56,6 @@ pub struct StructTemplateStaticFields{
     header: u64,
     pub dictionary: &'static mut StructDictionary,
 }
-/*
-pub static mut WEAPON_KIND: i32 = 0;
-fn plus(_this: &BasicMenuItem, optional_method: OptionalMethod) -> BasicMenuResult {
-    let new = unsafe { WEAPON_KIND + 1};
-    unsafe {
-        WEAPON_KIND =     if new == 7 { 8 }
-        else if new > 8 { 0 }
-        else { new };
-        println!("NEW KIND: {}", WEAPON_KIND);
-    }
-    BasicMenuResult::se_decide()
-}
-fn minus(_this: &BasicMenuItem, optional_method: OptionalMethod) -> BasicMenuResult {
-    let new = unsafe { WEAPON_KIND - 1};
-    unsafe {
-        WEAPON_KIND = if new == 7 { 6 }
-        else if new < 0 { 8 }
-        else { new };
-        println!("NEW KIND: {}", WEAPON_KIND);
-    }
-    BasicMenuResult::se_decide()
-}
-pub struct MapClassChangeDebug{}
-impl MapClassChangeDebug {
-    pub fn plus_call(this: &BasicMenuItem, optional_method: OptionalMethod) -> BasicMenuResult {
-        Self::class_change(true);
-        if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
-        BasicMenuResult::se_cursor()
-    }
-    pub fn minus_call(this: &BasicMenuItem, optional_method: OptionalMethod) -> BasicMenuResult {
-        Self::class_change(false);
-        if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
-        BasicMenuResult::se_decide()
-    }
-
-    pub fn class_change(plus: bool) -> BasicMenuResult{
-        if let Some(unit) = MapMind::get_unit(){
-            let job_count = JobData::get_count();
-            let mut job_index = unit.job.parent.index;
-            let mut count = 0;
-            let change = if plus { 1 } else { -1 };
-            let db = get_outfit_data();
-            loop {
-                job_index += change;
-                if let Some(job_data) = JobData::try_index_get(job_index) {
-                    if db.anims.job_anims.iter().any(|x| x.hash == job_data.parent.hash) || db.dress.transform.iter().any(|x| x.hash == job_data.parent.hash) {
-                        unit.class_change(job_data);
-                        println!("[Debug] {} Class Changed to: {}", unit.get_name(), Mess::get_name(job_data.jid));
-                        add_items(unit, false);
-                        UnitInfo::set_unit(UnitInfoSide::Left, None, false, false, false, None);
-                        UnitInfo::set_unit(UnitInfoSide::Left, Some(unit), false, false, false, None);
-                        // unit.auto_equip();
-                        unit.reload_actor();
-                        unit.set_hp(unit.get_capability(0, true));
-                        return BasicMenuResult::se_cursor()
-                    }
-                }
-                else { job_index = if plus { 0 } else { job_count } }
-                count += 1;
-                if count == job_count { return BasicMenuResult::se_miss(); }
-            }
-        }
-        BasicMenuResult::new()
-    }
-}
-pub fn add_items(unit: &mut Unit, auto_equip: bool) {
-    let mut select_count = 0;
-    let mut kinds = unit.job.weapons.iter().enumerate().filter(|(kind, x)| **x == 1).map(|(k, _)| k as i32).collect::<Vec<i32>>();
-    if let Some(select_mask) = unit.job.get_selectable_weapon_mask(&mut select_count) {
-        let rng = Random::get_game();
-        let mut count = 0;
-        let mut possible_kinds = vec![];
-        for x in 1..10 {
-            if select_mask.value & (1 << x) != 0 { possible_kinds.push(x); }
-        }
-        for _ in 0..9 {
-            let len = possible_kinds.len();
-            if len > 1 {
-                let kind = possible_kinds.remove(rng.get_value(len as i32) as usize);
-                unit.selected_weapon_mask.value |= 1 << kind;
-                kinds.push(kind);
-                count += 1;
-            } else if len == 1 {
-                unit.selected_weapon_mask.value |= 1 << possible_kinds[0];
-                kinds.push(possible_kinds[0]);
-                break;
-            } else { break }
-            if count == select_count { break; }
-        }
-    }
-    unit.item_list.put_off_all_item();
-    unit.selected_weapon_mask.value = 0;
-    let item_list = ItemData::get_list().unwrap();
-    kinds.iter().for_each(|kind| {
-        let kind = *kind as u32;
-        match kind {
-            9 => {
-                if let Some(item) = unit.job.mask_skills.find_sid("SID_竜石装備")
-                    .or_else(|| unit.job.mask_skills.find_sid("SID_弾丸装備"))
-                    .and_then(|skill|
-                        item_list.iter()
-                            .find(|x| x.kind == kind && x.equip_condition == Some(skill.sid) && x.flag.value & 128 == 0)) {
-                    unit.item_list.add_item_no_duplicate(item);
-                }
-                else if let Some(item) = item_list.iter().
-                    find(|x| x.kind == kind && x.equip_condition == None && x.flag.value & 128 == 0) { unit.item_list.add_item_no_duplicate(item); }
-            }
-            1..9 => {
-                if let Some(item) = item_list.iter().find(|x| x.kind == kind && x.equip_condition == None && x.flag.value & 128 == 0) { unit.item_list.add_item_no_duplicate(item); }
-            }
-            _ => {}
-        }
-    });
-    if auto_equip { unit.auto_equip(); }
-    else {
-        unit.item_list.unit_items.iter_mut().for_each(|x| {
-            if let Some(x) = x.as_mut() { x.flags &= !1; }
-        });
-    }
-}
-pub fn get_all_god(menu_item: &BasicMenuItem, optional_method: OptionalMethod) -> BasicMenuResult {
-    GodData::get_list().unwrap().iter().filter(|x| x.main_data.force_type == 0).for_each(|god|{
-        engage::god::GodPool::create(god.main_data);
-    });
-    Force::get(ForceType::Player).unwrap().iter().for_each(|unit|{
-        unit.private_skill.add_sid("SID_残像", SkillDataCategorys::Private, 0);
-    });
-    BasicMenuResult::se_cursor()
-}
- */
 fn photo_off(_proc: &ProcInst, _optional_method: OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::Inactive;
 }
@@ -208,8 +77,6 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         let data = OutfitData::init();
         data
     });
-    install_hook!(room::create_break_effect);
-    println!("Creating Directories");
     let _ = std::fs::create_dir_all(OUTPUT_ASSET_TABLE_DIR);
     let _ = std::fs::create_dir_all(OUTPUT_DATA);
     let _ = std::fs::create_dir_all(INPUT_DIR);
@@ -235,17 +102,6 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").ok() {
         if let Some(method) = class.get_virtual_method_mut("YCall") { method.method_ptr = photo::photograph_edit_dispos_menu_minus as _; }
     }
-    /*
-    if let Some(k) = Il2CppClass::from_name("App", "MapUnitCommandMenu").ok()
-        .and_then(|k| k.get_nested_types().iter().find(|c| c.get_name() == "ItemMenuItem".to_string()))
-        .and_then(|s| Il2CppClass::from_il2cpptype(s.get_type()).ok())
-
-    {
-        k.get_virtual_method_mut("PlusCall").map(|m|m.method_ptr = MapClassChangeDebug::plus_call as _);
-        k.get_virtual_method_mut("MinusCall").map(|m|m.method_ptr = MapClassChangeDebug::minus_call as _);
-    }
-
-     */
     if let Some(method) = Il2CppClass::from_name("App", "AccessoryMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("BuildText"))
     {

@@ -5,12 +5,10 @@ use engage::menu::menu_item::accessory::*;
 use unity::engine::Color;
 use unity::engine::ui::IsImage;
 use unity::prelude::*;
-
 use engage::game::GameColor;
 use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
 use engage::menu::menu_item::MenuItem;
-use crate::AssetType;
-use crate::AssetType::ColorPreset;
+use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
 use super::{*, items::{CustomMenuItem, *}};
 
 pub static CUSTOM_ASSET_MENU_ITEM: OnceLock<&'static Il2CppClass> = OnceLock::new();
@@ -68,7 +66,6 @@ impl CustomAssetMenuItem {
 	}
 	pub fn new_menu2(menu_type: CustomAssetMenuKind) -> &'static mut CustomAssetMenuItem {
 		let item = Self::new(0, 0);
-		//(item.kind, item.sub_kind) = (Menu(menu_type)).to_index();
 		item.menu_kind = Menu(menu_type);
 		item
 	}
@@ -86,6 +83,48 @@ impl CustomAssetMenuItem {
 			_ => {}
 		}
 		item.menu_kind = ty;
+		item
+	}
+	pub fn new_asset3(other: &OtherAssetItem, labels: &AssetLabelTable, is_body: bool) -> &'static mut CustomAssetMenuItem {
+		let item = Self::new_asset2(&other.asset, other.label.as_str());
+		if !other.is_mess { item.name = other.get_name(labels, is_body); }
+		item
+	}
+	pub fn new_asset2(asset: &AssetItem, label: &str) -> &'static mut CustomAssetMenuItem {
+		let item = Self::new(0, 0);
+		let kind = asset.kind;
+		item.decided = UnitAssetMenuData::get_current_unit_hash(asset.kind) == asset.hash;
+		item.hash = asset.hash;
+		item.name = asset.get_name(label);
+		item.menu_kind = Asset(asset.kind);
+		let preview = UnitAssetMenuData::get_preview();
+
+		let original =
+			match kind {
+				AssetType::Body => preview.original_assets[0],
+				AssetType::Head => preview.original_assets[1],
+				AssetType::Hair => preview.original_assets[2],
+				AssetType::Acc(slot) => preview.original_assets[5+slot as usize],
+				AssetType::AOC(slot) => preview.original_assets[10 + slot as usize],
+				AssetType::Mount(slot) => preview.preview_data.mount[slot as usize],
+				AssetType::Voice => preview.original_assets[14],
+				AssetType::Rig => preview.original_assets[15],
+				AssetType::ColorPreset(kind) => {
+					let mut original = 0;
+					for x in 0..3 {
+						original += (preview.original_color[4*kind as usize + x] << 8*x) as i32;
+					}
+					original
+				}
+			};
+		let is_original = original == item.hash;
+		item.original = is_original;
+		if item.original {
+			if let Some(game_color) = GameColor::get() {
+				item.active_text= game_color.yellow_text;
+				item.inactive_text = game_color.yellow_text;
+			}
+		}
 		item
 	}
 	pub fn new_asset(asset_type: AssetType, hash: i32, name: &'static Il2CppString, decided: bool, original: bool) -> &'static mut CustomAssetMenuItem {
@@ -158,7 +197,7 @@ impl CustomAssetMenuItem {
 				if let Some(content) = this.menu_item_content.as_mut() { content.name_text.set_color(game_color.yellow_text); }
 				let kind = this.menu_kind.clone();
 				match kind {
-					Asset(ColorPreset(_)) => {
+					Asset(AssetType::ColorPreset(_)) => {
 						let mut vv = [0.0, 0.0, 0.0];
 						for x in 0..3 {
 							let v = (this.hash >> (x * 8)) & 255;
@@ -183,7 +222,7 @@ impl CustomAssetMenuItem {
 		if let Some(game_color) = GameColor::get() {
 			let kind = self.menu_kind.clone();
 			match kind {
-				Asset(ColorPreset(_)) => {
+				Asset(AssetType::ColorPreset(_)) => {
 					let mut vv = [0.0, 0.0, 0.0];
 					for x in 0..3 {
 						let v = (self.hash >> (x * 8)) & 255;

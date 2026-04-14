@@ -294,6 +294,8 @@ pub struct CharacterEffect {
 #[unity::hook("Combat", "CharacterEffect", "CreateBreak")]
 pub fn create_break_effect(this: &mut CharacterEffect, method_info: OptionalMethod) {
     call_original!(this, method_info);
+}
+pub fn break_effect(this: &mut CharacterEffect){
     if let Some(unit) = this.cp.get_game_status().unit.as_ref() {
         let engaged = unit.is_engaging();
         if let Some(data) = UnitAssetMenuData::get_unit_data(unit).filter(|s| s.get_active_flag(engaged) & 32 != 0){

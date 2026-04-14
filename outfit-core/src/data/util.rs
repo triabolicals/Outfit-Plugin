@@ -36,3 +36,8 @@ pub fn get_job_hashes(arg: &str, is_royal: bool) -> Option<Vec<i32>> {
     }
     if hashes.is_empty() { None } else { Some(hashes) }
 }
+
+pub fn parse_label(label: &str) -> (String, i32) {
+    if let Some(parsed) = label.split_once(":") { (parsed.0.to_string(), parsed.1.parse::<i32>().unwrap_or(0)) }
+    else { (label.to_string(), 0) }
+}

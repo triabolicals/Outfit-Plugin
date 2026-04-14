@@ -225,7 +225,6 @@ impl UnitAssetMenuData {
                 }
                 data.preview.selected_profile = index;
                 data.preview.preview_data = new_profile.clone();
-          //      println!("Preview Profile: {}", index);
             }
         }
     }
@@ -251,7 +250,7 @@ impl UnitAssetMenuData {
     }
     pub fn set_god(god: &GodData){
         let hash = god.parent.hash;
-        if Self::set_by_hash(hash) { println!("Set God: {}", engage::mess::Mess::get(god.mid)); }
+        Self::set_by_hash(hash);
     }
     pub fn set_by_hash(person: i32) -> bool {
         let menu = Self::get();
@@ -307,9 +306,6 @@ impl UnitAssetMenuData {
         menu.name_set = true;
 
         let result = Self::get_result();
-        if let Some(person) = PersonData::try_get_hash(person) {
-            println!("Getting Original Assets for: {}", person.get_name());
-        }
         Self::set_original_assets();
         for x in 0..8 {
             menu.preview.color_preview[x * 4] = if result.unity_colors[x].r >= 1.0 { 255 } else { (result.unity_colors[x].r * 255.5) as u8 };
@@ -322,13 +318,7 @@ impl UnitAssetMenuData {
 
         true
     }
-    pub fn set_unit(unit: &Unit) -> bool {
-        if Self::set_by_hash(unit.person.parent.hash) {
-            println!("Unit Set: {}", unit.get_name());
-            true
-        }
-        else { false }
-    }
+    pub fn set_unit(unit: &Unit) -> bool { Self::set_by_hash(unit.person.parent.hash) }
     pub fn get_shop_unit() -> Option<&'static mut Unit> {
         let data = Self::get();
         if data.god_mode { None }
@@ -649,8 +639,4 @@ impl UnitAssetMenuData {
         for x in 0..16 { menu.scale_preview[x] = menu.original_scaling[x]; }
         modes
     }
-
 }
-
-
-

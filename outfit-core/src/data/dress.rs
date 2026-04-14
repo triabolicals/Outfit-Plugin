@@ -4,7 +4,7 @@ use engage::gamedata::{Gamedata, GodData, JobData, PersonData, assettable::*};
 use engage::gamedata::item::ItemData;
 use engage::unit::{Gender, Unit};
 use engage::mess::Mess;
-use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, OutfitList, ACC_LOC};
+use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC};
 use crate::data::util::{parse_arg_from_name, AssetTableIndexes};
 
 pub struct DressData {
@@ -15,7 +15,7 @@ pub struct DressData {
 }
 
 impl DressData {
-    pub fn init(hashes: &mut OutfitHashes, list: &mut OutfitList) -> Self {
+    pub fn init(hashes: &mut OutfitHashes) -> Self {
         let mut job = vec![];
         let mut engaged = vec![];
         let mut section = 0;
@@ -59,6 +59,7 @@ impl DressData {
             .for_each(|v|{
                 let result = AssetTableResult::get_from_pid(2, v.pid, CharacterAppearance::get_constions(None));
                 if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, v.parent.hash, false){
+                    /*
                    for i in 0..5 {
                        if let Some(model) = result.accessory_list.list.iter().find(|x| x.locator.is_some_and(|x| x.to_string() == ACC_LOC[i])).and_then(|v| v.model) {
                            let hash = model.get_hash_code();
@@ -72,10 +73,9 @@ impl DressData {
                        let hash = model.get_hash_code();
                        if !hashes.acc.contains_key(&hash) && !model.str_contains("Hair"){
                            if person.acc[2] == 0 { person.acc[2] = hash; }
-                           hashes.add_acc(model, Some(2));
-                           list.add_acc(model.to_string().as_str(), hash, Some(person.mpid.as_str()), None, 0);
                        }
                    }
+                    */
                    let hash = person.calc_hash();
                    if !result_hashes.contains(&hash) {
                        result_hashes.insert(hash);
@@ -97,6 +97,7 @@ impl DressData {
             .for_each(|god|{
                 let result = AssetTableResult::get_from_god_data(2, god, false, CharacterAppearance::get_constions(None));
                 if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, god.parent.hash, true) {
+                    /*
                     for i in 0..5 {
                         if let Some(model) = result.accessory_list.list.iter().find(|x| x.locator.is_some_and(|x| x.to_string() == ACC_LOC[i])).and_then(|v| v.model) {
                             let hash = model.get_hash_code();
@@ -114,6 +115,8 @@ impl DressData {
                             list.add_acc(model.to_string().as_str(), hash, Some(person.mpid.as_str()), None, 0);
                         }
                     }
+
+                     */
                     let hash = person.calc_hash();
                     if !result_hashes.contains(&hash) {
                         result_hashes.insert(hash);
@@ -710,6 +713,7 @@ impl EngagedDressData {
         }
         body.push_str(self.body_prefix.as_str());
         body.push_str(if gender == Gender::Male { "M_c000" } else { "F_c000" });
+        println!("[Engaged] Applying: {} for {}", body, self.asset_id);
         if mode == 2 { result.dress_model = body.into(); } else { result.body_model = body.into(); }
         if self.hair_color != 0 { ColorPreset::set_color(&mut result.unity_colors[0], self.hair_color); }
         if self.hair_grad != 0 { ColorPreset::set_color(&mut result.unity_colors[1], self.hair_grad); }

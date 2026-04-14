@@ -1,34 +1,30 @@
-use std::collections::HashMap;
 pub use engage::{
     unit::Unit,
     gamedata::{accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData},
     mess::Mess,
     resourcemanager::*,
 };
-use std::io::{Cursor, Read};
 // use std::fs::File;
 
 // use assets::*;
 pub use super::*;
 
 mod color;
-mod body;
-mod acc;
 mod hashes;
 mod item;
 pub mod anim;
 pub(crate) mod dress;
 pub mod unit_acc;
 mod util;
+mod list;
 
-pub use acc::*;
-pub use body::*;
 pub use color::*;
 pub use hashes::*;
 pub use item::*;
+pub use list::*;
 pub use unit_acc::AccessoryConditions;
 
-use engage::gamedata::assettable::{AssetTableResult};
+use engage::gamedata::assettable::{AssetTableResult, AssetTableStaticFields};
 use engage::gamevariable::GameVariableManager;
 use engage::random::Random;
 use anim::AnimData;
@@ -36,223 +32,32 @@ use crate::data::dress::{DressData, JobDressData};
 use crate::enums::Mount;
 
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
-const UNIQUES_JOBS: &[&str] = &[
-    "Avn0", "Flr0", "Scs0", "Trl0", "Lnd0", "Slp0", "Cpd0", "Pcf0", //8 Base
-    "Sds0A", "Sdp0A", "Drg0AM_c002", "Drg0AF_c052", "Drg1AF_c555", "Msn0D", // Char Specific    //8-13
-    "Avn1", "Flr1", "Scs1", "Trl1", "Lnd1", "Slp1", "Cpd1", "Pcf1", //14 - 22   Promoted
-    "Drg1AM_c001", "Drg1AF_c051", "Drg0AM_c001", "Drg0AF_c051", //22, 23
-    "Dnc0AM", "Sdk0AM",
-];
+pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
+
 const AOC: [&str; 4] = ["Info", "Talk", "Demo", "Hub"];
-#[derive(Default)]
-pub struct AssetGroup {
-    pub label_index: i32,
-    pub flag: i32,
-    pub ubody: Option<String>,
-    pub uhead: Option<String>,
-    pub uhair: Option<String>,
-    pub aoc: [Option<String>; 4],
-    pub acc: [Option<String>; 10],
-    pub extra_body: Vec<String>,
-}
-
-impl AssetGroup {
-    pub fn new(label_index: i32, flag: i32) -> Self {
-        Self {
-            label_index, flag,
-            ..Default::default()
-        }
-    }
-    pub fn to_string(&self) -> String {
-        let mut out = format!("{}\t{}\t", self.label_index, self.flag);
-        out += self.ubody.as_ref().map(|v| v.trim_start_matches("uBody_")).unwrap_or("-");
-        out += "\t";
-        out += self.uhead.as_ref().map(|v| v.trim_start_matches("uHead_")).unwrap_or("-");
-        out += "\t";
-        out += self.uhair.as_ref().map(|v| v.as_str()).unwrap_or("-");
-        /*
-        for x in 0..5 {
-            out += "\t";
-            out += self.acc[x].as_ref().map(|v| v.as_str()).unwrap_or("-");
-        }
-        */
-        for x in 0..4 {
-            out += "\t";
-            out += self.aoc[x].as_ref().map(|v| v.as_str()).unwrap_or("-");
-        }
-        for x in 0..10 {
-            out += "\t";
-            out += self.acc[x].as_ref().map(|v| v.as_str()).unwrap_or("-");
-        }
-        self.extra_body.iter().for_each(|v| {
-            out += "\t";
-            out += v.as_str();
-        });
-        out
-    }
-}
-
-#[derive(Default)]
-pub struct OutfitList {
-    pub character_body_list: GenderAssetList,
-    pub class: ClassBodyList,
-    pub engaged: GenderAssetList,
-    pub other_outfits: GenderAssetList,
-    pub class_male: Vec<ClassBodyList>,
-    pub class_female: Vec<ClassBodyList>,
-    pub hair_list: Vec<OutfitEntry>,
-    pub head_list: Vec<OutfitEntry>,
-    pub mount: [Vec<i32>; 5],
-    pub acc: [Vec<AccEntry>; 5],
-    pub aoc_info_m: [Vec<i32>; 4],
-    pub aoc_info_f: [Vec<i32>; 4],
-    pub voice: Vec<OutfitEntry>,
-    pub skin: HashMap<i32, i32>,
-    pub color_presets: Vec<ColorPreset>,
-}
-impl OutfitList {
-    pub fn add_skin(&mut self, head: i32, skin_str: &str) {
-        let s: Vec<_> = skin_str.split(",").flat_map(|x| x.parse::<i32>()).collect();
-        if s.len() == 3 {
-            let skin_value = s[0] | (s[1] << 8) | (s[2] << 16);
-            self.skin.insert(head, skin_value);
-        }
-    }
-    pub fn add_aoc(&mut self, hash: i32, kind: i32, female: bool) {
-        if kind < 4 {
-            if female { self.aoc_info_f[kind as usize].push(hash); }
-            else { self.aoc_info_m[kind as usize].push(hash); }
-        }
-    }
-    pub fn add(&mut self, kind: i32, hash: i32, female: bool, mid: impl AsRef<str>, flag: i32) {
-        match kind {
-            0 => { self.character_body_list.add(hash, female, mid, flag); }
-            1 => { self.engaged.add(hash, female, mid, flag); }
-            3 => {
-                self.other_outfits.add(hash, female, mid, flag);
-            }
-            4 => {
-                let smid = mid.as_ref().to_string();
-                let count = self.head_list.iter().filter(|x| x.label.flags & 32 != 0 && smid == x.label.name).count() as i32;
-                self.head_list.push(OutfitEntry::new(hash, mid, flag, count));
-            }
-            5 => { self.hair_list.push(OutfitEntry::new_with_flags(hash, mid, flag)); }
-            9..14 => { self.add_aoc(hash, kind-9, female); }
-            _ => { println!("Did not add Hash: {}", hash)}
-        }
-    }
-    pub fn add_acc(&mut self, asset: &str, hash: i32, label: Option<&str>, body: Option<&str>, flag: i32) {
-        if let Some(kind) = KINDS.iter().position(|k| asset.contains(*k)).filter(|k| *k >= 4).map(|k| k - 4) {
-            let count = label.map(|label|
-                self.acc[kind].iter()
-                    .filter(|x| x.label.as_ref().is_some_and(|l| l == label))
-                    .count()
-            ).unwrap_or(0) as i32;
-
-            self.acc[kind].push(AccEntry::new(hash, label, asset, body, flag, count));
-        }
-    }
-    pub fn add_class(&mut self, mid: impl AsRef<str>, flag: i32, body: impl AsRef<str>, female: bool) {
-        if female { self.class_female.push(ClassBodyList::new(mid, flag, body)); }
-        else { self.class_male.push(ClassBodyList::new(mid, flag, body)); }
-    }
-    pub fn add_mount(&mut self, mount: impl AsRef<str>, hash: i32) {
-        let index = Mount::from(mount.as_ref()) as i32 - 1;
-        if index >= 0 && index < 5 {
-            if !self.mount[index as usize].contains(&hash) { self.mount[index as usize].push(hash); }
-        }
-    }
-    pub fn add_unique_class_body(&mut self, hash: i32, flags: i32, female: bool) {
-        if female { self.class_female[0].list.push(ClassBodyEntry { hash, flags }); }
-        else { self.class_male[0].list.push(ClassBodyEntry { hash, flags }); }
-    }
-    pub fn add_class_body(&mut self, hash: i32, body: &str, female: bool, flags: i32) {
-        let set = if female { &mut self.class_female } else { &mut self.class_male };
-        if let Some(class) = set.iter_mut().find(|x| body.contains(x.body_label.as_str())){
-            class.list.push(ClassBodyEntry { hash, flags});
-        }
-    }
-}
-#[derive(Default)]
-pub struct OutfitLabelTable {
-    pub suffixes: HashMap<&'static str, OutfitLabel>,
-    pub body: HashMap<&'static str, OutfitLabel>,
-    pub asset: HashMap<i32, OutfitLabel>,
-}
-impl OutfitLabelTable {
-    pub fn get_suffix(&self, asset: &str) -> Option<(&&'static str, &OutfitLabel)>{
-        self.suffixes.iter().find(|s| asset.ends_with(s.0))
-            .or_else(||self.suffixes.iter().find(|s| asset.ends_with(s.0)))
-    }
-    pub fn get_body(&self, asset: &str) -> Option<(&&str, &OutfitLabel)> {
-        self.body.iter().find(|s| asset.contains(s.0))
-    }
-    pub fn get_suffix_name(&self, asset: &str) -> Option<(&'static Il2CppString, &'static str)> {
-        self.suffixes.iter().find(|s| asset.ends_with(s.0)).map(|v| (v.1.get(), *v.0))
-            .or_else(|| self.suffixes.iter().find(|s| asset.contains(*s.0))
-                .map(|v|{
-                    let last = asset.split(v.0).last().unwrap();
-                    (format!("{} {}", v.1.get(), last).into(), *v.0)
-                })
-            )
-    }
-    pub fn get_body_name(&self, asset: &str) -> Option<(&'static Il2CppString, &'static str)>  {
-        self.body.iter()
-            .find(|s| asset.contains(*s.0))
-            .map(|v| (v.1.get(), *v.0) )
-    }
-    pub fn try_get(&self, value: &str) -> Option<(&'static Il2CppString, &'static str)> {
-        self.get_suffix_name(value).or_else(|| self.get_body_name(value))
-    }
-}
 
 pub struct OutfitData {
     pub hashes: OutfitHashes,
     pub accessory_conditions: AccessoryConditions,
-    pub list: OutfitList,
-    pub labels: OutfitLabelTable,
     pub dress: DressData,
     pub item: Vec<ItemAsset>,
     pub anims: AnimData,
+    pub list: OutfitLists,
+    pub labels: AssetLabelTable,
 }
 
 impl OutfitData {
     pub fn init() -> Self {
-        let mut labels = OutfitLabelTable::default();
-        let mut list = OutfitList::default();
-        let mut hashes = OutfitHashes::default();
+        let new_labels = AssetLabelTable::new();
+        let mut new_list = OutfitLists::new();
+        let mut hashes = OutfitHashes::new();
         AssetTable::get_list().unwrap().iter()
             .filter_map(|x| x.voice)
             .for_each(|v| {
                 let hash = v.get_hash_code();
-                if !hashes.voice.contains_key(&hash) {
-                    list.voice.push(OutfitEntry{ hash, label: OutfitLabel{ name: v.to_string(), flags: -1, is_class: false, count: 0 } });
-                    hashes.voice.insert(hash, v.to_string());
-                }
+                if !hashes.voice.contains_key(&hash) { hashes.voice.insert(hash, v.to_string()); }
             });
-        // Color Presets
-        let data = include_bytes!("../data/color.bin");
-        let size = data.len() as u64;
-        let mut color = Cursor::new(data);
-        let mut buff: [u8; 26] = [0; 26];
-        while color.position() < size {
-            if color.read(&mut buff).is_ok() {
-                let str_length = buff[0] - 25;
-                let mut label_buff = vec![0; str_length as usize];
-                color.read_exact(&mut label_buff).unwrap();
-                let label = String::from_utf8(label_buff).unwrap();
-                let mut colors: [i32; 8] = [0; 8];
-                let mut count = 0;
-                for x in 0..8 {
-                    let mut color = 0;
-                    for y in 0..3 { color += (buff[2+3*x+y] as i32) << 8*y; }
-                    if color > 0 { count += 1; }
-                    colors[x] = color;
-                }
-                let engaged = buff[1] & 1 != 0;
-                list.color_presets.push(ColorPreset{ colors, engaged, count, label, });
-            }
-        }
+
         let mut assets: Vec<_> = ResourceManager::class().get_static_fields::<ResourceManagerStaticFields>()
             .files
             .entries.iter()
@@ -265,462 +70,292 @@ impl OutfitData {
         hashes.rigs = assets.extract_if(.., |s| !s.contains("Wolf") && !s.contains("Drag") && s.contains("uRig_") && (s.contains("Humn") || rig_ends.iter().any(|x| s.ends_with(*x))))
             .map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
 
-        hashes.o_hair = assets.extract_if( .., |s| s.contains("oHair_h") || s.contains("oHair_dummy")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
-        hashes.o_body = assets.extract_if(..,|s| s.contains("oBody_")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
+        hashes.o_hair = assets.extract_if(.., |s| s.contains("oHair_h") || s.contains("oHair_dummy")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
+        hashes.o_body = assets.extract_if(.., |s| s.contains("oBody_")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
         hashes.o_acc = assets.extract_if(.., |s| s.contains("oAcc_")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
-        /*
-        if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open("sd:/Outfits/dress.txt"){
-            assets.iter().for_each(|i|{
-                writeln!(&mut file, "{}", i).unwrap();
-            });
-        }
-        */
-        // Null Accessories
-        let null_hash = Il2CppString::new("uAcc_head_null").get_hash_code();
-        hashes.acc.insert(null_hash, "uAcc_head_null".into());
-        list.acc[0].push(AccEntry{ hash: null_hash, label: Some("MID_SYS_None".to_string()), body: None, acc_suffix: None, acc_obj: String::new(), flag: 128, count: 0, });
-        let null_hash = Il2CppString::new("null").get_hash_code();
-        hashes.acc.insert(null_hash, "null".into());
-        for x in 1..4 { list.acc[x].push(
-            AccEntry{ hash: null_hash, label: Some("MID_SYS_None".to_string()), body: None, acc_suffix: None, acc_obj: String::new(), flag: 128, count: 0, }); }
-        assets.extract_if(.., |s| s.contains("uBody") && (s.contains("DR_c") || s.contains("ER_c") || s.contains("BR_c") || s.contains("FR_c") || s.contains("CR_c")) && !s.contains("Fld"))
-            .for_each(|str|{ list.add_mount(str.as_str(), hashes.add_ride_model(str.as_str())); });
 
-        for mount in ["uBody_Wlf0CT_c751", "uBody_Wlf0CT_c707", "uBody_Fyd0DT_c707", "uBody_Fyd0DT_c715"]{ list.add_mount(mount, hashes.add_ride_model(mount)); }
-        list.add_class("MID_SYS_SpecialPosition", 32, "____", false);
-        list.add_class("MID_SYS_SpecialPosition", 32, "____", true);
-        include_str!("../data/heads.txt").lines()
-            .enumerate()
-            .map(|(i, x)| (i & 1 != 0, x.split_whitespace()))
-            .for_each(|(female, suffix)|{
-                suffix.for_each(|ss|{
-                    AOC.iter().enumerate().for_each(|(i, a)|{
-                        assets.extract_if(.., |s| s.contains(format!("AOC_{}", a).as_str()) && s.contains(ss) && !s.contains("Photo") && !s.contains("Refresh"))
-                            .for_each(|s|{
-                                let hash = hashes.add_aoc(s.as_str());
-                                list.add_aoc(hash, i as i32, female);
-                            });
-                    });
-            });
-        });
-        // Playable Unit Casual Outfits
         EMBLEM.iter().for_each(|(i, d)| {
-            let mpid = format!("MPID_{}",i);
+            let mpid = format!("MPID_{}", i);
             if let Some(s) = get_remove(&mut assets, format!("uBody_{}1AM", d).as_str()) {
-                let hash = hashes.add_body(s.as_str(), false);
-                list.add(1, hash, false, mpid.clone(), 32);
+                new_list.add_engaged_body(mpid.as_str(), s.as_str(), false);
+                hashes.add_body(s.as_str(), false);
             }
             if let Some(s) = get_remove(&mut assets, format!("uBody_{}1AF", d).as_str()) {
-                let hash = hashes.add_body(s.as_str(), true);
-                list.add(1, hash, true, mpid, 32);
+                new_list.add_engaged_body(mpid.as_str(), s.as_str(), true);
+                hashes.add_body(s.as_str(), true);
             }
         });
-        let hair_append = ["e", "h", "n", "k"];
-        let mut section = 0;
-        [("File", "Filene"), ("Brod","Brodia"), ("Irci","Ircion") , ("Solu","Solum") , ("Lith", "Lithos")]
+
+        [("File", "Filene"), ("Brod", "Brodia"), ("Irci", "Ircion"), ("Solu", "Solum"), ("Lith", "Lithos"), ("Swim", "Swimwear")]
             .iter().enumerate()
-            .for_each(|(_, x)|{
-                ["M", "F"].iter().enumerate().map(|(i, g)|(i ==1, g)).for_each(|(female, gen)|{
-                    for y in 0..6 {
-                        let i = y+1;
-                        let label_i = (y % 3) + 1;
-                        if let Some(asset) = get_remove(&mut assets, format!("uBody_{}{}{}_c000", x.0, i, gen).as_str()){
-                            let label = format!("MAID_{}{}{}{}", x.1, if y < 3 {"Formal"} else { "Casual"}, label_i, gen);
-                            let hash = hashes.add_body(asset.as_str(), female );
-                            list.add(3, hash, female , label, 32);
+            .for_each(|(n, x)| {
+                ["M", "F"].iter().enumerate().map(|(i, g)| (i == 1, g)).for_each(|(female, gen)| {
+                    if n < 5 {
+                        for y in 0..6 {
+                            let i = y + 1;
+                            let label_i = (y % 3) + 1;
+                            let label = format!("MAID_{}{}{}{}", x.1, if y < 3 { "Formal" } else { "Casual" }, label_i, gen);
+                            if let Some(asset) = get_remove(&mut assets, format!("uBody_{}{}{}_c000", x.0, i, gen).as_str()) {
+                                hashes.add_body(asset.as_str(), female);
+                                new_list.add_other_body(label.as_str(), asset.as_str(), female, 0, true);
+                            }
+                            if let Some(helm) = get_remove(&mut assets, format!("Helm{}{}{}", x.0, i, gen).as_str()) {
+                                hashes.add_acc(helm.as_str(), None);
+                                new_list.add(helm, false, Some(label.as_str()), 0);
+                            }
+                        }
+                    } else {
+                        for y in 1..4 {
+                            while let Some(asset) = get_remove(&mut assets, format!("uBody_{}{}{}_c000", x.0, gen, y).as_str()) {
+                                let label = format!("MAID_{}{}{}", x.1, y, gen);
+                                hashes.add_body(asset.as_str(), female);
+                                new_list.add_other_body(label.as_str(), asset.as_str(), female, 0, true);
+                            }
                         }
                     }
+                });
             });
-        });
-        include_str!("../data/labels.txt").lines()
-            .for_each(|line|{
-                if line.starts_with("END") { section += 1; }
-                else {
-                    let mut line = line.split_whitespace();
+        let mut section = 0;
+        let mut voices = hashes.voice.iter().map(|v| v.1.clone()).collect::<Vec<String>>();
+        let mut no_job_body = vec![];
+        let mut no_job_body_f = vec![];
+        include_str!("../data/labels2.txt").lines()
+            .for_each(|line| {
+                if line.starts_with("END") { section += 1; } else {
                     match section {
                         0 => {
-                            let label = line.next().unwrap();
-                            let name = line.next().unwrap().to_string();
-                            let flags = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            labels.body.insert(label, OutfitLabel::new_class(name.as_str(), flags));
-                        }
-                        1 => {
-                            let label = line.next().unwrap();
-                            let name = line.next().unwrap().to_string();
-                            let flags = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            let gender = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            if gender > 0 && flags & 64 == 0 {
-                                if gender & 1 != 0 { list.add_class(name.as_str(), flags, label, false); }
-                                if gender & 2 != 0 { list.add_class(name.as_str(), flags, label, true); }
+                            if let Some((g, has_body)) = AssetGroup::new_job_group(line, &mut assets, &mut hashes, false) {
+                                if has_body { new_list.job_m.push(g); } else { no_job_body.push(g); }
                             }
-                            labels.body.insert(label, OutfitLabel::new_class(name.as_str(), flags));
-                            let mut count_aoc = 0;
-                            while let Some(suffix) = line.next() {
-                                let female = count_aoc % 2 == 1;
-                                if let Ok(num) = suffix.parse::<i32>() {
-                                    let flag = if num > 700 { 36 } else { 32 } + if female { 2 } else { 1 };
-                                    let suffix_name = if flags & 32 != 0 { name.clone() } else { format!("MJID_{}", name) };
-                                    labels.suffixes.insert(suffix, OutfitLabel::new_mid(suffix_name, flag));
-                                    let aoc = format!("AOC_Info_c{}", num);
-                                    if get_remove(&mut assets, aoc.as_str()).is_some() {
-                                        let hash = hashes.add_aoc(aoc.as_str());
-                                        list.add_aoc(hash, 0, female);
-                                    }
-                                }
-                                count_aoc += 1;
+                            if let Some((g, has_body)) = AssetGroup::new_job_group(line, &mut assets, &mut hashes, true) {
+                                if has_body { new_list.job_f.push(g); } else { no_job_body_f.push(g); }
                             }
-                        }
-                        2 => {
-                            let label = line.next().unwrap();
-                            let name = line.next().unwrap().to_string();
-                            let flags = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            let person_label = OutfitLabel { name: name.clone(), flags, is_class: false, count: 0 };
-                            if let Some(voice) = list.voice.iter_mut().find(|x| x.label.name == label && x.label.flags == -1 ){
-                                voice.label = person_label.clone();
-                            }
-                            labels.suffixes.insert(label, person_label.clone());
-                            let gender = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            let generic = label.parse::<i32>().map(|v| v >= 800).unwrap_or(false);
-                            if gender != 0 {
-                                let female = gender == 2;
-                                let mut skin: Option<String> = None;
-                                let mut ohair: Option<&str> = None;
-                                let mut labeled_assets = vec![];
-                                let mut skin_body = false;
-                                while let Some(a) = line.next() {
-                                    if a.contains("skin=") { skin = a.split("=").last().map(|s| s.to_string()); }
-                                    else if a == "skinb" { skin_body = true; }
-                                    else if a == "Wear" {
-                                        if let Some(asset) = get_remove(&mut assets, format!("Wear{}{}", if female { "F_c"} else { "M_c"}, label).as_str()) { labeled_assets.push(asset); }
-                                    }
-                                    else if a.contains("null") { labeled_assets.push(a.to_string()); }
-                                    else if a.contains("oHair") { ohair = a.split("_h").last(); }
-                                    else if let Some(asset) = get_remove(&mut assets, a) { labeled_assets.push(asset); }
-                                    else if a.starts_with("AOC_Info") {
-                                        if let Some(hash) = hashes.aoc.iter().find(|x| *x.1 == a).map(|x| *x.0){ labels.asset.insert(hash, person_label.clone()); }
-                                    }
-                                    else if a.starts_with("voice=") {
-                                        let voiceline = a.trim_start_matches("voice=");
-                                        if let Some(voice) = list.voice.iter_mut().find(|x| x.label.name == voiceline && x.label.flags == -1 ){
-                                            voice.label = person_label.clone();
-                                            if voiceline.ends_with("_E") { voice.label.flags |= 4; }
-                                        }
-                                    }
-                                    else if a.starts_with("voice2=") {
-                                        let voice = a.trim_start_matches("voice2=");
-                                        if let Some(voice) = list.voice.iter_mut().find(|x| x.label.name == voice && x.label.flags == -1 ){
-                                            voice.label = person_label.clone();
-                                            voice.label.flags |= 16;
-                                        }
-                                    }
-                                }
-                                assets.extract_if(.., |s| !s.contains("Hair") && !s.contains("uBody") && (s.ends_with(label) || (s.contains(label) && s.contains("uAcc"))))
-                                    .for_each(|s|{ labeled_assets.push(s.to_string()); });
-                                if !generic {
-                                    assets.extract_if(.., |s| s.contains("Hair") && (s.ends_with(label) || (s.contains(label) && hair_append.iter().any(|a| s.ends_with(a)))))
-                                        .for_each(|s|{ labeled_assets.push(s.to_string()); });
-                                }
-                                labeled_assets.iter().for_each(|s| {
-                                    if s.starts_with("uBody") && (s.contains("M_c") || s.contains("F_c")) {
-                                        let hash = hashes.add_body(s.as_str(), female);
-                                        if let Some(pos) = UNIQUES_JOBS.iter().position(|u| s.contains(u)) {
-                                            let flags2 =
-                                                match pos {
-                                                    0..8 => { 3 }
-                                                    8..14 => { 5 }
-                                                    _ => { 1 }
-                                                };
-                                            list.add_unique_class_body(hash, flags2, female);
-                                            if pos >= 14 && pos <= 23 { list.add(0, hash, female, name.as_str(), flags|16); }   // Promoted
-                                            else { list.add(0, hash, female, name.as_str(), flags); }
-                                        }
-                                        else if EMBLEM.iter().enumerate()
-                                            .any(|(i, a) | s.contains(a.1) && (i < 12 || i == 23)  ) && s.ends_with("c000")
-                                        {
-                                            let amiibo_flag = flags | 2048;
-                                            list.add(0, hash, female, name.as_str(), amiibo_flag);
-                                        }
-                                        else if s.contains("Wear") { list.add(0, hash, female, name.as_str(), flags|128); }
-                                        else {
-                                            list.add_class_body(hash, s, female, flags);
-                                            list.add(0, hash, female, name.as_str(), flags);
-                                        }
-                                        if skin_body {
-                                            if let Some(skin) = skin.as_ref() {
-                                                list.add_skin(hash, skin.as_str());
-                                            }
-                                        }
-                                    }
-                                    else if s.starts_with("uHair") ||s.contains("_Hair"){
-                                        let label = if generic { Some(label) } else { ohair };
-                                        let hash = hashes.add_hair(s.as_str(), label);
-                                        let mut hair_flag = flags;
-                                        if s.ends_with("e") { hair_flag |= 8192 }
-                                        else if s.ends_with("k") { hair_flag |= 16384 }
-                                        else if s.ends_with("h") { hair_flag |= 128 }
-                                        else if s.ends_with("n") { hair_flag |= 16 }
-                                        list.add(5, hash, female, name.as_str(), hair_flag);
-                                    }
-                                    else if s.starts_with("uHead") {
-                                        let hash = hashes.add_head(s.as_str());
-                                        list.add(4, hash, female, name.as_str(), flags);
-                                        if let Some(skin) = skin.as_ref() { list.add_skin(hash, skin.as_str()); }
-                                    }
-                                    else if s.starts_with("uAcc") && !s.contains("Hair") {
-                                        let hash = hashes.add_acc(s.as_str(), None);
-                                        let l = if label.len() > 3 { &label[0..3] } else { label };
-                                        let acc_name = if flags & 32 == 0 { &format!("MPID_{}", name) } else { &name };
-                                        list.add_acc(s.as_str(), hash, Some(acc_name), Some(l), 0);
-                                    }
-                                });
-                            }
-                        }
-                        3|4 => {
-                            let female = section == 4;
-                            let body = format!("uBody_{}", line.next().unwrap());
-                            let label = line.next().map(|v| v.to_string()).unwrap();
-                            let flags = 32 | line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            assets.extract_if(.., |s| s.contains(body.as_str()))
-                                .for_each(|other_outfit|{ list.add(3, hashes.add_body(other_outfit, female), female, label.as_str(), flags); });
-                        }
+                        },
+                        1 => if let Some(g) = AssetGroup::new_character_group(line, &mut assets, &mut voices, &mut hashes) { new_list.char_m.push(g); },
+                        2 => if let Some(g) = AssetGroup::new_character_group(line, &mut assets, &mut voices, &mut hashes) { new_list.char_f.push(g); },
+                        4 => if let Some(g) = AssetGroup::new_aid_group(line, &mut assets, &mut hashes) { new_list.aids.push(g); },
                         5 => {
-                            let head = line.next().unwrap();
-                            let flag = line.next().and_then(|p| p.parse::<i32>().ok()).unwrap_or(0);
-                            let label = line.next().unwrap().to_string();
-                            if get_remove(&mut assets, head).is_some() {
-                                let hash = hashes.add_head(head);
-                                list.add(4, hash, false, label.as_str(), flag);
-                                if let Some(ohair) = line.next().map(|s| Il2CppString::new(s).get_hash_code()){
-                                    if hashes.o_hair.contains_key(&ohair){ hashes.head_hair.insert(hash, ohair); }
+                            let mut spilt = line.split_whitespace();
+                            if let Some((label, value)) = spilt.next().zip(spilt.next()) {
+                                if let Some(asset) = get_remove(&mut assets, value) { new_list.add(asset, false, Some(label), 0); }
+                            }
+                        }
+                        6 => { // manually uHead to oHair conversion
+                            let mut spilt = line.split_whitespace();
+                            if let Some(s) = spilt.next() {
+                                let o_hash = hash_string(format!("oHair_{}", s));
+                                while let Some(l) = spilt.next() {
+                                    let u_asset =
+                                        if l.starts_with("Hair") { format!("uAcc_spine2_{}", l) } else if l.starts_with("c") { format!("uHead_{}", l) } else { format!("uHair_{}", l) };
+                                    let u_hash = hash_string(&u_asset);
+                                    hashes.head_hair.insert(u_hash, o_hash);
                                 }
+                            }
+                        }
+                        7 => {  // Skin
+                            let mut spilt = line.split_whitespace();
+                            if let Some((head, color)) = spilt.next().zip(spilt.next()) {
+                                let mut c = AssetColor::new();
+                                color.split(",").flat_map(|v| v.parse::<i32>().ok())
+                                    .enumerate()
+                                    .for_each(|(i, s)| { c.values[i] |= s as u8; });
+                                c.values[3] = 255;
+                                head.split(",").for_each(|head| {
+                                    let hash = hash_string(format!("uHead_c{}", head));
+                                    new_list.skin.insert(hash, c);
+                                });
                             }
                         }
                         _ => {}
                     }
                 }
             });
-        list.class_male.iter_mut().skip(1).for_each(|class| {
-            assets.extract_if(.., |s| s.contains(format!("uBody_{}", class.body_label).as_str()) && s.contains("M_c"))
-                .for_each(|s| {
-                    let flags = if s.contains("c_70") { 4 } else { 0 };
-                    let hash = hashes.add_body(s.as_str(), false);
-                    class.list.push(ClassBodyEntry{ hash, flags });
-                });
+        // Adding classes that do not have ubodies
+        new_list.job_count.0 = new_list.job_m.len() as i32;
+        new_list.job_count.1 = new_list.job_f.len() as i32;
+        no_job_body.into_iter().for_each(|g| { new_list.job_m.push(g); });
+        no_job_body_f.into_iter().for_each(|g| { new_list.job_f.push(g); });
+
+        voices.iter().for_each(|a| {
+            new_list.other.push(
+                OtherAssetItem {
+                    label: a.to_string(),
+                    asset: AssetItem { hash: hash_string(a), count: 0, flags: AssetItemFlags::empty(), kind: AssetType::Voice },
+                    is_mess: true,
+                    female: false,
+                }
+            )
         });
-        list.class_female.iter_mut().skip(1).for_each(|class| {
-            assets.extract_if(.., |s| s.contains(format!("uBody_{}", class.body_label).as_str()) && s.contains("F_c"))
-                .for_each(|s| {
-                    let flags = if s.contains("c_70") { 4 } else { 0 };
-                    let hash = hashes.add_body(s.as_str(), true);
-                    class.list.push(ClassBodyEntry{ hash, flags });
-                });
+        // Add Char AOC to hashes
+        new_list.char_m.iter().for_each(|g| {
+            g.list.iter().filter(|x| x.kind.to_index() >= 30 && x.kind.to_index() < 34)
+                .for_each(|a| { hashes.aoc_m.insert(a.hash); });
         });
+        new_list.char_f.iter().for_each(|g| {
+            g.list.iter().filter(|x| x.kind.to_index() >= 30 && x.kind.to_index() < 34)
+                .for_each(|a| { hashes.aoc_f.insert(a.hash); });
+        });
+        include_str!("../data/heads.txt").lines()
+            .enumerate()
+            .map(|(i, x)| (i & 1 != 0, x.split_whitespace()))
+            .for_each(|(female, suffix)| {
+                suffix.for_each(|ss| {
+                    AOC.iter().enumerate().for_each(|(_, a)| {
+                        assets.extract_if(.., |s| s.contains(format!("AOC_{}", a).as_str()) && s.contains(ss) && !s.contains("Photo") && !s.contains("Refresh"))
+                            .for_each(|s| {
+                                hashes.add_aoc(s.as_str(), female);
+                                new_list.add(s, female, None::<String>, 0);
+                            });
+                    });
+                });
+            });
+        let mut npcs = (801..820).collect::<Vec<usize>>();
+        npcs.extend(850..860);
+        for x in npcs {
+            for _ in 0..2 {
+                if let Some(asset) = get_remove(&mut assets, format!("uHead_c{}", x).as_str()) {
+                    hashes.add_head(asset.as_str());
+                    new_list.add(asset.as_str(), false, None::<String>, 0);
+                }
+            }
+        }
+        for x in [858, 863, 864, 865, 870] {
+            if let Some(asset) = get_remove(&mut assets, format!("_Hair{}", x).as_str()) {
+                hashes.add_hair(asset.as_str(), None);
+                new_list.add(asset.as_str(), false, None::<String>, 0);
+            }
+        }
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
         let female = ["f_c", "f1_c", "f2_c", "f3_c", "f4_c"];
         let male = ["m_c", "m1_c", "m2_c", "m3_c", "m4_c"];
         let mut remove = vec![];
-        include_str!("../data/other.txt").lines().map(|l| l.split_whitespace())
-            .for_each(|mut l| {
-                let search = l.next().unwrap();
-                let mut label = l.next().unwrap().to_string();
-                let mut flag = l.next().and_then(|l| l.parse::<i32>().ok()).unwrap_or(0);
-                assets.extract_if(.., |s| s.contains(search) && KINDS.iter().any(|x| s.contains(*x)))
-                    .for_each(|asset|{
-                        let kind = KINDS.iter().position(|x| asset.contains(*x)).unwrap();
-                        match kind {
-                            0 => {
-                                if search.contains("uBody_") {
-                                    list.add(0, hashes.add_head(asset.as_str()), search.contains("F_c"), label.as_str(), flag);
-                                }
-                            }
-                            1 => {  //Head
-                                if label.contains("NPC") && asset.contains("_c")
-                                    { label = format!("NPC {}", asset.split("_c").last().unwrap()); }
-                                if asset.ends_with("s") { flag |= 256; }
-                                list.add(4, hashes.add_head(asset.as_str()), false, label.as_str(), flag);
-                            }
-                            2 => {
-                                if label.contains("NPC") && asset.contains("_h")
-                                { label = format!("NPC {}", asset.split("_h").last().unwrap()); }
-                                list.add(5, hashes.add_hair(asset.as_str(), None), false, label.as_str(), flag);
-                            }
-                            3 => {
-                                if label.contains("NPC") && asset.contains("_Hair") {
-                                    label = format!("NPC {}", asset.split("Hair").last().unwrap());
-                                }
-                                list.add(5, hashes.add_hair(asset.as_str(), None), false, label.as_str(), flag);
-                            }
-                            4..8 => {
-                                let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                                list.add_acc(asset.as_str(), hash, Some(label.as_str()), None, flag);
-                            }
-                            _ => { println!("Ignored: {}", asset); }
-                        }
-                    })
-            });
-
         assets.iter().enumerate()
             .filter(|(_, s)|{
                 let lower = s.to_lowercase();
-                !s.contains("null") && kinds.iter().any(|k| lower.contains(*k))
+                !s.contains("null") && !lower.contains("box") && !lower.contains("dummy") && kinds.iter().any(|k| lower.contains(*k))
             })
             .for_each(|(i, asset)| {
                 let lower = asset.to_lowercase();
                 if let Some(kind) = kinds.iter().position(|k| lower.contains(*k)){
                     match kind {
-                        0 => {
-                            if !lower.contains("t_c") && !lower.contains("r_c") {
-                                if let Some((condition, gender)) = find_entries_with_model_field(
-                                    2, asset,
-                                    |entry, asset| entry.dress_model.is_some_and(|s| s.str_contains(asset)))
-                                    .iter()
-                                    .flat_map(|&i| AssetTable::try_index_get(i))
-                                    .find_map(|a| get_aid_condition(a))
-                                {
-                                    remove.push(i);
-                                    let name = get_asset_name(&condition, gender).unwrap_or(asset.to_string());
-                                    if gender != Gender::None {
+                        0 => {  // Body
+                            let hash = hash_string(asset);
+                            if lower.contains("r_c") {
+                                if let Some((condition, _)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.ride_dress_model.is_some_and(|s| s.str_contains(asset))), false){
+                                    let name = get_condition_label(&condition);
+                                    hashes.add_ride_model(asset);
+                                    new_list.add(asset, false, name, 0);
+                                }
+                            }
+                            else if !lower.contains("t_c") && !hashes.body.contains_key(&hash){
+                                if let Some((condition, gender)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.dress_model.is_some_and(|s| s.str_contains(asset))), true){
+                                    let name = get_condition_label(&condition);
+                                    let o_hash = find_mode_1_body(AssetTableStaticFields::get_condition_index(condition.as_str()), gender).map(|obody|{ hash_string(obody) });
+                                    hashes.body.insert(hash, asset.clone());
+                                    if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
+                                        new_list.add_engaged_body(name.unwrap(), asset.as_str(), gender == Gender::Female);
+                                    }
+                                    else if gender != Gender::None {
                                         let female = gender == Gender::Female;
-                                        let hash = hashes.add_body(asset.as_str(), female);
-                                        list.add(3, hash, female, name.as_str(), 32);
-                                    } else {
+                                        if female { hashes.female_u.push(hash); } else { hashes.male_u.push(hash); }
+                                        if let Some(o_hash) = o_hash{
+                                            if female { hashes.female_ou.push((hash, o_hash)); }
+                                            else { hashes.male_ou.push((hash, o_hash)); }
+                                        }
+                                        new_list.add(asset, female, name, 0);
+                                    }
+                                    else {
                                         if male.iter().any(|&s| lower.contains(s)) {
-                                            list.add(3, hashes.add_body(asset.as_str(), false), false, name.as_str(), 32);
+                                            hashes.male_u.push(hash);
+                                            if let Some(o_hash) = o_hash{ hashes.male_ou.push((hash, o_hash)); }
+                                            new_list.add(asset.as_str(),false, None::<String>, 0);
                                         }
                                         else if female.iter().any(|&s| lower.contains(s)) {
-                                            list.add(3, hashes.add_body(asset.as_str(), true), true, name.as_str(), 32);
+                                            hashes.female_u.push(hash);
+                                            if let Some(o_hash) = o_hash{ hashes.female_ou.push((hash, o_hash)); }
+                                            new_list.add(asset.as_str(),true, None::<String>, 0);
                                         }
                                         else {
-                                            let hash = hashes.add_body(asset.as_str(), true);
-                                            hashes.add_body(asset.as_str(), false);
-                                            list.add(3, hash, true, name.as_str(), 32);
-                                            list.add(3, hash, false, name.as_str(), 32);
+                                            hashes.male_u.push(hash);
+                                            hashes.female_u.push(hash);
+                                            new_list.add(asset.as_str(),false, None::<String>, 0);
+                                            new_list.add(asset.as_str(),true, None::<String>, 0);
                                         }
                                     }
                                 }
                             }
-                            else { remove.push(i); }
+                            remove.push(i);
                         }
-                        1 => {
-                            if let Some((condition, gender)) = find_entries_with_model_field(
-                                2, asset,
-                                |entry, asset| entry.head_model.is_some_and(|s| s.str_contains(asset)))
-                                .iter()
-                                .flat_map(|&i| AssetTable::try_index_get(i))
-                                .find_map(|a| get_aid_condition(a))
-                            {
-                                let name = get_asset_name(&condition, gender).unwrap_or(asset.to_string());
-                                let hash = hashes.add_head(asset.as_str());
-                                list.add(4, hash, false, name.as_str(), 32);
+                        1 => {  // Head
+                            if let Some((condition, gender)) = get_aid_condition(
+                                find_entries_with_model_field(2, asset, |entry, asset| entry.head_model.is_some_and(|s| s.str_contains(asset))), false,
+                            ){
+                                let name = get_asset_name(&condition, gender);
+                                hashes.add_head(asset.as_str());
+                                new_list.add(asset.as_str(), false, name, 0);
                                 remove.push(i);
                             }
                         }
-                        2 => {
+                        2 => {  // Hair (uHair_h)
                             if let Some((condition, gender)) =
-                                find_entries_with_model_field(
-                                    2, asset,
-                                    |entry, asset| entry.hair_model.is_some_and(|s| s.str_contains(asset)))
-                                    .iter()
-                                    .flat_map(|&i| AssetTable::try_index_get(i))
-                                    .find_map(|a| get_aid_condition(a))
+                                get_aid_condition(
+                                    find_entries_with_model_field(
+                                        2,
+                                        asset,
+                                        |entry, asset| entry.hair_model.is_some_and(|s| s.str_contains(asset))
+                                    ),
+                                    false,
+                                )
                             {
-                                let name = get_asset_name(&condition, gender).unwrap_or(asset.to_string());
-                                let hash = hashes.add_hair(asset.as_str(), None);
-                                list.add(5, hash, false, name.as_str(), 32);
                                 remove.push(i);
+                                hashes.add_hair(asset.as_str(), None);
+                                let name = get_asset_name(&condition, gender);
+                                new_list.add(asset.as_str(), false, name, 0);
                             }
                         }
-                        3 | 4 | 5 | 7 => {
-                            let mut added = false;
-                            if let Some((condition, gender)) = find_entries_with_model_field(
-                                2, asset,
-                                |entry, asset| entry.accessory_list.list.iter()
-                                    .any(|a| a.model.is_some_and(|model| model.str_contains(asset))))
-                                .iter()
-                                .flat_map(|&i| AssetTable::try_index_get(i))
-                                .find_map(|a| get_aid_condition(a))
+                        6 => {  // Effect
+                            hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
+                            new_list.add(asset.as_str(),false, None::<String>, 0);
+                        }
+                        _ => {  // Accessories
+                            if kind == 3 { hashes.add_hair(asset.as_str(), None); }
+                            else { hashes.add_acc(asset.as_str(), Some(kind as i32 - 4)); }
+                            if let Some((condition, gender)) =
+                                get_aid_condition(
+                                    find_entries_with_model_field(
+                                        2,
+                                        asset,
+                                        |entry, asset| entry.accessory_list.list.iter().any(|a| a.model.is_some_and(|model| model.str_contains(asset)))),
+                                    false
+                                )
                             {
-                                if kind == 3 {  // Haur
-                                    let name = get_asset_name(&condition, gender).unwrap_or(asset.to_string());
-                                    let hash = hashes.add_hair(asset.as_str(), None);
-                                    list.add(5, hash, false, name.as_str(), 32);
+                                if kind == 3 {  // uAcc_spine2_HairXXX
+                                    hashes.add_hair(asset.as_str(), None);
+                                    let name = get_asset_name(&condition, gender);
+                                    new_list.add(asset.as_str(), false, name, 0);
                                     remove.push(i);
-                                    added = true;
                                 }
                                 else {
-                                    let body = labels.get_body(asset);
-                                    if let Some(name) = get_asset_name(&condition, gender) {
-                                        let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                                        list.add_acc(asset, hash, Some(&name), body.map(|v|  &**v.0), 0);
-                                        remove.push(i);
-                                        added = true;
-                                    }
-                                }
-                            }
-                            if kind > 3 && !added {
-                                if let Some(v) = labels.get_body(asset){
-                                    let name = if v.1.flags & 32 == 0 { &format!("MJID_{}", v.1.name) } else { &v.1.name };
-                                    let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                                    list.add_acc(asset, hash, Some(&name), Some(v.0), 0);
-                                    remove.push(i);
-                                }
-                                else if let Some(v) = labels.get_suffix(asset) {
-                                    let name = if v.1.flags & 32 == 0 { &format!("MPID_{}", v.1.name) } else { &v.1.name };
-                                    let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                                    list.add_acc(asset, hash, Some(&name), Some(v.0), 0);
+                                    let name = get_asset_name(&condition, gender);
+                                    hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
+                                    new_list.add(asset.as_str(),false, name, 0);
                                     remove.push(i);
                                 }
                             }
+                            else { new_list.add(asset.as_str(),false, None::<String>, 0); }
                         }
-                        6 => {
-                            let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                            list.add_acc(asset, hash, None, None, 0);
-                        }
-                        _ => {}
                     }
                 };
             });
-
         remove.iter().rev().for_each(|&pos| { assets.remove(pos); });
-        remove.clear();
-        assets.extract_if(.., |s|{
-            let lower = s.to_lowercase();
-            kinds.iter().any(|k| lower.contains(*k))
-        }).for_each(|asset|{
-            if let Some(kind) = kinds.iter().position(|k| asset.contains(*k)){
-                let name = asset.trim_start_matches(kinds[kind]);
-                match kind {
-                    0 => {
-                        if !asset.contains("R_c") && !asset.contains("T_c") {
-                            hashes.add_body(asset.as_str(), false);
-                            let hash = hashes.add_body(asset.as_str(), true);
-                            list.add(3,hash, false, name, -1);
-                            list.add(3,hash, true, name, -1);
-                        }
-                    }
-                    1 => {
-                        let hash = hashes.add_head(asset.as_str());
-                        list.add(4, hash, false, name, -1);
-                    }
-                    2|3 => {
-                        let hash = hashes.add_hair(asset.as_str(), None);
-                        list.add(5, hash, false, name, -1);
-                    }
-                    _ => {
-                        let hash = hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                        list.add_acc(asset.as_str(), hash, None, None, 0);
-                    }
-                }
-            };
-        });
-
-        let hash = hashes.add_acc("uBody_Msc0AT_c000", Some(3));
-        list.acc[3].push(AccEntry::new(hash, Some("MPID_Mascot"), "uBody_Msc0AT_c000", None, 0, 0));
-        let dress = DressData::init(&mut hashes, &mut list);
+        new_list.final_add(&mut hashes);
+        let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
-        println!("Finish with Outfit data");
         Self {
-            dress, anims, list, hashes, labels,
+            dress, anims,
+            list: new_list,
+            labels: new_labels,
+            hashes,
             item: ItemAsset::init(),
             accessory_conditions: AccessoryConditions::new(),
         }
@@ -757,7 +392,18 @@ impl OutfitData {
         if engaged {
             AnimData::remove(result, true, true);
             if let Some(data) = conditions.engaged.as_ref().and_then(|eid| self.dress.get_engaged_dress(eid.into())){
-                data.apply(result, conditions.mode, dress_gender);
+                if data.asset_id == "リュール" {
+                    if !unit.is_hero() { data.apply(result, conditions.mode, dress_gender); }
+                    else {
+                        let mut body = if conditions.mode == 1 { "o" } else { "u" }.to_string();
+                        body += if dress_gender == Gender::Male { "B∂ody_Drg0AM_c003" }
+                        else { "Body_Drg0AF_c053"};
+                        if conditions.mode == 2 { result.dress_model = body.into(); }
+                        else { result.body_model = body.into(); }
+                    }
+                }
+                else { data.apply(result, conditions.mode, dress_gender); }
+
                 return;
             }
         }
@@ -830,13 +476,11 @@ impl OutfitData {
     pub fn correct_anims(&self, result: &mut AssetTableResult, unit: &Unit, profile_flags: i32, conditions: &AssetConditions){
         let dress_gender = if conditions.mode == 2 { self.get_dress_gender(result.dress_model) } else {
             unit.get_dress_gender() };
-            // self.get_dress_gender(result.body_model) };
         if dress_gender != Gender::Male && dress_gender != Gender::Female { return; }
         let kind_ =
             if conditions.flags.contains(AssetFlags::CombatTranforming) { 9 }
             else if conditions.flags.contains(AssetFlags::Bullet) { 10 }
             else { conditions.kind };
-        // println!("Correct Anim Kind: {}", kind_);
         let mount = if conditions.flags.contains(AssetFlags::CombatTranforming) { Mount::None } else { self.anims.get_mount_type(unit, dress_gender).unwrap_or(Mount::None) };
         if conditions.flags.contains(AssetFlags::AxeStaff) && conditions.mode == 2 {
             if dress_gender == Gender::Male { result.body_anims.add("Enb0AM-Ax1_c000_M".into()); }
@@ -873,7 +517,7 @@ impl OutfitData {
                     if let Some(god) = god_unit.as_ref().and_then(|d| self.dress.get_engaged_dress(d.data.asset_id)) { god.apply(result, 2, dress_gender); }
                 }
                 if no_engaged_anim {
-                    if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || (unit.person.get_job().is_some_and(|v| v.parent.hash == 499211320) && conditions.kind > 0) {
+                    if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || (unit.person.get_job().is_some_and(|v| v.parent.hash == 499211320) && conditions.kind > 0){
                         result.body_anims.clear();
                         self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
                     }
@@ -899,9 +543,7 @@ impl OutfitData {
         let index = rng.get_value(head as i32);
         if let Some(head) = self.hashes.head.iter().nth(index as usize) {
             result.head_model = head.1.into();
-            if let Some(skin) = self.list.skin.get(head.0) {
-                ColorPreset::set_color(&mut result.unity_colors[2], *skin);
-            }
+            if let Some(skin) = self.list.skin.get(head.0) { skin.set_result_color(result, 2); }
         }
         let index = rng.get_value( self.hashes.hair.len() as i32);
         if let Some(hair) = self.hashes.hair.iter().nth(index as usize) { apply_hair(hair.1, result); }
@@ -923,9 +565,6 @@ impl OutfitData {
             }
         }
     }
-    pub fn try_get_suffix(&self, asset: &String) -> Option<(&'static Il2CppString, &'static str)> { self.labels.get_suffix_name(asset) }
-    pub fn try_get_body_label(&self, asset: &String) -> Option<(&'static Il2CppString, &'static str)>  { self.labels.get_body_name(asset) }
-    pub fn try_get_asset_label(&self, value: &String) -> Option<(&'static Il2CppString, &'static str)> { self.try_get_suffix(value).or_else(|| self.try_get_body_label(value)) }
     pub fn try_get_asset(&self, ty: AssetType, hash: i32) -> Option<&String> {
         match ty {
             AssetType::Body => self.hashes.body.get(&hash),
@@ -985,9 +624,9 @@ impl OutfitData {
     pub fn get_aoc_gender(&self, ty: i32, aoc_anim: &Il2CppString) -> Gender {
         self.get_aoc_gender_hash(ty, aoc_anim.get_hash_code()).unwrap_or(Gender::None)
     }
-    pub fn get_aoc_gender_hash(&self, ty: i32, hashcode: i32) -> Option<Gender> {
-        if self.list.aoc_info_m.get(ty as usize).map(|x| x.contains(&hashcode)).unwrap_or(false) { Some(Gender::Male) }
-        else if self.list.aoc_info_f.get(ty as usize).map(|x| x.contains(&hashcode)).unwrap_or(false) { Some(Gender::Female) }
+    pub fn get_aoc_gender_hash(&self, _ty: i32, hashcode: i32) -> Option<Gender> {
+        if self.hashes.aoc_m.contains(&hashcode) { Some(Gender::Male) }
+        else if self.hashes.aoc_f.contains(&hashcode) { Some(Gender::Female) }
         else { None }
     }
 }

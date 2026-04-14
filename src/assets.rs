@@ -7,6 +7,7 @@ pub mod transform;
 pub mod dress;
 
 use outfit_core::*;
+use outfit_core::room::CharacterEffect;
 // use crate::assets::transform::is_dragonstone;
 use crate::enums::PIDS;
 
@@ -19,6 +20,7 @@ pub fn asset_table_setup_person_outfit(
     method_info: OptionalMethod) -> &'static mut AssetTableResult
 {
     let result = call_original!(this, mode, person, conditions, method_info);
+    if is_tiki_engage(result) { return result;}
     if let Some(v) = person.and_then(|p| UnitAssetMenuData::get_by_person_data(p.parent.hash, false)){
         v.set_result(result, mode, false, false);
     }
@@ -86,4 +88,10 @@ pub fn is_monster_body(this: &mut AssetTableResult) -> bool {
     if !this.dress_model.is_null() { this.dress_model.to_string().contains("T_c") }
     else if !this.body_model.is_null() { this.body_model.to_string().contains("T_c") }
     else { false }
+}
+
+#[unity::hook("Combat", "CharacterEffect", "CreateBreak")]
+pub fn create_break_effect_hook(this: &mut CharacterEffect, method_info: OptionalMethod) {
+    call_original!(this, method_info);
+    outfit_core::room::break_effect(this);
 }

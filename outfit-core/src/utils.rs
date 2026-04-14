@@ -83,3 +83,14 @@ pub fn is_up_down_press() -> bool {
 pub fn left_right_enclose(string: &String) -> &'static Il2CppString {
     format!("{}{}{}", Mess::create_sprite_tag_str(2, "Left"), string, Mess::create_sprite_tag_str(2, "Right")).into()
 }
+pub fn capitalize_first(s: &str) -> String {
+    let mut chars = s.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
+    }
+}
+pub fn hash_string<'a>(str: impl Into<&'a Il2CppString>) -> i32 {
+    let str = str.into();
+    str.get_hash_code()
+}

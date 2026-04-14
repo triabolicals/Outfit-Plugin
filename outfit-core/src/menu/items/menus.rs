@@ -1,3 +1,4 @@
+use std::ops::BitXor;
 use engage::gamedata::{Gamedata, GodData, PersonData};
 use engage::unit::{Gender};
 use engage::menu::BasicMenuItemAttribute;
@@ -130,7 +131,7 @@ impl CustomAssetMenuKind {
         match self {
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
-                let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.class_female.len() } else { db.list.class_male.len() } as u8;
+                let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.job_count.1 } else { db.list.job_count.0 } as u8;
                 let new_class = (*class + count + 1) % count;
                 Some(ClassBodySelection((new_class, *alt)))
             }
@@ -158,7 +159,7 @@ impl CustomAssetMenuKind {
         match self {
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
-                let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.class_female.len() } else { db.list.class_male.len() } as u8;
+                let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.job_count.1 } else { db.list.job_count.0 } as u8;
                 let new_class = (*class + count - 1) % count;
                 Some(ClassBodySelection((new_class, *alt)))
             }
@@ -186,8 +187,8 @@ impl CustomAssetMenuKind {
             ShopBody((1, _)) => { Some(MenuTextCommand::Class.get()) }
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
-                let set = if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.class_female } else { &db.list.class_male };
-                set.get(*class as usize).map(|v| format!("{} ({})", Mess::get(v.class_label.as_str()), v.list.len()).into())
+                let set = if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.job_f } else { &db.list.job_m };
+                set.get(*class as usize).map(|v| Mess::get(v.label).to_string().into())
             }
             ShopBody((2, _)) => { Some(MenuTextCommand::Engage.get())}
             ShopBody((3, _)) => { Some(Mess::get("MID_ProfileCard_Stamp_Others")) }
@@ -225,6 +226,7 @@ impl CustomAssetMenuKind {
     pub fn create_menu_items(&self, this: &mut CustomAssetMenu) {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
+        let female = UnitAssetMenuData::get_gender(false) == 2;
         match self {
             LoadData => {
                 let item = CustomAssetMenuItem::new_type(CurrentData);
@@ -309,75 +311,17 @@ impl CustomAssetMenuKind {
             }
             Personal => {
                 let female = UnitAssetMenuData::get_current_dress_gender() == 2;
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
-                if let Some(icon) =
-                    PersonData::try_get_hash(preview.person).and_then(|person| { person.unit_icon_id.map(|v| v.to_string()) })
-                        .or_else(||{ GodData::try_get_hash(preview.person).and_then(|god|{ god.unit_icon_id.map(|v| v.to_string()) })})
+                if let Some(name) =
+                    PersonData::try_get_hash(preview.person).and_then(|person| { person.name.map(|v| v.to_string()) })
+                        .or_else(||{ GodData::try_get_hash(preview.person).map(|god|{ god.mid.to_string() }) })
                 {
-                    let id = icon.split_at(3).0;
-                    let mut hashes = vec![];
-                    if female { &db.list.character_body_list.female } else { &db.list.character_body_list.male }
-                        .iter()
-                        .filter(|v| icon.contains(&v.label.name) || db.try_get_asset(AssetType::Body, v.hash).is_some_and(|b| b.contains(id)))
-                        .for_each(|body|{
-                            if !hashes.contains(&body.hash) {
-                                let item = CustomAssetMenuItem::new_asset(AssetType::Body, body.hash, body.label.get(), current == body.hash, preview.original_assets[0] == body.hash);
-                                hashes.push(body.hash);
-                                this.full_menu_item_list.add(item);
-                            }
+                    let set = if female { &db.list.char_f } else { &db.list.char_m };
+                    let alt = name.replace("MGID_", "MPID_");
+                    if let Some(group) = set.iter().find(|c| c.label == name || c.label == alt) {
+                        group.list.iter().for_each(|c| {
+                            this.full_menu_item_list.add(CustomAssetMenuItem::new_asset2(c, group.label));
                         });
-                    let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Head);
-                    db.list.head_list.iter()
-                        .filter(|v| icon.contains(&v.label.name) || db.try_get_asset(AssetType::Head, v.hash).is_some_and(|b| b.contains(id)))
-                        .for_each(|body|{
-                            if !hashes.contains(&body.hash) {
-                                let item = CustomAssetMenuItem::new_asset(AssetType::Head, body.hash, body.label.get(), current == body.hash, preview.original_assets[1] == body.hash);
-                                hashes.push(body.hash);
-                                this.full_menu_item_list.add(item);
-                            }
-                        });
-                    db.list.hair_list.iter()
-                        .filter(|v| icon.contains(&v.label.name) || db.try_get_asset(AssetType::Hair, v.hash).is_some_and(|b| b.contains(id)))
-                        .for_each(|body|{
-                            if !hashes.contains(&body.hash) {
-                                let item = CustomAssetMenuItem::new_asset(AssetType::Hair, body.hash, body.label.get(), current == body.hash, preview.original_assets[1] == body.hash);
-                                hashes.push(body.hash);
-                                this.full_menu_item_list.add(item);
-                            }
-
-                        });
-                    for x in 0..4 {
-                        let i = if x == 0 { 0 } else { x + 1};
-                        let asset_type = AssetType::Acc(i as u8);
-                        let current = UnitAssetMenuData::get_current_unit_hash(asset_type);
-                        db.list.acc[x].iter().filter(|v| db.try_get_asset(asset_type, v.hash).is_some_and(|b| b.contains(id)) && !hashes.contains(&v.hash))
-                            .for_each(|a|{
-                                let hash = a.hash;
-                                let name = db.try_get_asset(asset_type, a.hash).unwrap().trim_start_matches("uAcc_");
-                                let name = name.split_once("_").map(|v| v.1.into()).unwrap_or(name.into());
-                                if i == 0 {
-                                    for ii in 0..2 {
-                                        let ty = AssetType::Acc(ii as u8);
-                                        let current = UnitAssetMenuData::get_current_unit_hash(ty);
-                                        let item = CustomAssetMenuItem::new_asset(ty, hash, name, hash == current, hash == preview.original_assets[5 + ii]);
-                                        this.full_menu_item_list.add(item);
-                                    }
-                                }
-                                else { this.full_menu_item_list.add(CustomAssetMenuItem::new_asset(asset_type, hash, name, current == hash, preview.original_assets[5+i] == hash)); }
-                            })
-                    };
-                    if female { &db.list.aoc_info_f} else { &db.list.aoc_info_m }.iter().enumerate().for_each(|(i, a)|{
-                        let asset_type = AssetType::AOC(i as u8);
-                        let current = UnitAssetMenuData::get_current_unit_hash(asset_type);
-
-                        a.iter().filter(|v| db.try_get_asset(asset_type, **v).is_some_and(|b| b.contains(id)))
-                            .for_each(|a|{
-                                let hash = *a;
-                                let name = db.try_get_asset(asset_type, *a).unwrap().into();
-                                let item = CustomAssetMenuItem::new_asset(asset_type, hash, name, current == hash, preview.original_assets[10+i] == hash);
-                                this.full_menu_item_list.add(item);
-                            })
-                    });
+                    }
                 }
                 if this.full_menu_item_list.is_empty() { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
             }
@@ -391,98 +335,50 @@ impl CustomAssetMenuKind {
                 });
             }
             ShopBody((0, alt)) => {    // Unit (Same Gender)
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                let db = get_outfit_data();
-                let set = if female { &db.list.character_body_list.female } else { &db.list.character_body_list.male };
-                set.iter().for_each(|x|{
-                    let item = CustomAssetMenuItem::new_asset(AssetType::Body, x.hash, x.label.get(), current == x.hash, preview.original_assets[0] == x.hash);
-                    this.full_menu_item_list.add(item);
-                });
+                db.list.add_menu_items(AssetType::Body, female, true, false, &db.labels, this.full_menu_item_list);
             }
             ShopBody((1, alt))  => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                if female { &db.list.class_female } else { &db.list.class_male }.iter().enumerate().for_each(|(i, data)| {
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_menu3(ClassBodySelection((i as u8, *alt)),  Mess::get(data.class_label.as_str())));
-                });
+                let class_count = if female { db.list.job_count.1 } else { db.list.job_count.0 } as usize;
+                let set = if female { &db.list.job_f } else { &db.list.job_m };
+                for x in 0..class_count{
+                    this.full_menu_item_list.add(CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)),  Mess::get(set[x].label)));
+                }
             }
             ClassBodySelection((class, alt)) => {
                 let index = *class as usize;
                 let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                let set_main = if female { &db.list.class_female[index] } else { &db.list.class_male[index] };
-                set_main.list.iter().for_each(|data| {
-                    if let Some(body) = db.try_get_asset(AssetType::Body, data.hash).map(|v| v.to_string()) {
-                        let name =
-                            if data.flags & 1 != 0 {
-                                if let Some(name1) = db.labels.body.iter().find(|x| body.ends_with(*x.0)).or_else(|| db.labels.body.iter().find(|x| body.contains(*x.0))) {
-                                    if data.flags & 2 != 0 { format!("{} ({})", name1.1.get(), Mess::get("MID_SYS_BasicPosition")).into() } else if data.flags & 4 != 0 {
-                                        if let Some(name) = db.labels.suffixes.iter().find(|x| body.ends_with(*x.0)) { format!("{} ({})", name1.1.get(), name.1.get()).into() } else { name1.1.get() }
-                                    }
-                                    else { name1.1.get() }
-                                }
-                                else { body.trim_start_matches("uBody_").into() }
+                let set = if female { &db.list.job_f } else { &db.list.job_m };
+                if let Some(class) = set.get(index) {
+                    class.list.iter().filter(|x| x.kind == AssetType::Body)
+                        .for_each(|a|{
+                            if let Some(body) = db.hashes.body.get(&a.hash){
+                                let name = db.labels.get_suffix_name(body.as_str()).unwrap_or(body.to_string().trim_start_matches("uBody_").into());
+                                let item = CustomAssetMenuItem::new_asset(AssetType::Body, a.hash, name, current == a.hash, preview.original_assets[0] == a.hash);
+                                this.full_menu_item_list.add(item);
                             }
-                            else { db.try_get_suffix(&body).map(|x| x.0.to_string().into()).unwrap_or(body.trim_start_matches("uBody_").into()) };
-                        let item = CustomAssetMenuItem::new_asset(AssetType::Body, data.hash, name, current == data.hash, preview.original_assets[0] == data.hash);
-                        this.full_menu_item_list.add(item);
-                    }
-                });
+                        });
+                }
+                if this.full_menu_item_list.is_empty() { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
             }
             ShopBody((2, alt))  => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                let db = get_outfit_data();
-                if female { &db.list.engaged.female } else { &db.list.engaged.male}.iter().for_each(|x| {
-                    let name = x.label.get();
-                    let item = CustomAssetMenuItem::new_asset(AssetType::Body, x.hash, name, current == x.hash, preview.original_assets[0] == x.hash);
-                    this.full_menu_item_list.add(item);
-                });
+                db.list.engaged.iter()
+                    .filter(|x| x.female == female)
+                    .for_each(|a|{
+                        let item = CustomAssetMenuItem::new_asset3(&a, &db.labels, true);
+                        item.name = Mess::get(a.label.as_str());
+                        this.full_menu_item_list.add(item);
+                    });
             }
             ShopBody((3, alt)) => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                let db = get_outfit_data();
-                if female { &db.list.other_outfits.female } else { &db.list.other_outfits.male}.iter().for_each(|x| {
-                    let mut name = x.label.get();
-                    if name.to_string().len() < 2 {
-                        name = db.try_get_asset(AssetType::Body, x.hash).map(|v| v.to_string().into()).unwrap_or("Unknown".into());
-                    }
-                    let item = CustomAssetMenuItem::new_asset(AssetType::Body, x.hash, name, current == x.hash, preview.original_assets[0] == x.hash);
-                    this.full_menu_item_list.add(item);
-                });
+                db.list.add_menu_items(AssetType::Body, female, false, true, &db.labels, this.full_menu_item_list);
             }
-            Head => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Head);
-                let photo = UnitAssetMenuData::is_photo_graph();
-                db.list.head_list.iter().filter(|x| (photo && x.label.name.contains("Morph")) || !photo)
-                    .for_each(|x| {
-                        let name = if x.get_name().to_string().len() < 3 {
-                            if let Some(head) = db.try_get_asset(AssetType::Head, x.hash).map(|v| v.to_string()) { head.split("_c").last().unwrap().into() }
-                            else { Mess::get("MPID_Unknown") }
-                        }
-                        else { x.get_name() };
-                        this.full_menu_item_list
-                            .add(CustomAssetMenuItem::new_asset(AssetType::Head, x.hash, name, current == x.hash, preview.original_assets[1] == x.hash));
-                });
-            }
-            Hair => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Hair);
-                let original = preview.original_assets[2];
-                db.list.hair_list.iter().for_each(|h|{
-                    let name =
-                        if let Some(hair) = db.try_get_asset(AssetType::Hair, h.hash).map(|v| v.to_string()) {
-                            let s = h.get_name();
-                            if s.to_string().len() < 2 { hair.trim_start_matches("uHair_").into() }
-                            else { s }
-                        }
-                        else { Mess::get("MPID_Unknown") };
-                    let item = CustomAssetMenuItem::new_asset(AssetType::Hair, h.hash, name, current == h.hash, preview.original_assets[2] == h.hash);
-                    item.padding = (h.hash == original) as i32;
-                    this.full_menu_item_list.add(item);
-                });
-
-            }
+            Head => { db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, this.full_menu_item_list); }
+            Hair => { db.list.add_menu_items(AssetType::Hair, female,true, true, &db.labels, this.full_menu_item_list); }
             Rig => {
                 let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Rig);
                 let original = preview.original_assets[15];
@@ -492,65 +388,13 @@ impl CustomAssetMenuKind {
                     this.full_menu_item_list.add(item);
                 });
             }
-            ShopAcc(kind) => {
-                let index = *kind as usize;
-                let set = if index < 2 { &db.list.acc[0] } else { &db.list.acc[index - 1] };
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Acc(*kind));
-                let original = preview.original_assets[*kind as usize + 5];
-                set.iter().enumerate().for_each(|(i, x)|{
-                    let name =
-                        if i == 0 { Mess::get("MID_SYS_None") }
-                        else if index == 3 { db.try_get_asset(AssetType::Acc(*kind), x.hash).unwrap().to_string().trim_start_matches("uAcc_Eff_").into() }
-                        else { x.get_name(db) };
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_asset(AssetType::Acc(*kind), x.hash, name, current == x.hash, original == x.hash));
-                });
-            }
+            ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::AOC(*page));
-                let db = get_outfit_data();
-                let gender = db.get_dress_gender_hash(UnitAssetMenuData::get_current_unit_hash(AssetType::Body)).map(|g|
-                    if g == Gender::Male { 1 } else { 2 }
-                ).unwrap_or(UnitAssetMenuData::get_current_dress_gender());
-                let set = if gender == 2 { &db.list.aoc_info_f[*page as usize] } else { &db.list.aoc_info_m[*page as usize] };
-                set.iter().for_each(|x| {
-                    let name =
-                        if let Some(aoc) = db.try_get_asset(AssetType::AOC(0), *x).map(|v| v.to_string()) {
-                            let engaged = aoc.contains("_Eng");
-                            let aoc = if engaged { aoc.trim_end_matches("_Eng") } else { aoc.as_str() };
-                            db.labels.asset.get(x).map(|x| x.get())
-                                .or_else(||db.labels.suffixes.iter().find(|x| aoc.ends_with(*x.0))
-                                    .map(|x| if engaged { format!("{} {}", x.1.get(), MenuTextCommand::Engage).into() } else { x.1.get() })
-                                ).or_else(||
-                                    db.labels.suffixes.iter().find(|x| aoc.contains(*x.0))
-                                        .map(|x|
-                                            if engaged { format!("{} {}", x.1.get(), MenuTextCommand::Engage) }
-                                            else { format!("{} {}", x.1.get(), aoc.split(x.0).last().unwrap_or("")) }.into()
-                                        )
-                                ).unwrap_or(aoc.split("_").last().unwrap().into())
-                        } else { Mess::get("MPID_Unknown") };
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_asset(AssetType::AOC(*page), *x, name, current == *x, preview.original_assets[10+*page as usize] == *x));
-                });
+                let alt = *page >= 4;
+                db.list.add_menu_items(AssetType::AOC(*page), female.bitxor(alt), true, true, &db.labels, this.full_menu_item_list);
             }
             ShopMount(mount) => {
-                let index = *mount as i32;
-                let set = &db.list.mount[index as usize];
-                let current_mount = UnitAssetMenuData::get_current_unit_hash(AssetType::Mount(*mount));
-                set.iter().for_each(|hash|{
-                    if let Some(m) = db.hashes.mounts.get(hash).map(|v| v.to_string()) {
-                        let name = if m.contains("Box") { "Box".into() }
-                        else if let Some(s1) = db.try_get_suffix(&m).filter(|p| !p.1.contains("000")) {
-                            if let Some(s2) = db.try_get_body_label(&m) { format!("{} ({})", s2.0, s1.0).into() }
-                            else { s1.0 }
-                        }
-                        else if let Some(s) = db.try_get_body_label(&m) { s.0 }
-                        else if let Some(s1) = db.try_get_suffix(&m) {
-                            if let Some(s2) = db.try_get_body_label(&m) { format!("{} ({})", s2.0, s1.0).into() }
-                            else { s1.0 }
-                        }
-                        else { m.trim_start_matches("uBody_").into() };
-                        this.full_menu_item_list.add(CustomAssetMenuItem::new_asset(AssetType::Mount(*mount), *hash, name, current_mount == *hash, false));
-                    }
-                });
+                db.list.add_menu_items(AssetType::Mount(*mount), false, true, true, &db.labels, this.full_menu_item_list);
             }
             ScaleMenu => {
                 this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::EnableScaling)));
@@ -573,7 +417,6 @@ impl CustomAssetMenuKind {
                 this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(RGBAMenu(*page)));
                 let kind = *page;
                 let preview = UnitAssetMenuData::get_preview();
-
                 db.list.color_presets.iter()
                     .filter(|x| x.colors[kind as usize ] != 0)
                     .for_each(|x| {
@@ -591,11 +434,7 @@ impl CustomAssetMenuKind {
                     });
             }
             VoiceSelection => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Voice);
-                db.list.voice.iter().for_each(|h|{
-                    let name = h.get_name();
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_asset(AssetType::Voice, h.hash, name, current == h.hash, preview.original_assets[14] == h.hash));
-                });
+                db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list);
             }
             RGBAMenu(page) => {
                 let k = *page;
@@ -691,29 +530,14 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ShopBody(_)  => { Mess::get("MID_Hub_amiibo_Accessory_Trade") }
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
-                if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.class_female }
-                else { &db.list.class_male }.get(*class as usize).map(|v| Mess::get(v.class_label.as_str())).unwrap()
+                if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.job_f }
+                else { &db.list.job_m }.get(*class as usize).map(|v| Mess::get(v.label)).unwrap()
             }
             ShopAcc(_) => { Mess::get("MID_Hub_Mascot_Accessories_Parts") }
             VoiceSelection => { MenuTextCommand::Voice.get() }
             Head => { Mess::get("MID_Hub_Mascot_Accessories_Head") }
             Personal => { MenuTextCommand::Personal.get() }
             _ => { self.get_menu_item_name().unwrap() }
-            /*
-            ProfileSelection => { MenuText::get_command(37) }
-            Hair => { MenuText::get_command(16) }
-            ShopMount(_) => { MenuText::get_command(25) }
-            ShopAoc(_) => { MenuText::get_command(24) }
-            ScaleMenu => { MenuText::get_command(36) }
-            ColorKindSelection => { MenuText::get_command(35) }
-            ColorSelection(kind) => { MenuText::get_command(70+*kind as i32) }
-            RGBAMenu(_) => { MenuText::get_command(39) }
-            Rig => { MenuText::get_command(62)  }
-            PresetAppearanceMenu(_) => { MenuText::get_command(63) }
-
-
-            _ => { "None".into() }
-             */
         }
     }
     fn get_detail_box_name(&self, _menu_item: &CustomAssetMenuItem) -> Option<&'static Il2CppString> {

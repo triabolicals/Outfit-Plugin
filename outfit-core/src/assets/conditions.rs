@@ -206,7 +206,7 @@ impl AssetFlags {
                 flags.set(AssetFlags::Monster, true);
                 return flags;
             }
-            if unit.person.aid.is_some_and(|x| x.to_string().contains("竜化")) {
+            if unit.person.aid.is_some_and(|x| x.to_string().contains("竜化")) || unit.person.pid.str_contains("G001_チキ_") {
                 flags.set(AssetFlags::Monster, true);
                 return flags;
             }
@@ -220,12 +220,12 @@ impl AssetFlags {
             if unit.person.flag.value & 32 != 0 {
                 let gender = if unit.person.get_gender() == 2 { Gender::Male } else { Gender::Female };
                 flags.set_gender(gender);
-            } else {
-                flags.set_gender(unit.person.get_gender2());
             }
+            else { flags.set_gender(unit.person.get_gender2()); }
             if unit.person.parent.index == 1 || unit.person.flag.value & 128 != 0 {
                 if unit.edit.gender & 3 != 0 {
-                    flags.set_gender(if unit.edit.gender == 1 { Gender::Male } else { Gender::Female });
+                    let gender = if unit.edit.gender == 1 { Gender::Male } else { Gender::Female };
+                    flags.set_gender(gender);
                 }
             }
             if unit.person.name.is_some_and(|x| x.str_contains("Boss")) { flags.set(AssetFlags::NPC, true); }
