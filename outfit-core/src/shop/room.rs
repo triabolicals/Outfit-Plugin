@@ -290,11 +290,6 @@ impl MyCharacterBuilderObject {
 pub struct CharacterEffect {
     pub cp: &'static mut Character,
 }
-
-#[unity::hook("Combat", "CharacterEffect", "CreateBreak")]
-pub fn create_break_effect(this: &mut CharacterEffect, method_info: OptionalMethod) {
-    call_original!(this, method_info);
-}
 pub fn break_effect(this: &mut CharacterEffect){
     if let Some(unit) = this.cp.get_game_status().unit.as_ref() {
         let engaged = unit.is_engaging();
