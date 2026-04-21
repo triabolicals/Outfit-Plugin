@@ -13,6 +13,7 @@ use crate::menu::*;
 pub use CustomAssetMenuItemKind::*;
 pub use CustomAssetMenuKind::*;
 use engage::sequence::photograph::*;
+use engage::tmpro::TextMeshProUGUI;
 use unity::system::action::Action1;
 use crate::localize::{MenuText, MenuTextCommand};
 
@@ -37,10 +38,18 @@ pub enum CustomAssetMenuItemKind {
     PresetAppearance,
     Pause,
     Item,
+    UnitInventorySubMenuItem,
 }
 impl CustomAssetMenuItemKind {
+    pub fn can_facial(&self) -> bool {
+        match self {
+            UnitName|CurrentProfile|ScaleMenuItem(_)|RGBA{kind: _, color: _}|ProfileItem(_) => false,
+            _ => true,
+        }
+    }
     pub fn to_index(&self) -> i32 {
         match self {
+            UnitInventorySubMenuItem => 0,
             CurrentProfile => 1,
             OutfitDataFile => 2,
             UnitName => 4,
@@ -62,6 +71,7 @@ impl CustomAssetMenuItemKind {
     }
     pub fn from_index(index: i32) -> Self {
         match index {
+            0 => UnitInventorySubMenuItem,
             1 => CurrentProfile,
             2 => OutfitDataFile,
             4 => UnitName,
@@ -87,6 +97,7 @@ impl CustomAssetMenuItemKind {
         }
     }
     pub fn on_select(&self, menu_item: &CustomAssetMenuItem) {
+        if *self == UnitInventorySubMenuItem { return; }
         let help = self.get_help(menu_item);
         let body = menu_item.menu.menu_kind.get_body(menu_item);
         let icon = self.get_icon(menu_item);
@@ -278,6 +289,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
     fn get_name(&self, menuitem: &CustomAssetMenuItem) -> &'static Il2CppString {
         let idx = self.to_index();
         match self {
+            UnitInventorySubMenuItem => { MenuTextCommand::Outfits.get() }
             PresetAppearance|Pause|Item => { menuitem.name }
             OutfitDataFile => { menuitem.name }
             Menu(menu) => menu.get_menu_item_name().unwrap_or_else(||menuitem.name.to_string().into()),
@@ -312,7 +324,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { "Custom Name".into() }
             }
             Data(data) => { data.get_name(menuitem) }
-            NoItem => { "NoItem".into() }
+            NoItem => { Mess::get_item_none2() }
             _ => { MenuText::get_command(idx) }
         }
     }
@@ -452,6 +464,12 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
     }
     fn a_call(&self, menuitem: &mut CustomAssetMenuItem) -> BasicMenuResult {
         match self {
+            UnitInventorySubMenuItem => { 
+                if let Some(parent) = menuitem.menu.get_parent() {
+                    CustomAssetMenu::create_unit_info_bind(parent, SortieSelectionUnitManager::get_unit());
+                }
+                BasicMenuResult::close_decide()
+            }
             Asset(ty) => ty.a_call(menuitem),
             ResetColor(kind) => {
                 let i = *kind as usize;
@@ -766,9 +784,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                             let new_gender = if unit.edit.gender == 1 || unit.edit.gender == 2 { 0 } else { unit.person.gender };
                             unit.edit.set_gender(new_gender);
                             menuitem.rebuild_text();
-                            if let Some(hub) = HubAccessoryRoom::get_instance().and_then(|c| c.get_child())
-                                .map(|p| p.cast_mut::<HubAccessoryShopSequence>()){
-                                hub.change_root.unit_name.set_text(unit.get_name(), true);
+                            if let Some(char_name) = GameObject::find("CharacterName").and_then(|v| v.get_component_in_children::<TextMeshProUGUI>(true)){
+                                char_name.set_text(unit.get_name(), true);
                             }
                             BasicMenuResult::se_decide()
                         }
