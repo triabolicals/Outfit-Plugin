@@ -1,45 +1,53 @@
 use cobapi::{Event, SystemEvent};
 use engage::gamemessage::GameMessage;
+use engage::menu::{BasicMenu, BasicMenuMethods};
+use engage::proc::ProcInst;
 use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
 use engage::sequence::mainsequence::MainSequence;
+use outfit_core::{CustomAssetMenuItem, UnitInventorySubMenuItem};
 
 #[allow(static_mut_refs)] pub mod enums;
 #[allow(static_mut_refs)] pub mod assets;
 
+pub static mut DISABLED: bool = false;
 extern "C" fn event_install(event: &Event<SystemEvent>) {
     if let Event::Args(ev) = event {
         match ev {
             SystemEvent::ProcInstBind {proc, parent: _} => {
-                match proc.borrow().hashcode {
-                    engage::proc::TITLE_LOOP_SEQUENCE => {
-                        if let Some(main_sequence) = MainSequence::get_instance() {
-                            if main_sequence.pad != 1 {
-                                if !UnitAssetMenuData::get().init {
-                                    outfit_core::install_outfit_plugin(false);
-                                    skyline::install_hooks!(
-                                        assets::asset_table_setup_person_outfit,
-                                        assets::asset_table_result_setup_hook_outfit,
-                                        assets::transform::change_dragon2,
-                                        assets::asset_table_result_god_setup_outfit,
-                                        assets::transform::transformation_chain_atk,
-                                        assets::create_break_effect_hook,
+                let hash = proc.borrow().hashcode;
+                if hash == engage::proc::TITLE_LOOP_SEQUENCE {
+                    if let Some(main_sequence) = MainSequence::get_instance() {
+                        if main_sequence.pad == 0 {
+                            if !UnitAssetMenuData::get().init {
+                                outfit_core::install_outfit_plugin(false);
+                                skyline::install_hooks!(
+                                    assets::asset_table_setup_person_outfit,
+                                    assets::asset_table_result_setup_hook_outfit,
+                                    assets::transform::change_dragon2,
+                                    assets::asset_table_result_god_setup_outfit,
+                                    assets::transform::transformation_chain_atk,
+                                    assets::create_break_effect_hook,
                                 );
-                                }
                             }
-                            else {
-                                UnitAssetMenuData::get().init = true;
-                                GameMessage::create_key_wait(main_sequence, "Outfit plugin will not be installed.\nDVC's version will be used instead.");
-                            }
+                            unsafe { DISABLED = false; }
+                        }
+                        else if main_sequence.pad == 1 {
+                            main_sequence.pad += 1;
+                            unsafe { DISABLED = true; }
+                            UnitAssetMenuData::get().init = true;
+                            GameMessage::create_key_wait(main_sequence, "Outfit plugin will be ignored for this session.\nDVC's version of the Outfit Plugin will be used.");
                         }
                     }
-                    _ => {}
                 }
+                else if hash == engage::proc::UNIT_SELECT_SUB_MENU && !unsafe { DISABLED } { menu_item_add(&mut proc.borrow_mut()); }
             }
             _ => {},
         }
-    } 
-    else { }
+    }
+}
+fn menu_item_add(proc: &mut ProcInst) {
+    outfit_core::add_sub_unit_menu_item(proc);
 }
 #[skyline::main(name = "outfits")]
 pub fn main() {
