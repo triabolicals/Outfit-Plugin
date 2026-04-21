@@ -9,7 +9,7 @@ pub static LOCAL_TEXT: OnceLock<RwLock<MenuText>> = OnceLock::new();
 
 pub const KEY: [&str; 14] = ["A", "B", "X", "Y", "L", "R", "ZL", "ZR", "Plus", "Minus", "Up", "Down", "Right", "Left"];
 pub const MIDS: [&str; 38] = [
-    "MID_CONFIG_ROD_DANCE_OFF", "MID_CONFIG_ROD_DANCE_ON", "MID_CONFIG_GAMESPEED_NOMAL", "MID_MATCH_Random",
+    "MID_CONFIG_ROD_DANCE_ON", "MID_CONFIG_ROD_DANCE_OFF", "MID_CONFIG_GAMESPEED_NOMAL", "MID_MATCH_Random",
     "MID_SORTIE_SKILL_CATEGORY_PERSON", "MID_SYS_Class", "MID_SORTIE_SKILL_CATEGORY_GOD", "MID_SORTIE_SKILL_CATEGORY_ENGAGE",
     "MID_MENU_UNIT_LIST", "MID_MENU_REFINE_SHOP_REFINE_GODSYMBOL", "MID_KEYHELP_MENU_UNIT_SELECT", "MID_SYS_Me", "MID_SYS_SP",
     "MID_GAMESTART_PLAYER_GENDER_SELECT_TITLE", "MID_Hub_amiibo_Accessory_Trade", "MID_ITEMMENU_ITEM_ALL",  "MTID_Engage", "MID_SYS_Grow_Fixed",
@@ -96,9 +96,7 @@ impl Display for MenuTextCommand {
 }
 
 impl MenuTextCommand {
-    pub fn on_off(on: bool) -> &'static Il2CppString {
-        if on { Self::On } else { Self::Off }.get()
-    }
+    pub fn on_off(on: bool) -> &'static Il2CppString { if on { Self::On } else { Self::Off }.get() }
     pub fn to_right(self, other: Self) -> &'static Il2CppString {
         format!("{}{}", self.get(), other.get()).into()
     }
