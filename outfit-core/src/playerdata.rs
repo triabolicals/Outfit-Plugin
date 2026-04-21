@@ -317,20 +317,21 @@ impl PlayerOutfitData {
             if !engaged || (engaged && self.flag & 2 != 0) {
                 let original_dress_gender = db.get_dress_gender(result.body_model);
                 let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
-                /*
-                if GameUserData::get_sequence() != 6 {
-                    if let Some(body) = db.try_get_asset(AssetType::Body, self.ubody) {
-                        add_accessory_to_list(result.accessory_list, body.as_str(), "UnitModel");
+                if let Some(body) = db.hashes.get_obody(b).or_else(|| db.hashes.get_obody(self.ubody)){
+                    let same_gender = db.get_dress_gender(body.into()) == original_dress_gender;
+                    if same_gender { result.body_model = body.into(); }
+                    else if self.flag & 128 != 0 { result.body_model = body.into(); }
+                }
+                else if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
+                    let allow_cross_dress = self.flag & 128 != 0;
+                    if let Some(body) = db.try_get_asset(AssetType::Body, b)
+                        .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
+                    {
+                        let new_dress_gender = db.get_dress_gender(body.into());
+                        if original_dress_gender == new_dress_gender { result.dress_model = body.into(); }
+                        else if allow_cross_dress { result.dress_model = body.into(); }
                     }
                 }
-                else {
-                    */
-                    if let Some(body) = db.hashes.get_obody(b).or_else(|| db.hashes.get_obody(self.ubody)){
-                        let same_gender = db.get_dress_gender(body.into()) == original_dress_gender;
-                        if same_gender { result.body_model = body.into(); }
-                        else if self.flag & 128 != 0 { result.body_model = body.into(); }
-                    }
-            //    }
                 for x in 0..5 {
                     if let Some(head) = db.try_get_asset(Acc(x as u8), self.acc[x]){
                         if head.contains("Msc0AT") { continue; }
@@ -360,7 +361,6 @@ impl PlayerOutfitData {
                 }
             }
         }
-        self.set_color(result);
     }
     pub fn try_load_from_file(dir_entry: &DirEntry, gender_restriction: Option<Gender>) -> Option<Self> {
         if let Ok(file) = read_to_string(dir_entry.path()) {
@@ -466,7 +466,7 @@ impl PlayerOutfitData {
             for x in 0..8 {
                 string.push_str(COLORS[x]);
                 string.push('=');
-                string.push_str(format!("{} {} {} {}", self.colors[x].values[0], self.colors[x].values[1], self.colors[x].values[2], self.colors[x].values[3]).as_str());
+                string.push_str(format!("{} {} {} {}\n", self.colors[x].values[0], self.colors[x].values[1], self.colors[x].values[2], self.colors[x].values[3]).as_str());
             }
             string
         }

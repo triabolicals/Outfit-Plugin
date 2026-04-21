@@ -211,7 +211,6 @@ impl UnitAssetMenuData {
         if let Some(d) = data.data.iter_mut().find(|x| x.person == hash) {
             if let Some(p) = d.profile.get_mut(current_profile as usize){
                 *p = data.preview.preview_data.clone();
-              //  println!("Saved Profile: {}", current_profile);
             }
             if let Some(new_profile) = d.profile.get(index as usize) {
                 for x in 0..8 {
@@ -400,7 +399,9 @@ impl UnitAssetMenuData {
             let new_data = preview.preview_data.clone();
             let index = preview.selected_profile as usize;
             if let Some(data) = menu.data.iter_mut().find(|x| x.person == hash ){
-                if let Some(d) = data.profile.get_mut(index) { *d = new_data.clone(); }
+                if let Some(d) = data.profile.get_mut(index) {
+                    *d = new_data.clone();
+                }
             }
         }
 
@@ -417,20 +418,16 @@ impl UnitAssetMenuData {
         let is_preview =  menu.is_preview;
         let is_engaged = unit.status.value & 8388608 != 0;
         let is_photo = menu.mode == MenuMode::PhotoGraph;
-        // let mut profile_flag = 0;
         if is_preview {
             if is_photo  { menu.preview.preview_data.set_result(result, mode, is_engaged, false); }
             else {
-                // profile_flag = menu.preview.preview_data.flag;
                 if let Some(loaded) = menu.loaded_data.selected_index.and_then(|i| menu.loaded_data.loaded_data.get_mut(i as usize)) {
-                   //  println!("Applying Loaded Preview for {}", unit.get_name());
                     let flag = loaded.data.flag;
                     loaded.data.flag |= 193;
                     loaded.data.set_result(result, mode, is_engaged, false);
                     loaded.data.flag = flag;
                 }
                 else {
-                  //   println!("Applying Preview Assets for {} [Preview Profile: {}]", unit.get_name(), menu.preview.selected_profile);
                     menu.preview.preview_data.set_result(result, mode, is_engaged, false);
                 }
             }
@@ -442,7 +439,6 @@ impl UnitAssetMenuData {
         }
         else if let Some(data) = menu.data.iter().find(|s| s.person == unit.person.parent.hash){
             data.set_result(result, mode, is_engaged, asset_conditions.broken);
-            // profile_flag = data.get_active_flag(is_engaged);
         }
     }
     pub fn set_god_assets(result: &mut AssetTableResult, mode: i32, god: &GodData, darkness: bool) {
@@ -563,7 +559,6 @@ impl UnitAssetMenuData {
                 else if mode == 2 {
                     modes.1.push(entry.parent.index);
                     if let Some(body) = entry.dress_model.and_then(|h| db.try_get_asset_hash(h)) {
-                        println!("Dress: {}", entry.dress_model.unwrap());
                         menu.original_assets[0] = body;
                     }
                     if let Some(head) = entry.head_model.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[1] = head; }
