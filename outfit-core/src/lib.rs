@@ -25,13 +25,13 @@ pub use utils::*;
 pub use menu::*;
 pub use shop::*;
 pub use assets::*;
-
 pub use assets::new_result_get_hash_code;
 use engage::gamedata::{GamedataArray};
+use engage::gamedata::assettable::AssetTableResult;
 use engage::keyhelp::KeyHelpData;
 use engage::proc::ProcInst;
 
-pub const VERSION: &'static str = "2.5.6";
+pub const VERSION: &'static str = "2.6.0";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -77,6 +77,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         let data = OutfitData::init();
         data
     });
+
     let _ = std::fs::create_dir_all(OUTPUT_ASSET_TABLE_DIR);
     let _ = std::fs::create_dir_all(OUTPUT_DATA);
     let _ = std::fs::create_dir_all(INPUT_DIR);
@@ -113,7 +114,6 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         klass._2.actual_size = size_of::<CustomAssetMenu>() as u32;
         klass._2.instance_size = size_of::<CustomAssetMenu>() as u32;
     }
-    println!("Installing Patches");
     skyline::patching::Patch::in_text(0x2173ba4).bytes(&[0x40, 0x01, 0x80, 0x52]).unwrap();
     skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
     skyline::patching::Patch::in_text(0x27b66d4).bytes(&[0x08, 0x01, 0x80, 0x52]).unwrap();
@@ -122,7 +122,6 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_loaded = false;
     UnitAssetMenuData::get().init = true;
     UnitAssetMenuData::get().data.clear();
-    println!("Outfit Plugin Installed!");
     if let Some(key) = KeyHelpData::try_get_mut("KHID_写真撮影_配置編集") {
         let y_button = KeyHelpData::instantiate().unwrap();
         y_button.button_index = 3;
