@@ -236,10 +236,10 @@ impl OutfitData {
             })
             .for_each(|(i, asset)| {
                 let lower = asset.to_lowercase();
+                let hash = hash_string(asset);
                 if let Some(kind) = kinds.iter().position(|k| lower.contains(*k)){
                     match kind {
                         0 => {  // Body
-                            let hash = hash_string(asset);
                             if lower.contains("r_c") {
                                 if let Some((condition, _)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.ride_dress_model.is_some_and(|s| s.str_contains(asset))), false){
                                     let name = get_condition_label(&condition);
@@ -248,41 +248,64 @@ impl OutfitData {
                                 }
                             }
                             else if !lower.contains("t_c") && !hashes.body.contains_key(&hash){
-                                if let Some((condition, gender)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.dress_model.is_some_and(|s| s.str_contains(asset))), true){
-                                    let name = get_condition_label(&condition);
-                                    let o_hash = find_mode_1_body(AssetTableStaticFields::get_condition_index(condition.as_str()), gender).map(|obody|{ hash_string(obody) });
-                                    hashes.body.insert(hash, asset.clone());
+                                let mut added = false;
+                                let mut o_hash = None;
+                                let mut name = None;
+                                if let Some((condition, gender)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.dress_model.is_some_and(|s| s.to_string() == asset)), true)
+                                {
+                                    name = get_condition_label(&condition);
+                                    let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
+                                    o_hash = find_mode_1_body(cond_idx, gender).map(|obody| { hash_string(obody) });
                                     if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
-                                        new_list.add_engaged_body(name.unwrap(), asset.as_str(), gender == Gender::Female);
+                                        new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == Gender::Female);
+                                        added = true;
                                     }
                                     else if gender != Gender::None {
                                         let female = gender == Gender::Female;
-                                        if female { hashes.female_u.push(hash); } else { hashes.male_u.push(hash); }
-                                        if let Some(o_hash) = o_hash{
-                                            if female { hashes.female_ou.push((hash, o_hash)); }
-                                            else { hashes.male_ou.push((hash, o_hash)); }
+                                        if let Some(o_hash) = o_hash {
+                                            if female {
+                                                hashes.female_u.push(hash);
+                                                hashes.female_ou.push((hash, o_hash));
+                                            }
+                                            else {
+                                                hashes.male_u.push(hash);
+                                                hashes.male_ou.push((hash, o_hash));
+                                            }
                                         }
-                                        new_list.add(asset, female, name, 0);
-                                    }
-                                    else {
-                                        if male.iter().any(|&s| lower.contains(s)) {
-                                            hashes.male_u.push(hash);
-                                            if let Some(o_hash) = o_hash{ hashes.male_ou.push((hash, o_hash)); }
-                                            new_list.add(asset.as_str(),false, None::<String>, 0);
-                                        }
-                                        else if female.iter().any(|&s| lower.contains(s)) {
-                                            hashes.female_u.push(hash);
-                                            if let Some(o_hash) = o_hash{ hashes.female_ou.push((hash, o_hash)); }
-                                            new_list.add(asset.as_str(),true, None::<String>, 0);
-                                        }
-                                        else {
-                                            hashes.male_u.push(hash);
-                                            hashes.female_u.push(hash);
-                                            new_list.add(asset.as_str(),false, None::<String>, 0);
-                                            new_list.add(asset.as_str(),true, None::<String>, 0);
-                                        }
+                                        else { hashes.add_body(asset.as_str(), female); }
+                                        new_list.add(asset, female, name.clone(), 0);
+                                        added = true;
                                     }
                                 }
+                                if !added {
+                                    if male.iter().any(|&s| lower.contains(s)) {
+                                        if let Some(o_hash) = o_hash {
+                                            hashes.male_u.push(hash);
+                                            hashes.male_ou.push((hash, o_hash));
+                                        }
+                                        else { hashes.add_body(asset.as_str(), false); }
+                                        new_list.add(asset.as_str(),false, name.clone(), 0);
+                                    }
+                                    else if female.iter().any(|&s| lower.contains(s)) {
+                                        if let Some(o_hash) = o_hash {
+                                            hashes.female_u.push(hash);
+                                            hashes.female_ou.push((hash, o_hash));
+                                        }
+                                        else { hashes.add_body(asset.as_str(), true); }
+                                        new_list.add(asset.as_str(),true, name.clone(), 0);
+                                    }
+                                    else {
+                                        if let Some(o_hash) = o_hash {
+                                            hashes.male_ou.push((hash, o_hash));
+                                            hashes.female_ou.push((hash, o_hash));
+                                        }
+                                        new_list.add(asset.as_str(),false, name.clone(), 0);
+                                        new_list.add(asset.as_str(),true, name.clone(), 0);
+                                        hashes.male_u.push(hash);
+                                        hashes.female_u.push(hash);
+                                    }
+                                }
+                                hashes.body.insert(hash, asset.clone());
                             }
                             remove.push(i);
                         }
@@ -290,7 +313,11 @@ impl OutfitData {
                             if let Some((condition, gender)) = get_aid_condition(
                                 find_entries_with_model_field(2, asset, |entry, asset| entry.head_model.is_some_and(|s| s.str_contains(asset))), false,
                             ){
+                                let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 let name = get_asset_name(&condition, gender);
+                                if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|obody| { hash_string(obody) }) {
+                                    hashes.head_hair.insert(hash, o_hair);
+                                }
                                 hashes.add_head(asset.as_str());
                                 new_list.add(asset.as_str(), false, name, 0);
                                 remove.push(i);
@@ -309,6 +336,10 @@ impl OutfitData {
                             {
                                 remove.push(i);
                                 hashes.add_hair(asset.as_str(), None);
+                                let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
+                                if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) {
+                                    hashes.head_hair.insert(hash, o_hair);
+                                }
                                 let name = get_asset_name(&condition, gender);
                                 new_list.add(asset.as_str(), false, name, 0);
                             }
@@ -332,6 +363,10 @@ impl OutfitData {
                                 if kind == 3 {  // uAcc_spine2_HairXXX
                                     hashes.add_hair(asset.as_str(), None);
                                     let name = get_asset_name(&condition, gender);
+                                    let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
+                                    if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|obody| { hash_string(obody) }) {
+                                        hashes.head_hair.insert(hash, o_hair);
+                                    }
                                     new_list.add(asset.as_str(), false, name, 0);
                                     remove.push(i);
                                 }
@@ -396,7 +431,7 @@ impl OutfitData {
                     if !unit.is_hero() { data.apply(result, conditions.mode, dress_gender); }
                     else {
                         let mut body = if conditions.mode == 1 { "o" } else { "u" }.to_string();
-                        body += if dress_gender == Gender::Male { "B∂ody_Drg0AM_c003" }
+                        body += if dress_gender == Gender::Male { "Body_Drg0AM_c003" }
                         else { "Body_Drg0AF_c053"};
                         if conditions.mode == 2 { result.dress_model = body.into(); }
                         else { result.body_model = body.into(); }
