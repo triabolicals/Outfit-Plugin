@@ -23,18 +23,42 @@ pub fn find_aid_condition_prefix(entry: &AssetTable, prefix: &str, with_gender: 
             else { None }
         } else { Some(Gender::None) };
 
-    entry.condition_indexes.list.iter()
+    let condition = entry.condition_indexes.list.iter()
         .filter(|i| i.len() == 1)
-        .find_map(|l| entries.iter().find(|e| l[0] == e.value && e.key.is_some_and(|a|a.str_contains(prefix))))
-        .map(|s| s.key.unwrap().to_string())
-        .or_else(|| get_name_condition(entry)).zip(gender)
+        .find_map(|l| entries.iter().find(|e| l[0] == e.value && e.key.is_some_and(|a|a.to_string().starts_with(prefix))))
+        .map(|s| s.key.unwrap().to_string());
+
+    if gender.is_none() { condition.clone().as_ref().and_then(|c| condition.zip(get_gender_from_condition(c))) }
+    else { condition.zip(gender) }
+}
+pub fn get_gender_from_condition(condition: &String) -> Option<Gender> {
+    if condition.starts_with("GID_") {
+        GodData::get(condition).map(|v| if v.female == 1 { Gender::Female } else { Gender::Male })
+    }
+    else if condition.starts_with("PID") {
+        PersonData::get(condition).filter(|p| p.parent.index > 1 && p.flag.value & 128 == 0).map(|v| if v.gender == 2 { Gender::Female } else { Gender::Male })
+    }
+    else if condition.starts_with("MPID_") {
+        PersonData::get_list().unwrap().iter().find(|v| v.name.is_some_and(|v| v.to_string() == *condition) && v.gender > 0)
+            .map(|v| if v.gender == 2 { Gender::Female } else { Gender::Male })
+    }
+    else if condition.starts_with("AID_") {
+        PersonData::get_list().unwrap().iter().find(|v| v.aid.is_some_and(|v| v.to_string() == *condition) && v.gender > 0)
+            .map(|v| if v.gender == 2 { Gender::Female } else { Gender::Male })
+    }
+    else { None }
 }
 
 pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool,) -> Option<(String, Gender)> {
     let s: Vec<_> = asset_table_indexes.into_iter().flat_map(|v| AssetTable::try_index_get(v)).collect();
+    if let Some(s) = s.iter().find_map(|x| find_aid_condition_prefix(x, "EID_", with_gender)) {
+        return Some(s);
+    }
     for prefix in ["EID_", "AID_", "GID_", "MPID_", "PID_", "JID_"]{
         let s = s.iter().find_map(|x| find_aid_condition_prefix(x, prefix, with_gender));
-        if s.as_ref().is_some_and(|s| get_condition_label(&s.0).is_some()) { return s; }
+        if s.as_ref().is_some_and(|s| get_condition_label(&s.0).is_some()) {
+            return s;
+        }
     }
     None
 }
@@ -99,6 +123,10 @@ pub fn find_mode_1_body(condition_index: i32, gender: Gender) -> Option<String> 
         a.condition_indexes.has_condition_index(condition_index) && a.body_model.is_some() &&
             a.condition_indexes.has_condition_index(gender)
     })?.body_model.map(|v| v.to_string())
+}
+pub fn find_mode_1_hair(condition_index: i32) -> Option<String> {
+    let asset_table_sf = AssetTableStaticFields::get();
+    asset_table_sf.search_lists[1].iter().find(|a|{ a.condition_indexes.has_condition_index(condition_index) && a.head_model.is_some() })?.head_model.map(|v| v.to_string())
 }
 #[skyline::from_offset(0x1bb4fa0)]
 fn result_get_hash_code(this: &AssetTableResult, optional_method: OptionalMethod) -> i32;
