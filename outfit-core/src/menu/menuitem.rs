@@ -7,7 +7,7 @@ use unity::engine::ui::IsImage;
 use unity::prelude::*;
 use engage::game::GameColor;
 use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
-use engage::menu::menu_item::MenuItem;
+use engage::menu::menu_item::{MenuItem, MenuItemContent};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
 use super::{*, items::{CustomMenuItem, *}};
 
@@ -61,9 +61,7 @@ impl CustomAssetMenuItem {
 		vtable[26].method_ptr = Self::custom_call as _;
 		accessory_klass
 	}
-	pub fn get_custom_class() -> &'static Il2CppClass {
-		CUSTOM_ASSET_MENU_ITEM.get_or_init(|| Self::create_class() )
-	}
+	pub fn get_custom_class() -> &'static Il2CppClass { CUSTOM_ASSET_MENU_ITEM.get_or_init(|| Self::create_class() ) }
 	pub fn new_menu2(menu_type: CustomAssetMenuKind) -> &'static mut CustomAssetMenuItem {
 		let item = Self::new(0, 0);
 		item.menu_kind = Menu(menu_type);
@@ -168,6 +166,7 @@ impl CustomAssetMenuItem {
 	}
 	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
 		this.on_select_base();
+		if this.menu_kind == UnitInventorySubMenuItem { return; }
 		this.menu_kind.on_select(this);
 		this.set_color();
 	}
@@ -191,6 +190,10 @@ impl CustomAssetMenuItem {
 		self.set_color();
 	}
 	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+		if this.menu_kind == UnitInventorySubMenuItem {
+			this.on_select_base();
+			return;
+		}
 		let original = this.original;
 		if let Some(game_color) = GameColor::get() {
 			if original {
@@ -253,8 +256,11 @@ impl CustomAssetMenuItem {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
 	}
-	pub fn on_build(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) { this.set_color(); }
+	pub fn on_build(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+		if this.menu_kind == UnitInventorySubMenuItem { this.set_color(); }
+	}
 	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+		if this.menu_kind == UnitInventorySubMenuItem { return; }
 		let custom_item = unsafe { std::mem::transmute::<&CustomAssetMenuItem, &AccessoryMenuItem>(this) };
 		custom_item.on_build_menu_item_content_();
 		let kind = this.menu_kind.clone();
