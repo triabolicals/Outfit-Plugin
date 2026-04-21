@@ -296,6 +296,7 @@ pub extern "C" fn create_accessory_unit_select(this: &mut HubAccessoryShopSequen
                 .instantiate_as::<ShopUnitSelectMenuItem2>().unwrap();
             item.ctor_base();
             item.god_hash = v.hash;
+            UnitAssetMenuData::get_by_person_data(v.hash, true);
             menu.add_item(item);
         });
         menu.proc.desc_index = 0;
