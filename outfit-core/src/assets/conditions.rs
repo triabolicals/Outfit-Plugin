@@ -31,9 +31,7 @@ impl RandomDressMode {
                 _ => RandomDressMode::Off,
             }
         }
-        else {
-            RandomDressMode::Off
-        }
+        else { RandomDressMode::Off }
     }
     pub fn get_random(&self, unit: &Unit, base_seed: i32) -> Option<&'static Random> {
         let god =

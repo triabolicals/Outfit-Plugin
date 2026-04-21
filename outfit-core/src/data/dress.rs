@@ -4,7 +4,7 @@ use engage::gamedata::{Gamedata, GodData, JobData, PersonData, assettable::*};
 use engage::gamedata::item::ItemData;
 use engage::unit::{Gender, Unit};
 use engage::mess::Mess;
-use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, OutfitLists, ACC_LOC};
+use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC};
 use crate::data::util::{parse_arg_from_name, AssetTableIndexes};
 
 pub struct DressData {
@@ -40,7 +40,7 @@ impl DressData {
                     }
                 }
             });
-        let mut gender = Il2CppArray::new_from_element_class(Il2CppString::class(), 1).unwrap();
+        let gender = Il2CppArray::new_from_element_class(Il2CppString::class(), 1).unwrap();
         let conditions = ["", "男性", "女装"];
 
         PersonData::get_list().unwrap().iter().filter(|x| x.gender != 0 && x.get_job().is_some() && x.name.is_some())
@@ -395,7 +395,6 @@ impl JobTransformData {
 
             if !asset_table.mode_2.is_empty() { is_transform = true; }
         }
-        // let job_name = Mess::get_name(job_data.jid);
         if is_transform {
             if asset_table.mode_2.is_empty() {
                 asset_table.mode_2.extend(
@@ -416,12 +415,10 @@ impl JobTransformData {
             );
         }
         else if job_data.get_weapon_mask2().value == (1 << 9) && job_data.mask_skills.find_sid("SID_弾丸装備").is_none() {  // Monster Class
-           //  println!("Monster Class Entries: {}", job_name);
             asset_table.mode_2.extend(
                 sf.search_lists[2].iter()
                     .filter(|x| x.condition_indexes.has_condition_index(job_condition) && Self::is_monster_entry(x))
                     .map(|entry|{
-                        // println!("{} Entry #{}: [Mode: {}]", job_name, entry.parent.index, entry.mode);
                         entry.parent.index
                     })
             );
@@ -429,13 +426,11 @@ impl JobTransformData {
                 sf.search_lists[1].iter()
                     .filter(|x| x.condition_indexes.has_condition_index(job_condition) && Self::is_monster_entry(x))
                     .map(|entry|{
-                        // println!("{} Entry #{}: [Mode: {}]", job_name, entry.parent.index, entry.mode);
                         entry.parent.index
                     })
             );
         }
         if !asset_table.is_empty() {
-            // println!("Added Monster Class: {}, transform: {}", job_name, is_transform);
             Some(Self{ is_transform, hash, asset_table, item: None, }) }
         else { None }
 

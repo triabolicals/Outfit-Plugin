@@ -24,7 +24,6 @@ pub fn sortie_menu_x_call_edit() {
         .and_then(|s| Il2CppClass::from_il2cpptype(s.get_type()).ok())
     {
         k.get_virtual_method_mut("XCall").map(|x| x.method_ptr = sortie_top_menu_inventory_y_call as _);
-       // k.get_virtual_method_mut("PlusCall").map(|x| x.method_ptr = debug_plus_call as _);
     }
     if let Some(k) = Il2CppClass::from_name("App", "GmapMenuSequence").ok()
         .and_then(|k| k.get_nested_types().iter().find(|c| c.get_name() == "GmapMenu".to_string()))
@@ -46,15 +45,3 @@ pub fn sortie_top_menu_inventory_y_call(this: &mut BasicMenuItem, _method_info: 
         BasicMenuResult::se_decide().with_close_this(true)
     }
 }
-/*
-pub fn debug_plus_call(_this: &mut BasicMenuItem, _method_info: OptionalMethod) -> BasicMenuResult {
-    if let Some(skill) = engage::gamedata::skill::SkillData::try_index_get_mut(0) {
-        for x in 1..10 { skill.weapon_level.levels[x] = 5; }
-        skill.weapon_level_mask.value = 1023;
-        skill.sync_skills.add_sid("SID_竜石装備",SkillDataCategorys::None, 0);
-        skill.sync_skills.add_sid("SID_弾丸装備",SkillDataCategorys::None, 0);
-    }
-    BasicMenuResult::se_decide()
-}
-
- */

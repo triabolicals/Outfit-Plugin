@@ -3,7 +3,6 @@ use unity::prelude::Il2CppString;
 use crate::menu::icons::CustomMenuIcon;
 use crate::{MenuText, MenuTextCommand, UnitAssetMenuData};
 
-// pub const PROFILE_MID: [&str; 4] = ["MID_MENU_ENGAGE_COMMAND", "MID_SAVEDATA_SEQ_HUB", "MID_SAVEDATA_SEQ_KIZUNA", "MID_TUT_CATEGORY_TITLE_Battle"];
 #[derive(PartialEq, Copy, Clone)]
 pub enum Profile {
     Battle,

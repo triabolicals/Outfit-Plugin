@@ -270,7 +270,6 @@ impl MyCharacterBuilderObject {
     pub fn build_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: OptionalMethod) {
         if let Some(go) = this.builder.get_game_object().filter(|g| !g.is_null() ){
             go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|tr| {
-                // let mesh = tr.get_name().to_string();
                 if let Some(parent) = tr.get_transform().get_parent() {
                     if parent.get_name().to_string() == "meshGP" {
                         if let Some(go) = tr.get_game_object() { go.destroy(); }
@@ -473,7 +472,10 @@ pub extern "C" fn create_accessory_change_menu(this: &mut HubAccessoryShopSequen
     crate::shop::change_root::edit_accessory_root_change_unit(this.change_root.change_root_proc);
     let data = UnitAssetMenuData::get();
     if data.god_mode {
-        let god_name = GodData::try_get_hash(data.preview.person).map(|v| format!("{} ({})", Mess::get(v.mid), Mess::get("MID_H_INFO_Param_Correction_God")).into()).unwrap_or(Mess::get("MPID_Unknown"));
+        let god_name = GodData::try_get_hash(data.preview.person)
+            .map(|v| format!("{} ({})", Mess::get(v.mid), Mess::get("MID_H_INFO_Param_Correction_God")).into())
+            .unwrap_or(Mess::get("MPID_Unknown"));
+
         this.change_root.unit_name.set_text(god_name, true);
     }
     EquipmentBoxMode::CurrentProfile.change_equipment_box(this.change_root.equipment_menu);

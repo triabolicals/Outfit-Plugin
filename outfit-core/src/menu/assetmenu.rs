@@ -9,28 +9,21 @@ use engage::{
     unitinfo::*,
     manager::BackgroundManager,
     proc::{Bindable, ProcInst, ProcInstFields},
-    gamedata::WeaponMask,
+    gamedata::{assettable::AssetTableResult, WeaponMask},
     menu::{
         menu_item::accessory::*,
         content::{BasicMenuContent, AccessoryShopChangeMenuContent, AccessoryEquipmentInfo, AccessoryDetailInfoWindow},
         BasicMenuResult, BasicMenuSelect, menus::accessory::change::*
     },
     unityengine::GameObject,
-    sortie::SortieSequenceUnitSelect,
+    sortie::{SortieUtil, SortieSequenceUnitSelect},
     mess::Mess,
     pad::NpadButton,
     combat::Kaneko,
     titlebar::KeyHelpButton,
     tmpro::TextMeshProUGUI,
 };
-use engage::combat::CharacterAppearance;
-use engage::gamedata::assettable::AssetTableResult;
-use engage::sortie::SortieUtil;
-use unity::{
-    system::List,
-    il2cpp::object::Array,
-    engine::Vector2,
-};
+use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
 use crate::menu::items::{CustomAssetMenuKind, MainShop};
 
 pub static CUSTOM_ASSET_MENU: OnceLock<&'static mut Il2CppClass> = OnceLock::new();

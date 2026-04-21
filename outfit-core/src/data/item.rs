@@ -272,7 +272,6 @@ impl AssetGroup {
                 if (num >= 510 && num < 517) || (num >= 530 && num < 538) || (num >= 560 && num < 567) || (num >= 580 && num < 588) {
                     dark = Some((num + 7).to_string());
                 }
-                // println!("Suffix {}: {} ({}) Flag: {}", label, current_suffix, dark.is_some(), f);
                 flag = f;
                 try_search_and_add(&mut list, f, asset_list, hashes, "uHead", None, Some(current_suffix.as_str()));
                 if !line.contains("uHair") { try_search_and_add(&mut list, f, asset_list, hashes, "uHair", None, Some(current_suffix.replace("c", "h").as_str())); }
@@ -352,7 +351,7 @@ impl AssetGroup {
     pub fn new_aid_group(line: &'static str, asset_list: &mut Vec<String>, hashes: &mut OutfitHashes) -> Option<Self> {
         let mut spilt = line.split_whitespace();
         let mut list = vec![];
-        let mut label = spilt.next()?;
+        let label = spilt.next()?;
         let body = spilt.next()?;
         let flag = 1 << 30;
         for x in [("M", 1), ("F", 2)]{

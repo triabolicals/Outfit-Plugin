@@ -1,19 +1,18 @@
 use std::sync::OnceLock;
 use engage::{
     combat::CharacterAppearance, gameuserdata::GameUserData,
-    god::GodPool, menu::{BasicMenu, BasicMenuResult}, mess::Mess, unit::{Unit,},
-    proc::{Bindable}, spriteatlasmanager::FaceThumbnail, gamedata::{Gamedata, GodData, assettable::AssetTableResult},
+    god::GodPool,
+    unityengine::Component,
+    menu::{
+        menus::shop::shopunitselect::*, 
+        menu_item::{MenuItem, MenuItemContent}, BasicMenu, BasicMenuResult
+    },
+    util::get_singleton_proc_instance,
+    mess::Mess, unit::{Unit, UnitFor, UnitPool},
+    proc::Bindable, spriteatlasmanager::FaceThumbnail, gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
 };
-use engage::gamedata::PersonData;
-use engage::menu::menu_item::{MenuItem, MenuItemContent};
-use engage::menu::menus::shop::shopunitselect::*;
-use engage::unit::{UnitFor, UnitPool};
-use engage::unityengine::Component;
-use engage::util::get_singleton_proc_instance;
-use unity::engine::Color;
-use unity::engine::ui::IsImage;
-use unity::prelude::*;
+use unity::{prelude::*, engine::{ui::IsImage, Color}};
 use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData};
 use crate::room::ReloadType;
 use crate::shop::room::hub_room_set_by_result;
