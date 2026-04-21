@@ -19,9 +19,13 @@ use engage::{
     sortie::SortieSequenceUnitSelect,
     mess::Mess,
     pad::NpadButton,
-
+    combat::Kaneko,
+    titlebar::KeyHelpButton,
+    tmpro::TextMeshProUGUI,
 };
-use engage::titlebar::KeyHelpButton;
+use engage::combat::CharacterAppearance;
+use engage::gamedata::assettable::AssetTableResult;
+use engage::sortie::SortieUtil;
 use unity::{
     system::List,
     il2cpp::object::Array,
@@ -141,10 +145,11 @@ impl CustomAssetMenu {
     pub fn create_unit_info_bind<B: Bindable>(proc: &B, unit: &Unit) {
         let menu_data = UnitAssetMenuData::get();
         if let Some(content1) = Self::get_menu_content(false){
+            adjust_menu_size(content1);
             if let Some(content) = content1.menu_object.get_component_by_type::<AccessoryShopChangeMenuContent>() {
                 let content_trans = content.get_transform().get_position();
-                let x_max = content_trans.x - 260.0;
-                let mut x_min = 470.0;
+                let x_max = content_trans.x - 280.0;
+                let mut x_min = 400.0;
                 menu_data.mode = MenuMode::UnitInfo;
                 menu_data.is_preview = true;
                 menu_data.is_shop_combat = GameUserData::get_sequence() == 3;
@@ -172,7 +177,7 @@ impl CustomAssetMenu {
                 menu.create_bind(proc, descs, "OutfitUnitMenu");
                 if let Some(go) = GameObject::find("EquipmentAcc"){
                     let trans = go.get_transform().get_position();
-                    x_min = trans.x + 470.0;
+                    x_min = trans.x + 400.0;
                     if let Some(equipment) = go.get_component_by_type::<AccessoryEquipmentInfo>() {
                         equipment.build(unit);
                     }
@@ -265,7 +270,8 @@ impl CustomAssetMenu {
                 if closed { obj.play("Open"); }
                 else {  obj.play("Close"); }
                 if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) {
-                    if closed { equip.open(); } else { equip.close(); }
+                    if closed { equip.open(); }
+                    else { equip.close(); }
                 }
                 if let Some(detail_box) = GameObject::find("WdwAccHelp")
                     .and_then(|go| go.get_component_by_type::<AccessoryDetailInfoWindow>())
@@ -312,7 +318,17 @@ impl CustomAssetMenu {
                 if let Some(sortie) = SortieSequenceUnitSelect::get_instance(){
                     sortie.disp_all();
                     sortie.window.unit_list_root.set_active(true);
-                    UnitInfo::set_unit(UnitInfoSide::Left, Some(SortieSelectionUnitManager::get_unit()), false, false, false, None);
+                    let unit = SortieSelectionUnitManager::get_unit();
+                    let current_select = sortie.select_menu.get_select_index();
+
+                    sortie.select_menu.set_select_index_from_unit(unit);
+                    let new_select = sortie.select_menu.get_select_index();
+                    if new_select != current_select {
+                        if let Some(item) = sortie.select_menu.get_item(current_select) { item.on_deselect(); }
+                    }
+                    sortie.select_menu.adjust_scroll_index();
+                    sortie.select_menu.scroll_instant();
+                    UnitInfo::set_unit(UnitInfoSide::Left, Some(unit), false, false, false, None);
                 }
                 BackgroundManager::unbind();
             }
@@ -389,34 +405,51 @@ impl CustomAssetMenu {
     }
     fn key_base(this: &mut CustomAssetMenu, trigger: bool, right_key: bool) {
         if trigger {
-            let menu = this.menu_kind;
-            match menu {
-                ScaleMenu|RGBAMenu(_)|ProfileSelection => {}
-                _ => {
-                    let new_menu = if right_key { menu.get_right() } else { menu.get_left() };
-                    if let Some(new_menu) = new_menu {
-                        this.save_current_select();
-                        this.full_menu_item_list.clear();
-                        new_menu.create_menu_items(this);
-                        this.menu_kind = new_menu;
-                        this.rebuild_menu();
-                        GameSound::post_event("Category_Change", None);
-                    }
-                }
+            let new_menu = if right_key { this.menu_kind.get_right() } else { this.menu_kind.get_left() };
+            if let Some(new_menu) = new_menu {
+                this.save_current_select();
+                this.full_menu_item_list.clear();
+                new_menu.create_menu_items(this);
+                this.menu_kind = new_menu;
+                this.rebuild_menu();
+                GameSound::post_event("Category_Change", None);
             }
         }
+    }
+    fn lr_base(this: &mut CustomAssetMenu, right: bool) {
+        if let Some(select) = SortieSelectionUnitManager::get_instance() {
+            let unit = SortieSelectionUnitManager::get_unit();
+            let next = if right { SortieUtil::get_next_unit_loop(unit) } else { SortieUtil::get_prev_unit_loop(unit) };
+            UnitAssetMenuData::commit();
+            UnitInfo::set_unit(UnitInfoSide::Left, Some(next), false, false, false, None);
+            SortieSelectionUnitManager::set_unit(select, next);
+            UnitAssetMenuData::set_unit(next);
+            this.rebuild_menu();
+            let sequence = GameUserData::get_sequence();
+            let result = if (1 << sequence) & 76 != 0 { AssetTableResult::get_for_unit_info(next) }
+            else { AssetTableResult::get_for_accessory(unit) };
+            result.left_hand = "null".into();
+            result.right_hand = "null".into();
+            result.body_anim = result.hub_anims;
+            hub_room_set_by_result(Some(result), ReloadType::All);
+            EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets).update();
+            if let Some(char_name) = GameObject::find("CharacterName").and_then(|v| v.get_component_in_children::<TextMeshProUGUI>(true)){
+                char_name.set_text(next.get_name(), true);
+            }
+            GameSound::post_event("Chara_Change", None);
+        }
+    }
+    fn can_facial(&self) -> bool {
+        if self.menu_kind.can_facial() {
+            self.full_menu_item_list.get(self.select_index as usize).is_some_and(|v| v.menu_kind.can_facial())
+        }
+        else { false }
     }
     fn tick_input(this: &mut CustomAssetMenu, optional_method: OptionalMethod) -> bool {
         let left = Pad::is_trigger(NpadButton::new().with_left(true));
         let right = Pad::is_trigger(NpadButton::new().with_right(true));
         if (left || right) && left != right {
-            let menu = this.menu_kind;
-            let can_change_facial =
-                match menu {
-                    ScaleMenu | RGBAMenu(_) | ProfileSelection => { false }
-                    _ => { menu.get_right().is_none() && menu.get_left().is_none() }
-                };
-            if can_change_facial || this.disable {
+            if this.can_facial() || this.disable {
                 hub_room_set_by_result(None, ReloadType::Facial(right));
                 GameSound::post_event("Category_Change", None);
             }
@@ -447,6 +480,11 @@ impl CustomAssetMenu {
                 return true;
             }
             if stick { return true; }
+            if this.menu_kind == MainShop && UnitAssetMenuData::is_unit_info() {
+                let l = Pad::is_trigger(NpadButton::new().with_l(true));
+                let r = Pad::is_trigger(NpadButton::new().with_r(true));
+                if (l || r) && l != r { Self::lr_base(this, r); }
+            }
         }
         this.tick_input_base()
     }
@@ -503,6 +541,49 @@ fn model_camera_control() -> bool {
         _ => {}
     }
     rl_stick
+}
+fn adjust_menu_size(content: &AccessoryShopChangeRoot) {
+    let transform = content.get_transform();
+    if let Some(t) = Kaneko::find_in_children(transform, "WdwAccChange".into()){
+        if let Some(rect) = Kaneko::find_in_children(t, "Content".into()) {
+            for x in 0..13 {
+                if let Some(acc) = Kaneko::find_in_children(rect, format!("Acc{}", x).into()) {
+                    let acc_rect = acc.to_rect_transform();
+                    if let Some(icon) = acc_rect.get_child(1) {
+                        icon.translate_local(-10.0, 0.0, 0.0);
+                    }
+                    if let Some(name) = acc_rect.get_child(2) {
+                        name.translate_local(-10.0, 0.0, 0.0);
+                        name.change_size(10.0, 0.0);
+                    }
+                    acc.get_components_in_children_gen::<TextMeshProUGUI>(true).iter_mut().for_each(|t|{
+                        t.m_min_font_size = 22.0;
+                        t.m_max_font_size = 24.0;
+                        t.m_font_size_max = 24.0;
+                        t.m_font_size_min = 22.0;
+                    });
+                }
+            }
+        }
+    }
+    if let Some(t) = Kaneko::find_in_children(transform, "EquipmentAcc".into()) {
+        let rect = t.to_rect_transform();
+        rect.change_size(60.0, 0.0);
+        for x in 0..6 {
+            if let Some(acc) = Kaneko::find_in_children(transform, format!("Acc{}", x).into()) {
+                let rect = acc.to_rect_transform();
+                rect.change_size(60.0, 0.0);
+
+                if let Some(name) = rect.get_child(2) { name.change_size(60.0, 0.0); }
+                acc.get_components_in_children_gen::<TextMeshProUGUI>(true).iter_mut().for_each(|t|{
+                    t.m_min_font_size = 22.0;
+                    t.m_max_font_size = 24.0;
+                    t.m_font_size_max = 24.0;
+                    t.m_font_size_min = 22.0;
+                });
+            }
+        }
+    }
 }
 
 fn unit_info_char_mask_setup(mask: &mut UnitInfoCharaImageMaskOffset, revert: bool) {
