@@ -30,6 +30,7 @@ bitflags! {
         const Shield = 1 << 17;
         const Hood = 1 << 18;
         const Playable = 1 << 20;
+        const AccessoryShop = 1 << 30;
         const NoPhotograph = 1 << 31;
     }
 }
@@ -161,7 +162,10 @@ impl AssetItem {
         else { None }
     }
     pub fn get_name(&self, mid: impl AsRef<str>) -> &'static Il2CppString {
-        let mut s = Mess::get(mid.as_ref()).to_string();
+        let mut s =
+        if self.flags.contains(AssetItemFlags::AccessoryShop) { Mess::get(format!("MAID_{}", mid.as_ref())).to_string() }
+        else { Mess::get(mid.as_ref()).to_string() };
+
         if s.len() < 1 { s = mid.as_ref().to_string(); }
         s = capitalize_first(s.as_str());
         self.flags.modify_name(&s, self.count)
@@ -348,22 +352,23 @@ impl AssetGroup {
     pub fn new_aid_group(line: &'static str, asset_list: &mut Vec<String>, hashes: &mut OutfitHashes) -> Option<Self> {
         let mut spilt = line.split_whitespace();
         let mut list = vec![];
-        let label = spilt.next()?;
+        let mut label = spilt.next()?;
         let body = spilt.next()?;
+        let flag = 1 << 30;
         for x in [("M", 1), ("F", 2)]{
             let search = format!("{}{}", body, x.0);
             loop {
-                if !try_search_and_add(&mut list, x.1, asset_list, hashes, "uAcc", Some(search.as_str()), None) { break; }
+                if !try_search_and_add(&mut list, x.1|flag, asset_list, hashes, "uAcc", Some(search.as_str()), None) { break; }
             }
             loop {
-                if !try_search_and_add(&mut list, x.1, asset_list, hashes, "uBody", Some(search.as_str()), None) { break; }
+                if !try_search_and_add(&mut list, x.1|flag, asset_list, hashes, "uBody", Some(search.as_str()), None) { break; }
             }
         }
         loop {
-            if !try_search_and_add(&mut list, 0, asset_list, hashes, "uAcc", Some(body), None) { break; }
+            if !try_search_and_add(&mut list, flag, asset_list, hashes, "uAcc", Some(body), None) { break; }
         }
         loop {
-            if !try_search_and_add(&mut list, 0, asset_list, hashes, "uAcc", Some(body), None) { break; }
+            if !try_search_and_add(&mut list, flag, asset_list, hashes, "uAcc", Some(body), None) { break; }
         }
         if list.is_empty() { None } else { Some(Self { label, list }) }
     }
