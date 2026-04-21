@@ -8,6 +8,7 @@ pub use engage::{
 	unityengine::*,
 	util::{get_instance, try_get_instance},
 };
+use engage::proc::ProcInst;
 use unity::prelude::*;
 pub use crate::unitasset::*;
 pub use crate::localize::{MenuText, MenuTextCommand};
@@ -45,6 +46,17 @@ pub fn unit_item_y_call(this: &mut BasicMenuItem, _optional_method: OptionalMeth
 	if GameUserData::get_sequence() != 3 { CustomAssetMenu::create_unit_info_bind(this.menu, SortieSelectionUnitManager::get_unit()); }
 	else { CustomAssetMenu::create_unit_info_bind(this.menu, engage::map::mind::MapMind::get_unit().unwrap()); }
 	BasicMenuResult::close_decide()
+}
+
+pub fn add_sub_unit_menu_item(proc: &mut ProcInst) {
+	let menu = proc.cast_mut::<BasicMenu<CustomAssetMenuItem>>();
+	menu.full_menu_item_list.add(CustomAssetMenuItem::new_type(UnitInventorySubMenuItem));
+	let len = menu.full_menu_item_list.len();
+	menu.set_show_row_num(len as i32 + 1);
+	menu.reserved_show_row_num = len as i32;
+	menu.show_row_num = len as i32;
+	menu.proc.desc_index = 0;
+	menu.status_field.value |= 32;
 }
 
 pub fn change_selected_profile() -> bool {
