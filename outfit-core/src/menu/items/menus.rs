@@ -39,6 +39,12 @@ pub enum CustomAssetMenuKind {
     ItemList,
 }
 impl CustomAssetMenuKind {
+    pub fn can_facial(&self) -> bool {
+        match self {
+            ScaleMenu | RGBAMenu(_) | ProfileSelection=> { false }
+            _ => { self.get_right().is_none() && self.get_left().is_none() }
+        }
+    }
     pub fn to_index(&self) -> i32 {
         match self {
             MainShop => 0,
