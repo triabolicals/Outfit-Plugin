@@ -103,7 +103,7 @@ impl OutfitLists {
         let sola_hash = hashes.add_acc("uBody_Msc0AT_c000", Some(3));
         self.other.push(
             OtherAssetItem{
-                label: "MID_Sola".to_string(), is_mess: true,female: false,
+                label: "MPID_Sola".to_string(), is_mess: true,female: false,
                 asset: AssetItem { hash: sola_hash, count: 0, kind: AssetType::Acc(3), flags: AssetItemFlags::empty(), },
             }
         );
@@ -188,6 +188,17 @@ impl OutfitLists {
             }
         }
         if other {
+            let gender = if female { AssetItemFlags::Female } else { AssetItemFlags::Male };
+            self.aids.iter()
+                .for_each(|char| {
+                    char.list.iter()
+                        .filter(|a|
+                            a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph)))
+                            && (gender_restrict && a.flags.contains(gender) || !gender_restrict)
+                        )
+                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, char.label)); });
+                });
+
             self.other.iter()
                 .filter(|x|{
                     ((gender_restrict && (x.female == female)) || !gender_restrict) &&
