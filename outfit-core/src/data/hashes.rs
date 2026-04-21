@@ -106,33 +106,36 @@ impl OutfitHashes {
         }
         hashcode
     }
+    pub fn try_add_body_pair(&mut self, ubody_hash: i32, obody_hash: i32, female: bool) -> bool {
+        if self.o_body.contains_key(&obody_hash) {
+            if female { self.female_ou.push((ubody_hash, obody_hash )); }
+            else { self.male_ou.push((ubody_hash, obody_hash )); }
+            true
+        }
+        else { false }
+    }
     pub fn add_body(&mut self, asset: impl Into<&'static Il2CppString>, is_female: bool) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         if self.body.contains_key(&hashcode) { return hashcode }
         let str = asset.to_string();
         self.body.insert(hashcode, str.clone());
+        if is_female { self.female_u.push(hashcode); }
+        else { self.male_u.push(hashcode); }
         let spilt = str.split("_").collect::<Vec<&str>>();
         if spilt.len() > 2 {
-            let obody = format!("oBody_{}_{}", spilt[1], spilt[2]);
-            if let Some(obody_hash) = self.o_body.iter().find(|x| *x.1 == obody)
-                .or_else(|| self.o_body.iter().find(|x| x.1.contains(spilt[1]) && x.1.contains("c000")))
-                .or_else(|| self.o_body.iter().find(|x| x.1.contains(spilt[1])))
-                .map(|x| *x.0)
-            {
-                if is_female { self.female_ou.push((hashcode, obody_hash)); }
-                else { self.male_ou.push((hashcode, obody_hash)); }
+            let mut obody = format!("oBody_{}_{}", spilt[1], spilt[2]);
+            if self.try_add_body_pair(hashcode, hash_string(&obody), is_female) { return hashcode; }
+            else if let Some(v) = self.o_body.iter().find(|x| obody.contains(x.1.as_str())) {
+                self.try_add_body_pair(hashcode, *v.0, is_female);
             }
-            else if spilt[1].chars().position(|c| c.is_numeric()).is_some_and(|x| x != 3) {
-                let sub = &spilt[1][0..4];
-                let gender = if is_female { "F_c" } else { "M_c" };
-                if let Some(obody_hash) = self.o_body.iter().find(|x| x.1.contains(sub) && x.1.contains(gender)).map(|x| *x.0) {
-                    if is_female { self.female_ou.push((hashcode, obody_hash)); }
-                    else { self.male_ou.push((hashcode, obody_hash)); }
-                }
+            else if let Some(v) = self.o_body.iter().find(|x| x.1.contains(spilt[1])){
+                self.try_add_body_pair(hashcode, *v.0, is_female);
             }
-            if is_female { self.female_u.push(hashcode); }
-            else { self.male_u.push(hashcode); }
+            else {
+                obody = format!("oBody_{}_c000", spilt[1]);
+                self.try_add_body_pair(hashcode, hash_string(&obody), is_female);
+            }
         }
         hashcode
     }
@@ -145,7 +148,7 @@ impl OutfitHashes {
         if spilt.len() > 1 {
             let ohair = format!("oHair_h{}", spilt[1]);
             if let Some(ohair_hash) = self.o_hair.iter().find(|x| *x.1 == ohair)
-                .or_else(|| self.o_hair.iter().find(|x| x.1.contains(spilt[1])))
+                .or_else(|| self.o_hair.iter().find(|x| ohair.contains(x.1.as_str())))
                 .map(|x| *x.0){
                 self.head_hair.insert( hashcode, ohair_hash);
             }
@@ -201,12 +204,8 @@ impl OutfitHashes {
         let spilt = str.split("_").collect::<Vec<&str>>();
         if spilt.len() > 2 {
             let obody = format!("oBody_{}_{}", spilt[1], spilt[2]);
-            if let Some(obody_hash) = self.o_body.iter().find(|x| *x.1 == obody)
-                .or_else(|| self.o_body.iter().find(|x| x.1.contains(spilt[1])))
-                .map(|x| *x.0)
-            {
-                self.mount_ou.push((hashcode, obody_hash));
-            }
+            let hash = hash_string(&obody);
+            if self.o_body.contains_key(&hash) { self.mount_ou.push((hashcode, hash)); }
         }
         hashcode
     }
