@@ -303,25 +303,30 @@ impl CustomMenuItem for AssetType {
             match self {
                 Self::Body => {
                     let mode1 = db.hashes.get_obody(menu_item.hash).unwrap_or(Mess::get_item_none());
-                    if UnitAssetMenuData::get().god_mode { format!("Combat Model: {}\nMap Body Model: {}",mode2, mode1).into() }
+                    if UnitAssetMenuData::get().god_mode { format!("Combat: {}\nMap: {}",mode2, mode1).into() }
                     else {
-                        format!("Combat Model: {} / Map Body Model: {}\n{}Set for break [Experimental: {}].",
-                                mode2, mode1, Mess::create_sprite_tag_str(2, "X"),
-                                MenuTextCommand::on_off( UnitAssetMenuData::get_flag() & 32 != 0 ) ).into()
+                        format!("Combat: {} / Map: {}\n{}Set for break [Experimental: {}].",
+                            mode2, mode1, Mess::create_sprite_tag_str(2, "X"),
+                            MenuTextCommand::on_off( UnitAssetMenuData::get_flag() & 32 != 0 ) ).into()
                     }
-
                 }
-                Self::Rig => format!("Combat Body Model Rig: {}", mode2).into(),
-                Self::Head => format!("Combat Head Model: {}", mode2).into(),
+                Self::Rig => format!("Combat Rig: {}", mode2).into(),
+                Self::Head => format!("Combat Head: {}", mode2).into(),
                 Self::Hair => {
                     let mode1 = db.hashes.get_ohair(menu_item.hash).unwrap_or(Mess::get_item_none());
-                    format!("Combat Head Model: {}\nMap Head Model: {}", mode2, mode1).into()
+                    format!("Combat: {}\nMap: {}", mode2, mode1).into()
                 }
                 Self::Mount(_) => {
                     let mode1 = db.hashes.get_mount_obody(menu_item.hash).unwrap_or(Mess::get_item_none());
-                    format!("Combat Ride Dress Model: {}\nMap Ride Model: {}", mode2, mode1).into()
+                    format!("Combat: {}\nMap: {}", mode2, mode1).into()
                 }
-                Self::AOC(_) => format!("{}\nAnimation Set: {}", help, mode2).into(),
+                Self::AOC(_) => {
+                    if !UnitAssetMenuData::get().god_mode && UnitAssetMenuData::is_unit_info() {
+                        let text = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
+                        format!("{}\nSet: {}. {}", help, mode2, MenuTextCommand::Minus.insert_right(text)).into()
+                    }
+                    else { format!("{}\nAnimation Set: {}", help, mode2).into() }
+                },
                 Self::Acc(_) => format!("{}\nAsset: {}", help, mode2).into(),
                 Self::Voice => format!("Voice Set: {}", mode2).into(),
                 _ => { "ColorPreset".into() }
@@ -413,10 +418,10 @@ impl CustomMenuItem for AssetType {
         }
         menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{
             match x.menu_kind {
-                Asset(ty) => {
-                    let current = UnitAssetMenuData::get_current_unit_hash(ty);
-                    let decided = current == x.hash;
+                Asset(_) => {
+                    let decided = hash == x.hash;
                     x.set_decided(decided);
+                    x.rebuild_text();
                 }
                 _ => {}
             }
