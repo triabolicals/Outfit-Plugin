@@ -55,6 +55,8 @@ impl DressData {
                             result_hashes.insert(hash);
                             person.generic = v.belong.is_some();
                             person.index = v.parent.index;
+                            if x > 0 { person.is_female = x == 2; }
+                            else { person.generic = v.belong.is_some(); }
                             person.count = if let Some(count) = mpid_count.get_mut(&person.mpid) {
                                 *count += 1;
                                 *count
