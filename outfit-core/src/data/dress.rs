@@ -53,7 +53,6 @@ impl DressData {
                         let hash = person.calc_hash();
                         if !result_hashes.contains(&hash) {
                             result_hashes.insert(hash);
-                            person.generic = v.belong.is_some();
                             person.index = v.parent.index;
                             if x > 0 { person.is_female = x == 2; }
                             else { person.generic = v.belong.is_some(); }
