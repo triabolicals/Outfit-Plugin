@@ -172,7 +172,8 @@ impl DressData {
         self.get_personal_dress_by_person(unit.person, is_female)
     }
     pub fn get_personal_dress_by_person(&self, person: &PersonData, female: bool) -> Option<&PersonalDressData> {
-        self.personal.iter().find(|x| x.hash == person.parent.hash)
+        let is_lueur = person.parent.index == 1 || person.flag.value & 128 != 0;
+        self.personal.iter().find(|x| x.hash == person.parent.hash && !x.generic && ((is_lueur && female == x.is_female) || (!is_lueur)))
             .or_else(||
                 person.name.map(|m| m.to_string())
                     .and_then(|name|self.personal.iter().find(|x| !x.generic && x.mpid == name && female == x.is_female))
