@@ -1,4 +1,3 @@
-use engage::gamedata::item::ItemDataRodTypes::Basic;
 use engage::mess::Mess;
 use engage::pad::{NpadButton, Pad};
 use engage::random::Random;
@@ -68,7 +67,6 @@ impl CustomAssetMenuItemKind {
             Pause => -2,
             Item => -3,
             NoItem => -1,
-            CaptureFace => -5,
         }
     }
     pub fn from_index(index: i32) -> Self {

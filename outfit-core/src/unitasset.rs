@@ -410,12 +410,6 @@ impl UnitAssetMenuData {
             }
         }
     }
-    pub fn update_face() {
-        if let Some(unit) = UnitAssetMenuData::get_unit() {
-            
-            
-        }
-    }
     pub fn get_person_flag() -> i32 {
         let hash = Self::get_preview().person;
         Self::get().data.iter().find(|x| x.person == hash ).map(|x| x.flag).unwrap_or(0)
