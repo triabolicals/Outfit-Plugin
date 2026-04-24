@@ -22,6 +22,7 @@
 25 $(A)Switch between unit's default appearance and\nDraconic Vibe Crystal's randomized appearance.
 26 $(Left)$(Right)Change the preview context of the asset profile.
 27 $(A)Use class combat animations when engaged if possible.
+28 Enable the use of a custom face thumbnail.
 30 Reset this color parameter.
 31 Reset this color parameter (No change).
 1001 Assign asset profiles.
