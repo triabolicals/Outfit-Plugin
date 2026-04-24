@@ -512,6 +512,7 @@ pub fn game_user_data_on_deserialize(this: &GameUserData, stream: &mut Stream, v
             if menu_data.data.iter().find(|v| v.person == *p).is_none() {
                 menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
         });
+        crate::capture::reset_faces(false);
         menu_data.is_loaded = true;
     }
 }

@@ -6,6 +6,7 @@ use engage::{
     keyhelp::KeyHelpData,
     proc::ProcInst,
 };
+use engage::spriteatlasmanager::FaceThumbnailStaticFields;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -18,6 +19,7 @@ use engage::{
 #[allow(static_mut_refs)] mod unitasset;
 mod photo;
 mod localize;
+mod capture;
 
 pub use enums::*;
 pub use data::*;
@@ -30,12 +32,14 @@ pub use shop::*;
 pub use assets::*;
 pub use assets::new_result_get_hash_code;
 pub use data::dress::PersonalDressData;
-
-pub const VERSION: &'static str = "2.6.0";
+pub use capture::reset_faces;
+pub const VERSION: &'static str = "2.6.2";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
 pub const INPUT_DIR: &str = "sd:/engage/outfits/input/";
+pub const CAPTURE_DIR: &str = "sd:/engage/outfits/capture/";
+pub const THUMB_DIR: &str = "sd:/engage/outfits/capture/face/";
 pub use menu::items::AssetType;
 
 pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
@@ -81,6 +85,8 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     let _ = std::fs::create_dir_all(OUTPUT_ASSET_TABLE_DIR);
     let _ = std::fs::create_dir_all(OUTPUT_DATA);
     let _ = std::fs::create_dir_all(INPUT_DIR);
+    let _ = std::fs::create_dir_all(CAPTURE_DIR);
+    let _ = std::fs::create_dir_all(THUMB_DIR);
 
     let vtable = Il2CppClass::from_name("App", "GameUserData").unwrap().get_vtable_mut();
     vtable[4].method_ptr = game_user_data_version as _;
@@ -128,5 +134,16 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         y_button.mid = "MID_MENU_ACCESSORY_SHOP_ACCESSORY".into();
         key.add(y_button);
     }
+    let thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
+    let s = thumbs.cache_table.entries.iter().filter(|i| i.key.is_some()).map(|c| c.key.unwrap().to_string()).collect::<Vec<String>>();
+
+    s.iter().for_each(|i|{
+        if let Some(sprite) = thumbs.cache_table.get_item(i.into()) {
+            let o_key = format!("o_{}", i);
+            let alt_key = format!("a_{}", i);
+            thumbs.cache_table.add(o_key.as_str().into(), sprite);
+            thumbs.cache_table.add(alt_key.as_str().into(), sprite);
+        }
+    });
     init
 }

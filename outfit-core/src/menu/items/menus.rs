@@ -41,7 +41,7 @@ pub enum CustomAssetMenuKind {
 impl CustomAssetMenuKind {
     pub fn can_facial(&self) -> bool {
         match self {
-            ScaleMenu | RGBAMenu(_) | ProfileSelection=> { false }
+            ScaleMenu | RGBAMenu(_) | ProfileSelection|ProfileSettings => { false }
             _ => { self.get_right().is_none() && self.get_left().is_none() }
         }
     }
@@ -334,7 +334,7 @@ impl CustomAssetMenuKind {
             ProfileSettings => {
                 [FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EnableColor), FlagMenuItem(AssetFlag::EnableScaling),
                     FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), FlagMenuItem(AssetFlag::EngagedAnimation),
-                    FlagMenuItem(AssetFlag::EnableBattleAccessories), Data(AssetDataMode::Export), Data(AssetDataMode::Import),
+                    FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export), Data(AssetDataMode::Import),
                     FlagMenuItem(AssetFlag::ViewMode)
                 ].into_iter().for_each(|v|{
                     this.full_menu_item_list.add(CustomAssetMenuItem::new_type(v));

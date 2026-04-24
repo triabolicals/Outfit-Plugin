@@ -7,7 +7,7 @@ use unity::engine::ui::IsImage;
 use unity::prelude::*;
 use engage::game::GameColor;
 use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
-use engage::menu::menu_item::{MenuItem, MenuItemContent};
+use engage::menu::menu_item::MenuItem;
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
 use super::{*, items::{CustomMenuItem, *}};
 
@@ -96,7 +96,6 @@ impl CustomAssetMenuItem {
 		item.name = asset.get_name(label);
 		item.menu_kind = Asset(asset.kind);
 		let preview = UnitAssetMenuData::get_preview();
-
 		let original =
 			match kind {
 				AssetType::Body => preview.original_assets[0],
@@ -182,6 +181,7 @@ impl CustomAssetMenuItem {
 				content.kind_icon.set_active(true);
 				content.kind_icon_image.set_sprite2(icon);
 			}
+			self.set_color();
 		}
 	}
 	pub fn set_decided(&mut self, decided: bool) {

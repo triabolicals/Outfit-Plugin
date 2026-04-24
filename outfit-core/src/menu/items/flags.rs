@@ -1,3 +1,4 @@
+use engage::gamevariable::GameVariableManager;
 use engage::mess::Mess;
 use engage::unit::UnitStatusField;
 use unity::prelude::Il2CppString;
@@ -16,6 +17,7 @@ pub enum AssetFlag {
     RandomAppearance,
     EngagedAnimation,
     ViewMode,
+    UseFaceThumbnail,
 }
 impl AssetFlag {
     pub fn get_rel_index(&self) -> i32 {
@@ -28,6 +30,7 @@ impl AssetFlag {
             AssetFlag::RandomAppearance => 5,
             AssetFlag::ViewMode => 6,
             AssetFlag::EngagedAnimation => 7,
+            AssetFlag::UseFaceThumbnail => 8,
         }
     }
     pub fn from_rel_index(idx: i32) -> Option<AssetFlag> {
@@ -42,6 +45,7 @@ impl AssetFlag {
                     5 => AssetFlag::RandomAppearance,
                     6 => AssetFlag::ViewMode,
                     7 => AssetFlag::EngagedAnimation,
+                    8 => AssetFlag::UseFaceThumbnail,
                     _ => unreachable!(),
                 }
             )
@@ -57,6 +61,7 @@ impl AssetFlag {
             Self::EnableScaling => { mode & 64 != 0 }
             Self::EnableCrossDressing => { mode & 128 != 0 }
             Self::EngagedAnimation => { mode & 256 != 0 }
+            Self::UseFaceThumbnail => { UnitAssetMenuData::get_person_flag() & 8 != 0 }
             _ => { false }
         }
     }
@@ -71,6 +76,7 @@ impl CustomMenuItem for AssetFlag {
             Self::EnableCrossDressing => { CustomMenuIcon::Body }
             Self::EnableBattleAccessories => { CustomMenuIcon::Gift }
             Self::ViewMode => { if UnitAssetMenuData::get().is_shop_combat { CustomMenuIcon::Weapon } else { CustomMenuIcon::Day } }
+            Self::UseFaceThumbnail => { CustomMenuIcon::SilverCard }
         }
     }
     fn get_equipment_box_type(&self, menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
@@ -123,6 +129,19 @@ impl CustomMenuItem for AssetFlag {
                 let s = MenuText::get_help(rel);
                 if is_engaged { s } else { Some(format!("{}\n<color=\"red\">Profile is not set as the Engage profile.</color>", s.unwrap()).into()) }
             }
+            Self::UseFaceThumbnail => {
+                let s = MenuText::get_help(28);
+                if let Some((keys, help)) = crate::capture::get_unit_face_keys(UnitAssetMenuData::get_unit().unwrap()).zip(s) {
+                    let key = format!("G_Face_{}", keys.0);
+                    if GameVariableManager::exist(&key) { 
+                        let str = GameVariableManager::get_string(&key).to_string();
+                        if str.contains(".png") { Some(format!("{}\nFile: {}", help, str).into()) }
+                        else { s }
+                    }
+                    else { s }
+                }
+                else { s }
+            }
             _ => { MenuText::get_help(rel) }
         }.unwrap()
     }
@@ -154,9 +173,14 @@ impl CustomMenuItem for AssetFlag {
                 change_unit = false;
                 UnitAssetMenuData::toggle_profile_flag(256);
             }
-            _ => {
-                return BasicMenuResult::new();
+            Self::UseFaceThumbnail => {
+                change_unit = false;
+                UnitAssetMenuData::toggle_unit_flag(8);
+                if let Some(unit) = UnitAssetMenuData::get_unit() {
+                    crate::capture::update_face(unit, UnitAssetMenuData::get_person_flag() & 8 != 0);
+                }
             }
+            _ => { return BasicMenuResult::new(); }
         }
         menu_item.decided = self.is_decided();
         menu_item.rebuild_text();

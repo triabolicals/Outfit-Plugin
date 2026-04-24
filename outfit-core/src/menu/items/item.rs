@@ -1,3 +1,4 @@
+use engage::gamedata::item::ItemDataRodTypes::Basic;
 use engage::mess::Mess;
 use engage::pad::{NpadButton, Pad};
 use engage::random::Random;
@@ -67,6 +68,7 @@ impl CustomAssetMenuItemKind {
             Pause => -2,
             Item => -3,
             NoItem => -1,
+            CaptureFace => -5,
         }
     }
     pub fn from_index(index: i32) -> Self {
@@ -249,6 +251,9 @@ impl CustomAssetMenuItemKind {
             Data(_) => { if photo { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable } }
             FlagMenuItem(AssetFlag::EnableCrossDressing) => if emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             FlagMenuItem(AssetFlag::EngagedAnimation)|FlagMenuItem(AssetFlag::EngageOutfit) => if emblem || photo { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
+            FlagMenuItem(AssetFlag::UseFaceThumbnail) => {
+                if !emblem && UnitAssetMenuData::is_unit_info() { BasicMenuItemAttribute::Enable } else { BasicMenuItemAttribute::Hide }
+            }
             FlagMenuItem(AssetFlag::RandomAppearance) => if emblem || !dvc || photo { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             UnitName => if emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             _ => BasicMenuItemAttribute::Enable,
@@ -427,14 +432,6 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { help }
             }
-            /*
-            PresetAppearance => {
-                let help = MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into());
-                let id = if menuitem.padding & 1 != 0 { "Emblem #" } else { "Person #" };
-                format!("{}\n{}{}", help, id, menuitem.padding >> 1).into()
-            }
-            
-             */
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
     }
@@ -637,6 +634,14 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 preview.preview_data = PlayerOutfitData::new_with_flag(flags);
                 UnitAssetMenuData::reload_unit(ReloadPreview::Forced, true, None);
                 BasicMenuResult::se_decide()
+            }
+            Asset(AssetType::AOC(_)) => {
+                if !UnitAssetMenuData::get().god_mode && UnitAssetMenuData::is_unit_info() {
+                    let use_thumbnail = UnitAssetMenuData::get_person_flag() & 8 != 0;
+                    crate::capture::capture_unit_info(menuitem.menu, true, use_thumbnail);
+                    BasicMenuResult::se_cursor()
+                }
+                else { BasicMenuResult::se_miss() }
             }
             _ => { BasicMenuResult::new() }
         }

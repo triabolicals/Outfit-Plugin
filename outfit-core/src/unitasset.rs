@@ -261,6 +261,11 @@ impl UnitAssetMenuData {
             if let Some(unit) = UnitPool::get_from_person(person, false) {
                 engaged = unit.status.value & 8388608 != 0;
                 gender = unit_dress_gender(unit);
+                if unit.person.parent.index == 1 {
+                    if let Some(data) = UnitAssetMenuData::get().data.iter_mut().find(|v| v.person == person.parent.hash) {
+                        if unit.edit.gender == 2 { data.flag |= 16; }
+                    }
+                }
             }
             else {
                 gender =
@@ -404,7 +409,12 @@ impl UnitAssetMenuData {
                 }
             }
         }
-
+    }
+    pub fn update_face() {
+        if let Some(unit) = UnitAssetMenuData::get_unit() {
+            
+            
+        }
     }
     pub fn get_person_flag() -> i32 {
         let hash = Self::get_preview().person;

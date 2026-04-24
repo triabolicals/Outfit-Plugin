@@ -1,11 +1,9 @@
 use cobapi::{Event, SystemEvent};
 use engage::gamemessage::GameMessage;
-use engage::menu::{BasicMenu, BasicMenuMethods};
 use engage::proc::ProcInst;
 use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
 use engage::sequence::mainsequence::MainSequence;
-use outfit_core::{CustomAssetMenuItem, UnitInventorySubMenuItem};
 
 #[allow(static_mut_refs)] pub mod enums;
 #[allow(static_mut_refs)] pub mod assets;
@@ -30,6 +28,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                     assets::create_break_effect_hook,
                                 );
                             }
+                            else { outfit_core::reset_faces(true); }
                             unsafe { DISABLED = false; }
                         }
                         else if main_sequence.pad == 1 {

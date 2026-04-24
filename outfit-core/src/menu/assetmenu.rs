@@ -194,6 +194,7 @@ impl CustomAssetMenu {
                         if UnitAssetMenuData::get().menu_adj == 0.0 { UnitAssetMenuData::get().menu_adj = pos.x; }
                         unit_info_char_mask_setup(mask, false);
                         pos.x = (x_max + x_min) * 0.5;
+                        println!("Char Mask: Pos {} {} {}", pos.x, pos.y, pos.z);
                         mask.rect.set_position(pos);
                     }
                 });
@@ -441,6 +442,7 @@ impl CustomAssetMenu {
     fn tick_input(this: &mut CustomAssetMenu, optional_method: OptionalMethod) -> bool {
         let left = Pad::is_trigger(NpadButton::new().with_left(true));
         let right = Pad::is_trigger(NpadButton::new().with_right(true));
+        let unit_info = UnitAssetMenuData::is_unit_info();
         if (left || right) && left != right {
             if this.can_facial() || this.disable {
                 hub_room_set_by_result(None, ReloadType::Facial(right));
@@ -451,12 +453,16 @@ impl CustomAssetMenu {
             let stick = model_camera_control();
             let trigger = Pad::is_trigger(NpadButton::new().with_plus(true).with_b(true));
             if this.disable {
+                if Pad::is_trigger(NpadButton::new().with_minus(true)) && unit_info {
+                    crate::capture::capture_unit_info(this, false, false);
+                }
                 if trigger {
                     if let Some(obj) = this.menu_content.get_game_object() { obj.set_active2(true); }
                     Self::plus_call(this, optional_method);
                     this.disable = false;
                     TitleBar::show_header();
                     add_key_help(KeyHelpButton::Plus, "Hide");
+                    if unit_info { disable_key_help(KeyHelpButton::Minus); }
                 }
                 else if Pad::is_trigger(NpadButton::new().with_x(true)) {
                     let title = TitleBar::get_instance();
@@ -470,10 +476,11 @@ impl CustomAssetMenu {
                 if let Some(obj) = this.menu_content.get_game_object() { obj.set_active2(false); }
                 this.disable = true;
                 add_key_help(KeyHelpButton::Plus, Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str());
+                if unit_info { add_key_help(KeyHelpButton::Minus, Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str()); }
                 return true;
             }
             if stick { return true; }
-            if this.menu_kind == MainShop && UnitAssetMenuData::is_unit_info() {
+            if this.menu_kind == MainShop && unit_info {
                 let l = Pad::is_trigger(NpadButton::new().with_l(true));
                 let r = Pad::is_trigger(NpadButton::new().with_r(true));
                 if (l || r) && l != r { Self::lr_base(this, r); }

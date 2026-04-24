@@ -41,3 +41,8 @@ pub fn add_key_help<'a>(key_help_button: KeyHelpButton, text: impl Into<&'a Il2C
         key.set_text_by_key(key_help_button, text.into());
     }
 }
+pub fn disable_key_help(key_help_button: KeyHelpButton){
+    if let Some(key) = TitleBar::get_instance().current_title.as_ref().map(|v| &v.key_help) {
+        key.disable(key_help_button);
+    }
+}
