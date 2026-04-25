@@ -1,10 +1,13 @@
+use std::fs;
+use engage::dialog::BasicDialog2;
+use engage::gamevariable::GameVariableManager;
 use engage::mess::Mess;
 use engage::pad::{NpadButton, Pad};
 use engage::random::Random;
 use engage::sequence::hubaccessory::HubAccessoryShopSequence;
 use engage::sequence::hubaccessory::room::HubAccessoryRoom;
 use unity::prelude::Il2CppString;
-use crate::{is_up_down_press, left_right_enclose, r_l_press, AssetType};
+use crate::{is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR};
 use crate::data::items::Profile;
 use crate::data::room::hub_room_set_by_result;
 use crate::menu::icons::CustomMenuIcon;
@@ -13,8 +16,9 @@ use crate::menu::*;
 pub use CustomAssetMenuItemKind::*;
 pub use CustomAssetMenuKind::*;
 use engage::sequence::photograph::*;
+use engage::spriteatlasmanager::FaceThumbnail;
 use engage::tmpro::TextMeshProUGUI;
-use unity::system::action::Action1;
+use unity::system::action::{Action, Action1};
 use crate::localize::{MenuText, MenuTextCommand};
 
 pub const PROFILE_MID: [&str; 4] = ["MID_TUT_CATEGORY_TITLE_Battle", "MID_MENU_ENGAGE_COMMAND", "MID_SAVEDATA_SEQ_HUB", "MCID_M007"];
@@ -39,6 +43,7 @@ pub enum CustomAssetMenuItemKind {
     Pause,
     Item,
     UnitInventorySubMenuItem,
+    FaceThumb,
 }
 impl CustomAssetMenuItemKind {
     pub fn can_facial(&self) -> bool {
@@ -66,6 +71,7 @@ impl CustomAssetMenuItemKind {
             Menu(menu) => 1000 + menu.to_index(),
             Pause => -2,
             Item => -3,
+            FaceThumb => -4,
             NoItem => -1,
         }
     }
@@ -93,6 +99,7 @@ impl CustomAssetMenuItemKind {
             150..166 => { ScaleMenuItem(index as u8 - 150) }
             -1 => Pause,
             -2 => Item,
+            -4 => FaceThumb,
             _ => NoItem,
         }
     }
@@ -347,6 +354,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             Data(item) => { item.get_detail_box_name(menuitem) }
             UnitName => { Some("Unit Name".into()) }
             PresetAppearance => { Some(menuitem.name) }
+            FaceThumb => { Some(menuitem.name.to_string().trim_end_matches(".png").into()) }
             _ => { Some(MenuText::get_command(idx)) }
         }
     }
@@ -529,9 +537,13 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     if let Some(new_data) = data.loaded_data.loaded_data.get( menuitem.index as usize - 1){
                         let selected_profile = data.loaded_data.profile as usize;
                         let hash = data.preview.person;
-                        if let Some(profile) = data.data.iter_mut().find(|x| x.person == hash ).and_then(|unit_data| unit_data.profile.get_mut(selected_profile)){
+                        if let Some(profile) = data.data.iter_mut().find(|x| x.person == hash )
+                            .and_then(|unit_data| unit_data.profile.get_mut(selected_profile))
+                        {
                             let current_dress = profile.ubody;
-                            let current_dress_gender = db.get_dress_gender_hash(current_dress).or_else(||db.get_dress_gender_hash(data.preview.original_assets[0])).unwrap_or(Gender::None);
+                            let current_dress_gender = db.get_dress_gender_hash(current_dress)
+                                .or_else(||db.get_dress_gender_hash(data.preview.original_assets[0]))
+                                .unwrap_or(Gender::None);
                             let flag = profile.flag;
                             *profile = new_data.data.clone();
                             if flag & 128 == 0 && db.try_get_asset(AssetType::Body, new_data.data.ubody).is_some() {
@@ -548,6 +560,23 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { BasicMenuResult::se_miss() };
                 CustomAssetMenu::b_call(menuitem.menu, None);
                 result
+            }
+            FaceThumb => {
+                if let Some(unit) = UnitAssetMenuData::get_unit() {
+                    if let Some(keys) = crate::capture::get_unit_face_keys(unit){
+                        if let Some(sprite) = FaceThumbnail::get_item(format!("LOAD_{}", menuitem.hash)){
+                            FaceThumbnail::try_insert(keys.2, sprite);
+                            UnitAssetMenuData::get().loaded_data.selected_index = Some(menuitem.hash);
+                            let key = format!("G_Face_{}", keys.0);
+                            let name = menuitem.name.to_string();
+                            if !GameVariableManager::exist(key.as_str()) { GameVariableManager::make_entry_str(key.as_str(), name); }
+                            else { GameVariableManager::set_string(key.as_str(), name); }
+                            FaceThumbnail::try_insert(keys.0, sprite);
+                        }
+                    }
+                }
+                CustomAssetMenu::b_call(menuitem.menu, None);
+                BasicMenuResult::se_decide()
             }
             PresetAppearance => {
                 let db = get_outfit_data();
@@ -638,8 +667,13 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     let use_thumbnail = UnitAssetMenuData::get_person_flag() & 8 != 0;
                     crate::capture::capture_unit_info(menuitem.menu, true, use_thumbnail);
                     BasicMenuResult::se_cursor()
-                }
-                else { BasicMenuResult::se_miss() }
+                } else { BasicMenuResult::se_miss() }
+            }
+            FaceThumb => {
+                let message = format!("Delete '{}'?", menuitem.name);
+                let action = Action::new_method_mut(Some(menuitem), delete_face_item);
+                BasicDialog2::create_confirm_cancel_bind(menuitem.menu, message, Some(action));
+                BasicMenuResult::se_cursor()
             }
             _ => { BasicMenuResult::new() }
         }
@@ -787,7 +821,9 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                             let new_gender = if unit.edit.gender == 1 || unit.edit.gender == 2 { 0 } else { unit.person.gender };
                             unit.edit.set_gender(new_gender);
                             menuitem.rebuild_text();
-                            if let Some(char_name) = GameObject::find("CharacterName").and_then(|v| v.get_component_in_children::<TextMeshProUGUI>(true)){
+                            if let Some(char_name) = GameObject::find("CharacterName")
+                                .and_then(|v| v.get_component_in_children::<TextMeshProUGUI>(true))
+                            {
                                 char_name.set_text(unit.get_name(), true);
                             }
                             BasicMenuResult::se_decide()
@@ -871,5 +907,27 @@ pub fn scale_change_value(index: i32, increase: bool, speed_up: bool) -> bool {
         let new_value = crate::clamp_value(value, 1, 1000) as u16;
         preview.scale_preview[index as usize] = new_value;
         true
+    }
+}
+fn delete_face_item(menu_item: &mut CustomAssetMenuItem, _: OptionalMethod) {
+    let path = format!("{}{}", THUMB_DIR, menu_item.name);
+    let idx = menu_item.hash;
+    if let Ok(_) = fs::remove_file(path.as_str()) {
+        let load_face = &mut UnitAssetMenuData::get().loaded_data.load_face;
+        if let Some(face) = load_face.iter().position(|s| s.index == idx as usize)
+        {
+            load_face.remove(face);
+            FaceThumbnail::remove(format!("LOAD_{}", idx), true);
+        }
+        menu_item.menu.full_menu_item_list.clear();
+        if load_face.len() == 0 {
+            ProfileSettings.create_menu_items(menu_item.menu);
+            menu_item.menu.menu_kind = ProfileSettings;
+        }
+        else {
+            FaceSelection.create_menu_items(menu_item.menu);
+            menu_item.menu.menu_kind = FaceSelection;
+        }
+        menu_item.menu.rebuild_menu();
     }
 }
