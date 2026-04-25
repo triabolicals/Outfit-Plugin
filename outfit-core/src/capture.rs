@@ -5,13 +5,12 @@ use engage::{
     gamemessage::GameMessage,
     gamevariable::GameVariableManager,
     proc::Bindable,
-    spriteatlasmanager::FaceThumbnailStaticFields,
     unit::Unit,
     unitinfo::{UnitInfo, UnitInfoSide},
     unityengine::{Camera, RenderTexture, Transform, UnityComponent, UnityObject, UnityTransform},
 };
+use engage::spriteatlasmanager::FaceThumbnail;
 use unity::{
-    system::{Dictionary, Il2CppString, InsertionBehavior},
     engine::{Color, FilterMode, ImageConversion, Rect, Sprite, SpriteMeshType, Texture2D, Vector2},
     prelude::*,
 };
@@ -110,7 +109,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
                     let y_size = y_max - y_min;
                     let x_size = y_size * 1880 / 740;
                     let x_size2 = x_size / 2;
-                    let x_trans_width = y_size / 3;
+                    let x_trans_width = y_size / 2;
                     let mut empty_right = 0;
                     let mut empty_left = 0;
                     if x0 > x_size && (x0 + x_size) < w {
@@ -122,10 +121,10 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
                         }
                         let (x_min, x_max) =
                             if empty_right > empty_left {
-                                let shift = (empty_right - empty_left) / (2 * y_size);
+                                let shift = 3 * (empty_right - empty_left) / (4 * y_size);
                                 (x0 - x_size2 - shift, x0 + x_size2 - shift)
                             } else if empty_right < empty_left {
-                                let shift = (empty_left - empty_right) / (2 * y_size);
+                                let shift = 3 * (empty_left - empty_right) / (4 * y_size);
                                 (x0 - x_size2 + shift, x0 + x_size2 + shift)
                             } else { (x0 - x_size2, x0 + x_size2) };
 
@@ -158,32 +157,22 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
                             if assign_face {
                                 let name = file_path.split("/").last().unwrap();
                                 if let Some(unit) = UnitAssetMenuData::get_unit() {
-                                    if let Some(ascii_name) = unit.person.get_ascii_name() {
-                                        let table_key;
-                                        let original_key;
-                                        if unit.person.parent.index == 1 && unit.edit.gender == 2 {
-                                            table_key = format!("a_{}W", ascii_name);
-                                            original_key = format!("{}W", ascii_name);
-                                        } else {
-                                            table_key = format!("a_{}", ascii_name);
-                                            original_key = ascii_name.to_string();
-                                        }
-                                        let key = format!("G_Face_{}", original_key);
+                                    if let Some((active, original, loaded)) = get_unit_face_keys(unit){
+                                        let key = format!("G_Face_{}", active);
                                         if !GameVariableManager::exist(key.as_str()) { GameVariableManager::make_entry_str(key.as_str(), name); }
                                         else { GameVariableManager::set_string(key.as_str(), name); }
                                         let rect = Rect::new(0.0, 0.0, 188.0, 74.0);
                                         let pivot = Vector2::new(0.5, 0.5);
                                         texture_cropped.set_filter_mode(FilterMode::Trilinear);
                                         let sprite = Sprite::create2(texture_cropped, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
-                                        let face_thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
-                                        let o_key = format!("o_{}", original_key);
-                                        if let Some(original) = face_thumbs.cache_table.get_item(o_key.as_str().into()) {
-                                            if let Some(alt) = face_thumbs.cache_table.get_item(table_key.as_str().into()) {
+                                        // Check if load key is not the original sprite and then destroy it
+                                        if let Some(original) = FaceThumbnail::get_item(&original){
+                                            if let Some(alt) =  FaceThumbnail::get_item(&loaded) {
                                                 if !original.equal(alt) && !original.equals(alt) { alt.destroy(); }
                                             }
                                         }
-                                        face_thumbs.cache_table.try_insert(table_key.as_str().into(), sprite, InsertionBehavior::Overwrite);
-                                        face_thumbs.cache_table.try_insert(original_key.as_str().into(), sprite, InsertionBehavior::Overwrite);
+                                        FaceThumbnail::try_insert(&active, sprite);
+                                        FaceThumbnail::try_insert(&loaded, sprite);
                                         GameMessage::create_key_wait(proc, format!("Assigned and saved face thumbnail to\n'{}'.", file_path.as_str()));
                                         return;
                                     }
@@ -300,11 +289,16 @@ pub fn save_texture_png(texture2d: &Texture2D, is_face: bool) -> Option<String> 
     }
     None
 }
+/// Gets Dictionary Keys from Unit's Ascii name
+/// - active (ascii name) used in game
+/// - original (o_ + ascii name) the original sprite
+/// - loaded (a_ + ascii_name) the replacement sprite
 pub fn get_unit_face_keys(unit: &Unit) -> Option<(String, String, String)> {
     if let Some(ascii_name) = unit.person.get_ascii_name() {
         let mut active = ascii_name.to_string();
-        let mut loaded = format!("a_{}", ascii_name);
         let mut original = format!("o_{}", ascii_name);
+        let mut loaded = format!("a_{}", ascii_name);
+
         if unit.person.parent.index == 1 && unit.edit.gender == 2 {
             active.push('W');
             loaded.push('W');
@@ -315,28 +309,28 @@ pub fn get_unit_face_keys(unit: &Unit) -> Option<(String, String, String)> {
     else { None }
 }
 pub fn update_face(unit: &Unit, use_original: bool){
-    let mut r = false;
     if let Some((active, loaded, original)) = get_unit_face_keys(unit) {
-        let face_thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
-        let sprite = if use_original { face_thumbs.cache_table.get_item(original.as_str().into()) } else { face_thumbs.cache_table.get_item(loaded.as_str().into()) };
-        if let Some(sprite) = sprite {
-            r = face_thumbs.cache_table.try_insert(active.as_str().into(), sprite, InsertionBehavior::Overwrite);
+        if let Some(sprite) = if use_original { FaceThumbnail::get_item(original) } else { FaceThumbnail::get_item(loaded)}{
+            FaceThumbnail::try_insert(active, sprite);
         }
     }
 }
 pub fn reset_faces(title: bool) {
     println!("Resetting Faces");
-    let thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
-    let s = thumbs.cache_table.entries.iter().filter(|i| i.key.is_some_and(|a| a.to_string().starts_with("o_"))).map(|c| c.key.unwrap().to_string()).collect::<Vec<String>>();
+    let s = FaceThumbnail::get_static_fields().face_thumb.cache_table.entries.iter()
+        .filter(|i| i.key.is_some_and(|a| a.to_string().starts_with("o_")))
+        .map(|c| c.key.unwrap().to_string())
+        .collect::<Vec<String>>();
+
     s.iter().for_each(|o|{
-        if let Some(original_sprite) = thumbs.cache_table.get_item(o.as_str().into()) {
-            let active_key = o.trim_start_matches("o_").to_string();
-            let alt_key = format!("a_{}", active_key);
-            if let Some(alt) = thumbs.cache_table.get_item(alt_key.as_str().into()) {
-                if !alt.equals(original_sprite) && !alt.equal(original_sprite) {
-                    thumbs.cache_table.try_insert(alt_key.as_str().into(), original_sprite, InsertionBehavior::Overwrite);
-                    thumbs.cache_table.try_insert(active_key.as_str().into(), original_sprite, InsertionBehavior::Overwrite);
-                    alt.destroy();
+        if let Some(original_sprite) = FaceThumbnail::get_item(o){
+            let active = o.trim_start_matches("o_").to_string();
+            let load = format!("a_{}", active);
+            if let Some(loaded) = FaceThumbnail::get_item(&load) {
+                if !loaded.equals(original_sprite) && !loaded.equal(original_sprite) {
+                    FaceThumbnail::try_insert(&load, original_sprite);
+                    FaceThumbnail::try_insert(&active, original_sprite);
+                    loaded.destroy();
                 }
             }
         }
@@ -346,13 +340,13 @@ pub fn reset_faces(title: bool) {
             if let Some(person_data) = PersonData::try_get_hash(d.person) {
                 if let Some(v) = person_data.get_ascii_name() {
                     let ascii = if d.flag & 16 == 0 { v.to_string() } else { format!("{}W", v) };
-                    load_png_to_by_ascii(&ascii, thumbs.cache_table, d.flag & 8 != 0 );
+                    load_png_to_by_ascii(&ascii, d.flag & 8 != 0 );
                 }
             }
         });
     }
 }
-fn load_png_to_by_ascii(ascii: &String, table: &Dictionary<'static, &'static Il2CppString, &'static Sprite>, use_sprite: bool) -> bool {
+fn load_png_to_by_ascii(ascii: &String, use_sprite: bool) -> bool {
     let file_key = format!("G_Face_{}", ascii);
     if GameVariableManager::exist(&file_key) {
         let file = GameVariableManager::get_string(&file_key).to_string();
@@ -360,19 +354,13 @@ fn load_png_to_by_ascii(ascii: &String, table: &Dictionary<'static, &'static Il2
             let p = format!("{}{}", THUMB_DIR, GameVariableManager::get_string(&file_key));
             let path = Path::new(p.as_str());
             if path.exists() {
-                if let Some(file) = std::fs::read(path).ok().filter(|d| png_file_check(d)){
-                    let data = Il2CppArray::from_slice(file).unwrap();
-                    let new_texture = Texture2D::new(188, 74);
-                    if ImageConversion::load_image(new_texture, data) {
-                        new_texture.set_filter_mode(FilterMode::Trilinear);
-                        let rect = Rect::new(0.0, 0.0, 188.0, 74.0);
-                        let pivot = Vector2::new(0.5, 0.5);
-                        let sprite = Sprite::create2(new_texture, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
+                if let Some(mut file) = std::fs::read(path).ok().filter(|d| png_file_check(d)){
+                    if let Some(sprite) = create_face_sprite(&mut file) {
                         let alt_key = format!("a_{}", ascii);
-                        if table.try_insert(alt_key.as_str().into(), sprite, InsertionBehavior::Overwrite) {
-                            if use_sprite { table.try_insert(ascii.as_str().into(), sprite, InsertionBehavior::Overwrite); }
-                            return true;
+                        if FaceThumbnail::try_insert(alt_key, sprite) {
+                            if use_sprite { FaceThumbnail::try_insert(ascii.as_str(), sprite); }
                         }
+                        return true;
                     }
                 }
             }
@@ -381,7 +369,19 @@ fn load_png_to_by_ascii(ascii: &String, table: &Dictionary<'static, &'static Il2
     }
     false
 }
-fn png_file_check(file: &Vec<u8>) -> bool {
+pub fn create_face_sprite(data: &mut Vec<u8>) -> Option<&'static Sprite> {
+    let data = Il2CppArray::from_slice(data).ok()?;
+    let new_texture = Texture2D::new(188, 74);
+    if ImageConversion::load_image(new_texture, data) {
+        new_texture.set_filter_mode(FilterMode::Trilinear);
+        let rect = Rect::new(0.0, 0.0, 188.0, 74.0);
+        let pivot = Vector2::new(0.5, 0.5);
+        let sprite = Sprite::create2(new_texture, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
+        Some(sprite)
+    }
+    else { None }
+}
+pub(crate) fn png_file_check(file: &Vec<u8>) -> bool {
     if file.len() < 24 { return false; }
     for x in 0..8 { if file[x] != PNG[x] { return false; } }
     for x in 0..12 { if file[x+12] != PNG2[x] { return false; } }
