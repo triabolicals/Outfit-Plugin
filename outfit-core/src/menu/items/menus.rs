@@ -86,6 +86,7 @@ impl CustomAssetMenuKind {
             11 => LoadData,
             13 => PauseList,
             14 => ItemList,
+            15 => FaceSelection,
             100..108 => ShopBody(((value as u8 - 100) % 4, value >= 104)),
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
