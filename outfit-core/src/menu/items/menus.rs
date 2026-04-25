@@ -4,12 +4,13 @@ use engage::unit::{Gender};
 use engage::menu::BasicMenuItemAttribute;
 use engage::mess::Mess;
 use unity::prelude::Il2CppString;
-use crate::{get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData};
+use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData};
 use crate::data::items::{AssetFlag, CustomMenuItem, Profile};
 use crate::menu::icons::CustomMenuIcon;
 use super::*;
 use crate::data::room::hub_room_set_by_result;
 use engage::sequence::photograph::*;
+use engage::titlebar::KeyHelpButton;
 use crate::localize::{MenuText, MenuTextCommand};
 use crate::room::ReloadType;
 
@@ -37,6 +38,7 @@ pub enum CustomAssetMenuKind {
     LoadData,
     PauseList,
     ItemList,
+    FaceSelection,
 }
 impl CustomAssetMenuKind {
     pub fn can_facial(&self) -> bool {
@@ -119,7 +121,10 @@ impl CustomAssetMenuKind {
     }
     pub fn get_previous(&self) -> Option<Self> {
         match self {
-            ClassBodySelection((_, alt)) => { Some(ShopBody((1, *alt))) }
+            ClassBodySelection((_, alt)) => {
+                UnitAssetMenuData::get_preview().update_dress_gender = true;
+                Some(ShopBody((1, *alt)))
+            }
             ProfileSelection|ScaleMenu|ColorKindSelection|Head|Hair|VoiceSelection => { Some(MainShop) }
             ColorSelection(_) => { Some(ColorKindSelection) }
             RGBAMenu(k) => { Some(ColorSelection(*k)) }
@@ -486,7 +491,6 @@ impl CustomAssetMenuKind {
                         this.selects[index].scroll = pos as i32;
                     }
                 }
-
             }
         }
     }
@@ -541,6 +545,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
             LoadData => { CustomMenuIcon::Satchel }
             ItemList => { CustomMenuIcon::Weapon }
             PauseList => { CustomMenuIcon::SolaTail }
+            FaceSelection => { CustomMenuIcon::SilverCard }
         }
     }
     fn get_equipment_box_type(&self, _menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
