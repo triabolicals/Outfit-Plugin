@@ -120,15 +120,19 @@ impl AssetType {
             result.right_hand = "null".into();
             let db = get_outfit_data();
             let asset = db.try_get_asset(*self, menu_item.hash);
-            let dress_before = db.get_dress_gender(result.dress_model);
-            let mut dress_change_gender = false;
-
             match self {
                 AssetType::Body => {
                     if let Some(asset) = asset {
                         result.dress_model = asset.as_str().into();
-                        dress_change_gender = db.get_dress_gender(asset.as_str().into()) != dress_before;
-                        if !is_personal { reload_type = ReloadType::Dress; }
+                        if UnitAssetMenuData::get_preview().update_dress_gender {
+                            UnitAssetMenuData::get_preview().update_dress_gender = false;
+                            reload_type = ReloadType::ForcedUpdate;
+                            result.body_anim = Some(
+                                if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
+                                else { "AOC_Hub_Hum0F" }.into()
+                            );
+                        }
+                        else if !is_personal { reload_type = ReloadType::Dress; }
                     }
                 }
                 AssetType::Rig => {
@@ -245,10 +249,7 @@ impl AssetType {
                     return;
                 }
             }
-            if dress_change_gender {
-                result.body_anim = Some(if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" }.into());
-            }
-            else if UnitAssetMenuData::is_unit_info() { result.body_anim = result.hub_anims; }
+            if UnitAssetMenuData::is_unit_info() && *self != AssetType::Body { result.body_anim = result.hub_anims; }
             hub_room_set_by_result(Some(result), reload_type);
         }
     }
