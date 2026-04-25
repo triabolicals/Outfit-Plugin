@@ -257,25 +257,27 @@ impl CustomAssetMenu {
             cat.destroy();
         }
     }
+    pub fn toggle_ui() -> bool {
+        if let Some(obj) = GameObject::find("CharacterName").and_then(|go| go.get_component_by_type::<Animator>()) {
+            let closed = obj.get_bool("isClosed");
+            if closed { obj.play("Open"); } else { obj.play("Close"); }
+            if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) {
+                if closed { equip.open(); } else { equip.close(); }
+            }
+        }
+        if let Some(detail_box) = GameObject::find("WdwAccHelp")
+            .and_then(|go| go.get_component_by_type::<AccessoryDetailInfoWindow>())
+            .and_then(|go| go.get_component::<Animator>() )
+        {
+            let closed = detail_box.get_bool("isClosed");
+            if closed { detail_box.play("Open"); } else {  detail_box.play("Close"); }
+            true
+        }
+        else { false }
+    }
     pub fn plus_call(_this: &mut CustomAssetMenu, _optional_method: OptionalMethod) -> BasicMenuResult {
         if UnitAssetMenuData::is_unit_info() {
-            if let Some(obj) = GameObject::find("CharacterName").and_then(|go| go.get_component_by_type::<Animator>()){
-                let closed = obj.get_bool("isClosed");
-                if closed { obj.play("Open"); }
-                else {  obj.play("Close"); }
-                if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) {
-                    if closed { equip.open(); }
-                    else { equip.close(); }
-                }
-                if let Some(detail_box) = GameObject::find("WdwAccHelp")
-                    .and_then(|go| go.get_component_by_type::<AccessoryDetailInfoWindow>())
-                    .and_then(|go| go.get_component::<Animator>() )
-                {
-                    if closed { detail_box.play("Open"); }
-                    else {  detail_box.play("Close"); }
-                }
-                return BasicMenuResult::se_cursor();
-            }
+            if Self::toggle_ui() { return BasicMenuResult::se_cursor() }
         }
         BasicMenuResult::new()
     }
@@ -548,14 +550,6 @@ fn adjust_menu_size(content: &AccessoryShopChangeRoot) {
         if let Some(rect) = Kaneko::find_in_children(t, "Content".into()) {
             for x in 0..13 {
                 if let Some(acc) = Kaneko::find_in_children(rect, format!("Acc{}", x).into()) {
-                    let acc_rect = acc.to_rect_transform();
-                    if let Some(icon) = acc_rect.get_child(1) {
-                        icon.translate_local(-10.0, 0.0, 0.0);
-                    }
-                    if let Some(name) = acc_rect.get_child(2) {
-                        name.translate_local(-10.0, 0.0, 0.0);
-                        name.change_size(10.0, 0.0);
-                    }
                     acc.get_components_in_children_gen::<TextMeshProUGUI>(true).iter_mut().for_each(|t|{
                         t.m_min_font_size = 22.0;
                         t.m_max_font_size = 24.0;
