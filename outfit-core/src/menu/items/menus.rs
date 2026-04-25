@@ -121,7 +121,7 @@ impl CustomAssetMenuKind {
             ProfileSelection|ScaleMenu|ColorKindSelection|Head|Hair|VoiceSelection => { Some(MainShop) }
             ColorSelection(_) => { Some(ColorKindSelection) }
             RGBAMenu(k) => { Some(ColorSelection(*k)) }
-            LoadData => Some(ProfileSettings),
+            LoadData|FaceSelection => Some(ProfileSettings),
             MainShop => None,
             PresetAppearanceMenu(alt) => {
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 {
