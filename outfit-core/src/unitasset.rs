@@ -46,6 +46,7 @@ pub struct UnitAssetPreview {
     pub scale_preview: [u16; 20],
     pub original_color: [u8; 32],
     pub original_assets: [i32; 20],
+    pub update_dress_gender: bool,
 
 }
 impl UnitAssetPreview {
@@ -60,6 +61,7 @@ impl UnitAssetPreview {
             original_scaling: [0; 20],
             color_preview: [0; 32],
             original_assets: [0; 20],
+            update_dress_gender: false,
         }
     }
 }
