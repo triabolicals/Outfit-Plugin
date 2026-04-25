@@ -250,6 +250,14 @@ impl CustomAssetMenuKind {
                     this.full_menu_item_list.add(item);
                 });
             }
+            FaceSelection => {
+                UnitAssetMenuData::get().loaded_data.load_face.iter().for_each(|x|{
+                    let item = CustomAssetMenuItem::new_type(FaceThumb);
+                    item.name = x.file_name.as_str().into();
+                    item.hash = x.index as i32;
+                    this.full_menu_item_list.add(item);
+                });
+            }
             MainShop => {
                 if UnitAssetMenuData::is_photo_graph() {
                     for x in [ShopBody((0, false)), Head, Hair, Rig, ShopAcc(0), ColorKindSelection, ScaleMenu, Personal, PresetAppearanceMenu(false)]{
