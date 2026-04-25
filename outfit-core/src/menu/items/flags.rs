@@ -1,11 +1,10 @@
 use engage::gamemessage::GameMessage;
 use engage::gamevariable::GameVariableManager;
 use engage::mess::Mess;
-use engage::titlebar::KeyHelpButton;
 use engage::unit::UnitStatusField;
 use unity::prelude::Il2CppString;
 use crate::menu::icons::CustomMenuIcon;
-use crate::{add_key_help, r_l_press, set_detail_box, CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview, UnitAssetMenuData, THUMB_DIR};
+use crate::{r_l_press, set_detail_box, CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview, UnitAssetMenuData, THUMB_DIR};
 use crate::localize::MenuText;
 use super::*;
 #[repr(u8)]
@@ -189,7 +188,6 @@ impl CustomMenuItem for AssetFlag {
                             FaceSelection.create_menu_items(menu_item.menu);
                             menu_item.menu.menu_kind = FaceSelection;
                             menu_item.menu.rebuild_menu();
-                            add_key_help(KeyHelpButton::Minus, Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
                             CustomAssetMenu::toggle_ui();
                             BasicMenuResult::se_cursor()
                         }

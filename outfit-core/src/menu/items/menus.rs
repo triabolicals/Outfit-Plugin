@@ -1,10 +1,12 @@
-use std::ops::BitXor;
 use engage::gamedata::{Gamedata, GodData, PersonData};
 use engage::unit::{Gender};
 use engage::menu::BasicMenuItemAttribute;
 use engage::mess::Mess;
 use unity::prelude::Il2CppString;
-use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData};
+use crate::{
+    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
+    AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData
+};
 use crate::data::items::{AssetFlag, CustomMenuItem, Profile};
 use crate::menu::icons::CustomMenuIcon;
 use super::*;
@@ -417,10 +419,6 @@ impl CustomAssetMenuKind {
             }
             ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
-                if UnitAssetMenuData::is_unit_info() && UnitAssetMenuData::get_unit().is_some() {
-                    let help = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
-                    add_key_help(KeyHelpButton::Minus, help);
-                }
                 let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == Gender::Female).unwrap_or(female);
                 db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
             }
@@ -524,6 +522,29 @@ impl CustomAssetMenuKind {
         match self {
             ShopMount(_)|ShopAoc(_)|PresetAppearanceMenu(_) => if emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             _ => BasicMenuItemAttribute::Enable,
+        }
+    }
+    pub fn key_help_update(&self, ui_hide: bool) {
+        if UnitAssetMenuData::is_shop() { return; }
+        let idx = self.to_index();
+        if !ui_hide { add_key_help(KeyHelpButton::Plus, Mess::get("MID_ProfileCard_ShowStamp_Hide").to_string().as_str()); }
+        else { add_key_help(KeyHelpButton::Plus, Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str()); }
+
+        if UnitAssetMenuData::is_unit_info() {
+            if ui_hide {
+                add_key_help(KeyHelpButton::Minus, Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str());
+                if idx == 15 { disable_key_help(KeyHelpButton::Minus); }
+            }
+            else {
+                if idx >= 130 && idx <= 134 && UnitAssetMenuData::get_unit().is_some() {
+                    let help = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
+                    add_key_help(KeyHelpButton::Minus, help);
+                }
+                else if idx == 15 {
+                    add_key_help(KeyHelpButton::Minus, Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
+                }
+                else { disable_key_help(KeyHelpButton::Minus); }
+            }
         }
     }
 }

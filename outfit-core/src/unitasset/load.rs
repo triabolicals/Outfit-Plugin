@@ -1,7 +1,5 @@
 use std::path::PathBuf;
-use engage::spriteatlasmanager::{FaceThumbnail, FaceThumbnailStaticFields};
-use unity::engine::Sprite;
-use unity::macro_context::Il2CppClassData;
+use engage::spriteatlasmanager::FaceThumbnail;
 use crate::capture::{create_face_sprite, png_file_check};
 use crate::EquipmentBoxPage;
 use super::*;

@@ -17,10 +17,8 @@ use engage::{
     },
     unityengine::GameObject,
     sortie::{SortieUtil, SortieSequenceUnitSelect},
-    mess::Mess,
     pad::NpadButton,
     combat::Kaneko,
-    titlebar::KeyHelpButton,
     tmpro::TextMeshProUGUI,
 };
 use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
@@ -354,6 +352,7 @@ impl CustomAssetMenu {
         self.after_build();
         self.restore_select(select);
         if self.menu_kind == MainShop { self.kind = 0; } else { self.kind = 1; }
+        self.menu_kind.key_help_update(false);
     }
     pub fn b_call(this: &mut CustomAssetMenu, _method_info: OptionalMethod) -> BasicMenuResult {
         this.menu_kind.b_call();
@@ -463,8 +462,7 @@ impl CustomAssetMenu {
                     Self::plus_call(this, optional_method);
                     this.disable = false;
                     TitleBar::show_header();
-                    add_key_help(KeyHelpButton::Plus, "Hide");
-                    if unit_info { disable_key_help(KeyHelpButton::Minus); }
+                    this.menu_kind.key_help_update(false);
                 }
                 else if Pad::is_trigger(NpadButton::new().with_x(true)) {
                     let title = TitleBar::get_instance();
@@ -477,8 +475,7 @@ impl CustomAssetMenu {
                 Self::plus_call(this, optional_method);
                 if let Some(obj) = this.menu_content.get_game_object() { obj.set_active2(false); }
                 this.disable = true;
-                add_key_help(KeyHelpButton::Plus, Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str());
-                if unit_info { add_key_help(KeyHelpButton::Minus, Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str()); }
+                this.menu_kind.key_help_update(true);
                 return true;
             }
             if stick { return true; }

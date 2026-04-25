@@ -37,10 +37,10 @@
 1010 View assets that belongs to this character.
 1011 Select a file to load.
 1012 Apply assets from a preset character/emblem.
-1020 Assign a dress model.\nMap body model (Mode 1) will be replaced if it exists.
+1020 Assign a dress model.\nMap model (Mode 1) will be replaced if it exists.
 1021 Assign assets to various accessory locators.
 1022 Assign replacement ride dress models.
-1023 Assign various non-combat animations.
+1023 Assign various non-combat animations and\ncapture face for thumbnails.
 1024 Select from presets or edit color parameters.
 1025 Edit RGBA values of this color parameter.
 1026 View unit accessories of this type.
