@@ -321,13 +321,7 @@ impl CustomMenuItem for AssetType {
                     let mode1 = db.hashes.get_mount_obody(menu_item.hash).unwrap_or(Mess::get_item_none());
                     format!("Combat: {}\nMap: {}", mode2, mode1).into()
                 }
-                Self::AOC(_) => {
-                    if !UnitAssetMenuData::get().god_mode && UnitAssetMenuData::is_unit_info() {
-                        let text = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
-                        format!("{}\nSet: {}. {}", help, mode2, MenuTextCommand::Minus.insert_right(text)).into()
-                    }
-                    else { format!("{}\nAnimation Set: {}", help, mode2).into() }
-                },
+                Self::AOC(_) => { format!("{}\nAnimation Set: {}", help, mode2).into() },
                 Self::Acc(_) => format!("{}\nAsset: {}", help, mode2).into(),
                 Self::Voice => format!("Voice Set: {}", mode2).into(),
                 _ => { "ColorPreset".into() }
