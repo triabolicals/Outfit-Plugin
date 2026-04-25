@@ -410,8 +410,12 @@ impl CustomAssetMenuKind {
             }
             ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
-                let alt = *page >= 4;
-                db.list.add_menu_items(AssetType::AOC(*page), female.bitxor(alt), true, true, &db.labels, this.full_menu_item_list);
+                if UnitAssetMenuData::is_unit_info() && UnitAssetMenuData::get_unit().is_some() {
+                    let help = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
+                    add_key_help(KeyHelpButton::Minus, help);
+                }
+                let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == Gender::Female).unwrap_or(female);
+                db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
             }
             ShopMount(mount) => {
                 db.list.add_menu_items(AssetType::Mount(*mount), false, true, true, &db.labels, this.full_menu_item_list);
