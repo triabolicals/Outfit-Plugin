@@ -1,9 +1,11 @@
+use engage::gamemessage::GameMessage;
 use engage::gamevariable::GameVariableManager;
 use engage::mess::Mess;
+use engage::titlebar::KeyHelpButton;
 use engage::unit::UnitStatusField;
 use unity::prelude::Il2CppString;
 use crate::menu::icons::CustomMenuIcon;
-use crate::{r_l_press, set_detail_box, EquipmentBoxPage, MenuTextCommand, ReloadPreview, UnitAssetMenuData};
+use crate::{add_key_help, r_l_press, set_detail_box, CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview, UnitAssetMenuData, THUMB_DIR};
 use crate::localize::MenuText;
 use super::*;
 #[repr(u8)]
@@ -132,13 +134,18 @@ impl CustomMenuItem for AssetFlag {
             Self::UseFaceThumbnail => {
                 let s = MenuText::get_help(28);
                 if let Some((keys, help)) = crate::capture::get_unit_face_keys(UnitAssetMenuData::get_unit().unwrap()).zip(s) {
-                    let key = format!("G_Face_{}", keys.0);
-                    if GameVariableManager::exist(&key) { 
-                        let str = GameVariableManager::get_string(&key).to_string();
-                        if str.contains(".png") { Some(format!("{}\nFile: {}", help, str).into()) }
-                        else { s }
+                    let mut message = help.to_string();
+                    if UnitAssetMenuData::get_person_flag() & 8 != 0 {
+                        message += "\n";
+                        message += MenuTextCommand::A.insert_right("View Files. ").to_string().as_str();
                     }
-                    else { s }
+                    let key = format!("G_Face_{}", keys.0);
+                    if GameVariableManager::exist(&key) {
+                        let str = GameVariableManager::get_string(&key).to_string();
+                        if str.contains(".png") { message += format!("File: {}. ", str).as_str(); }
+                    }
+
+                    Some(message.into())
                 }
                 else { s }
             }
@@ -174,11 +181,29 @@ impl CustomMenuItem for AssetFlag {
                 UnitAssetMenuData::toggle_profile_flag(256);
             }
             Self::UseFaceThumbnail => {
-                change_unit = false;
-                UnitAssetMenuData::toggle_unit_flag(8);
-                if let Some(unit) = UnitAssetMenuData::get_unit() {
-                    crate::capture::update_face(unit, UnitAssetMenuData::get_person_flag() & 8 != 0);
+                return
+                if UnitAssetMenuData::get_person_flag() & 8 != 0 {
+                    match UnitAssetMenuData::get().loaded_data.load_faces() {
+                        LoadResult::Success => {
+                            menu_item.menu.full_menu_item_list.clear();
+                            FaceSelection.create_menu_items(menu_item.menu);
+                            menu_item.menu.menu_kind = FaceSelection;
+                            menu_item.menu.rebuild_menu();
+                            add_key_help(KeyHelpButton::Minus, Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
+                            CustomAssetMenu::toggle_ui();
+                            BasicMenuResult::se_cursor()
+                        }
+                        LoadResult::NoFiles => {
+                            GameMessage::create_key_wait(menu_item.menu, format!("No Face thumbnails in '{}'.\nFiles are PNG of size 188x74", THUMB_DIR));
+                            BasicMenuResult::se_miss()
+                        }
+                        LoadResult::MissingDirectory => {
+                            GameMessage::create_key_wait(menu_item.menu, format!("Cannot locate directory:\n{}", THUMB_DIR));
+                            BasicMenuResult::se_miss()
+                        }
+                    }
                 }
+                else { BasicMenuResult::se_miss() }
             }
             _ => { return BasicMenuResult::new(); }
         }
@@ -212,6 +237,15 @@ impl CustomMenuItem for AssetFlag {
                     change_unit = true;
                     let v = UnitAssetMenuData::get();
                     v.is_shop_combat = !v.is_shop_combat;
+                }
+                Self::UseFaceThumbnail => {
+                    change_unit = false;
+                    UnitAssetMenuData::toggle_unit_flag(8);
+                    if let Some(unit) = UnitAssetMenuData::get_unit() {
+                        crate::capture::update_face(unit, UnitAssetMenuData::get_person_flag() & 8 != 0);
+                    }
+                    menu_item.decided = self.is_decided();
+                    menu_item.rebuild_text();
                 }
                 _ => { return self.a_call(menu_item); }
             }
