@@ -2,12 +2,13 @@ use std::sync::OnceLock;
 use engage::gamedata::accessory::AccessoryData;
 use engage::menu::{BasicMenuItemAttribute, BasicMenuResult};
 use engage::menu::menu_item::accessory::*;
-use unity::engine::Color;
+use unity::engine::{Color, Vector2};
 use unity::engine::ui::IsImage;
 use unity::prelude::*;
 use engage::game::GameColor;
 use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
 use engage::menu::menu_item::MenuItem;
+use engage::spriteatlasmanager::FaceThumbnail;
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
 use super::{*, items::{CustomMenuItem, *}};
 
@@ -108,17 +109,16 @@ impl CustomAssetMenuItem {
 				AssetType::Rig => preview.original_assets[15],
 				AssetType::ColorPreset(kind) => {
 					let mut original = 0;
-					for x in 0..3 {
-						original += (preview.original_color[4*kind as usize + x] << 8*x) as i32;
-					}
+					for x in 0..3 { original += (preview.original_color[4*kind as usize + x] << 8*x) as i32; }
 					original
 				}
 			};
 		let is_original = original == item.hash;
 		item.original = is_original;
-		if item.original {
-			if let Some(game_color) = GameColor::get() {
-				item.active_text= game_color.yellow_text;
+		if let Some(game_color) = GameColor::get() {
+			if item.original {
+				item.active_text = game_color.yellow_text;
+				item.cursor_color = game_color.yellow_text;
 				item.inactive_text = game_color.yellow_text;
 			}
 		}
@@ -131,10 +131,24 @@ impl CustomAssetMenuItem {
 		item.decided = decided;
 		item.original = original;
 		item.menu_kind = Asset(asset_type);
-		if item.original {
-			if let Some(game_color) = GameColor::get() {
-				item.active_text= game_color.yellow_text;
-				item.inactive_text = game_color.yellow_text;
+		if let Some(game_color) = GameColor::get() {
+			match asset_type {
+				AssetType::ColorPreset(_) => {
+					let mut vv = [0.0, 0.0, 0.0];
+					for x in 0..3 {
+						let v = (hash >> (x * 8)) & 255;
+						vv[x] = v as f32 / 255.0;
+					}
+					let color = Color { r: vv[0], g: vv[1], b: vv[2], a: 1.0 };
+					item.cursor_color = color;
+				}
+				_ => {
+					if item.original {
+						item.active_text = game_color.yellow_text;
+						item.inactive_text = game_color.yellow_text;
+						item.cursor_color = game_color.yellow_text;
+					}
+				}
 			}
 		}
 		item
@@ -146,6 +160,7 @@ impl CustomAssetMenuItem {
 		item2.sub_kind = sub;
 		item2.is_menu = true;
 		item2.is_asset = false;
+		if let Some(game_color) = GameColor::get() { item2.cursor_color = game_color.default_color; }
 		item2
 	}
 	pub fn get_name(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> &'static Il2CppString {
@@ -165,16 +180,31 @@ impl CustomAssetMenuItem {
 	}
 	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
 		this.on_select_base();
-		if this.menu_kind == UnitInventorySubMenuItem { return; }
+		match this.menu_kind {
+			UnitInventorySubMenuItem => { return; }
+			RGBA { kind, color: _} => {
+				let k = kind as usize;
+				let preview = UnitAssetMenuData::get_preview();
+				let cursor_color = Color {
+					r: preview.color_preview[4 * k] as f32 / 255.0,
+					g: preview.color_preview[4 * k + 1] as f32 / 255.0,
+					b: preview.color_preview[4 * k + 2] as f32 / 255.0,
+					a: 1.0,
+				};
+				this.cursor_color = cursor_color;
+				this.menu.menu_content.set_cursor_color(cursor_color);
+			}
+			_ => {}
+		}
 		this.menu_kind.on_select(this);
 		this.set_color();
 	}
 	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
 	pub fn rebuild_text(&mut self) {
+		Self::on_build_menu_item_content(self, None);
 		if let Some(content) = self.menu_item_content.as_ref(){
 			let menu_kind = self.menu_kind.clone();
 			content.build_text_();
-			self.on_build_menu_item_content();
 			content.name_text.set_text(menu_kind.get_name(self), true);
 			let icon = menu_kind.get_icon(self);
 			if let Some(icon) = icon.get_icon(){
@@ -190,68 +220,21 @@ impl CustomAssetMenuItem {
 		self.set_color();
 	}
 	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
-		if this.menu_kind == UnitInventorySubMenuItem {
-			this.on_select_base();
-			return;
-		}
 		let original = this.original;
+		let kind = this.menu_kind.clone();
 		if let Some(game_color) = GameColor::get() {
-			if original {
-				if let Some(content) = this.menu_item_content.as_mut() { content.name_text.set_color(game_color.yellow_text); }
-				let kind = this.menu_kind.clone();
+			if let Some(content) = this.menu_item_content.as_mut() {
 				match kind {
-					Asset(AssetType::ColorPreset(_)) => {
-						let mut vv = [0.0, 0.0, 0.0];
-						for x in 0..3 {
-							let v = (this.hash >> (x * 8)) & 255;
-							vv[x] = v as f32 / 255.0;
-						}
-						let color = Color { r: vv[0], g: vv[1], b: vv[2], a: 1.0 };
-						this.cursor_color = color;
-						return;
+					UnitInventorySubMenuItem => { this.on_deselect_base(); }
+					_ => {
+						if original { content.name_text.set_color(game_color.yellow_text); }
+						else { content.name_text.set_color(Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0}); }
 					}
-					_ => {}
-				}
-			}
-			else {
-				if let Some(content) = this.menu_item_content.as_mut() {
-					content.name_text.set_color(Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
 				}
 			}
 		}
 	}
-	fn set_color(&mut self) {
-		let original = self.original;
-		if let Some(game_color) = GameColor::get() {
-			let kind = self.menu_kind.clone();
-			match kind {
-				Asset(AssetType::ColorPreset(_)) => {
-					let mut vv = [0.0, 0.0, 0.0];
-					for x in 0..3 {
-						let v = (self.hash >> (x * 8)) & 255;
-						vv[x] = v as f32 / 255.0;
-					}
-					let color = Color { r: vv[0], g: vv[1], b: vv[2], a: 1.0 };
-					self.cursor_color = color;
-					if self.original {
-						if let Some(content) = self.menu_item_content.as_mut() { content.name_text.set_color(game_color.yellow_text); }
-					}
-					return;
-				}
-				_ => {}
-			}
-			if original {
-				self.cursor_color = game_color.yellow_text;
-				self.inactive_text = game_color.yellow_text;
-				self.active_text = game_color.yellow_text;
-				if let Some(content) = self.menu_item_content.as_mut() { content.name_text.set_color(game_color.yellow_text); }
-			}
-			else {
-				self.cursor_color = game_color.default_color;
-				self.active_text = game_color.default_color;
-			}
-		}
-	}
+	fn set_color(&mut self) { return; }
 	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
@@ -260,27 +243,79 @@ impl CustomAssetMenuItem {
 		if this.menu_kind == UnitInventorySubMenuItem { this.set_color(); }
 	}
 	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
-		if this.menu_kind == UnitInventorySubMenuItem { return; }
-		let custom_item = unsafe { std::mem::transmute::<&CustomAssetMenuItem, &AccessoryMenuItem>(this) };
-		custom_item.on_build_menu_item_content_();
+		let idx = this.hash;
 		let kind = this.menu_kind.clone();
-		let name = kind.get_name(this);
-		let icon = kind.get_icon(this);
-		let decided = this.decided;
-		let original = this.original;
-		this.set_color();
-		if let Some(content) = this.menu_item_content.as_mut() {
-			content.name_text.set_text(name, true);
-			content.fixed_cursor_object.set_active(decided);
-			if original { if let Some(game_color) = GameColor::get() {
-				content.name_text.set_color(game_color.yellow_text); } 
+		if let Some(game_color) = GameColor::get() {
+			match kind {
+				UnitInventorySubMenuItem => { return; }
+				FaceThumb => {
+					let name = this.name.to_string().trim_end_matches(".png").to_string();
+					if let Some(content) = this.menu_item_content.as_mut() {
+						content.name_text.set_text(name.into(), true);
+						content.name_text.set_color(game_color.default_color);
+						if let Some(sprite) = FaceThumbnail::get_item(format!("LOAD_{}", idx)) {
+							content.kind_icon.set_active(true);
+							if let Some(rect) = content.kind_icon.get_component_by_type::<RectTransform>() {
+								rect.set_anchored_position_injected(&Vector2::new(90.0, 0.0));
+								rect.set_size_delta(Vector2::new(127.0, 50.0));
+							}
+							if let Some(rect) = content.name_object.get_component_by_type::<RectTransform>() {
+								rect.set_anchored_position_injected(&Vector2::new(160.0, -40.0));
+							}
+							content.kind_icon_image.set_sprite2(sprite);
+						}
+					}
+					return;
+				}
+				RGBA { kind, color: _ } => {
+					let k = kind as usize;
+					let preview = UnitAssetMenuData::get_preview();
+					let cursor_color = Color {
+						r: preview.color_preview[4 * k] as f32 / 255.0,
+						g: preview.color_preview[4 * k + 1] as f32 / 255.0,
+						b: preview.color_preview[4 * k + 2] as f32 / 255.0,
+						a: 1.0,
+					};
+					this.cursor_color = cursor_color;
+					this.menu.menu_content.set_cursor_color(cursor_color);
+				}
+				_ => {}
 			}
-			if let Some(icon) = icon.get_icon() {
-				content.kind_icon.set_active(true);
-				content.kind_icon_image.set_sprite2(icon);
+			let name = kind.get_name(this);
+			let icon = kind.get_icon(this);
+			let decided = this.decided;
+			let original = this.original;
+			let disable = this.attribute & 2 != 0;
+			if original {
+				this.cursor_color = game_color.yellow_text;
+				this.inactive_text = game_color.yellow_text;
+				this.active_text = game_color.yellow_text;
 			} else {
-				content.kind_icon.set_active(false);
-				content.fixed_cursor_object.set_active(false);
+				this.active_text = game_color.default_color;
+				this.inactive_text = game_color.second_color;
+			}
+			if let Some(content) = this.menu_item_content.as_mut() {
+				content.name_text.set_text(name, true);
+				content.fixed_cursor_object.set_active(decided);
+				if let Some(rect) = content.name_object.get_component_by_type::<RectTransform>() {
+					rect.set_anchored_position_injected(&Vector2::new(104.0, -40.0));
+				}
+				if original { content.name_text.set_color(game_color.yellow_text); }
+				else if disable { content.name_text.set_color(game_color.disable_character); }
+				else { content.name_text.set_color(game_color.default_character); }
+
+				if let Some(icon) = icon.get_icon() {
+					content.kind_icon.set_active(true);
+					if let Some(rect) = content.kind_icon.get_component_by_type::<RectTransform>() {
+						rect.set_anchored_position_injected(&Vector2::new(70.0, 0.0));
+						rect.set_size_delta(Vector2::new(48.0, 48.0));
+					}
+					content.kind_icon_image.set_sprite2(icon);
+				}
+				else {
+					content.kind_icon.set_active(false);
+					content.fixed_cursor_object.set_active(false);
+				}
 			}
 		}
 	}
