@@ -496,6 +496,12 @@ impl CustomAssetMenuKind {
                     UnitAssetMenuData::get().control.setup(false, true);
                     return;
                 }
+                FaceSelection => {
+                    CustomAssetMenu::toggle_ui();
+                    disable_key_help(KeyHelpButton::Minus);
+                    UnitAssetMenuData::get().loaded_data.release_faces();
+                    return;
+                }
                 ShopMount(_) => { ReloadType::ForcedUpdate }
                 ColorKindSelection|ColorSelection(_)|RGBAMenu(_) => { ReloadType::ForcedUpdate }
                 ShopAoc(_)|ShopAcc(_) => { ReloadType::All }
