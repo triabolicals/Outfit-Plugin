@@ -61,6 +61,7 @@ impl CustomAssetMenuKind {
             PresetAppearanceMenu(_) => 12,
             PauseList => 13,
             ItemList => 14,
+            FaceSelection => 15,
             ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 104 } else { 100 }, *kind, 4) },    //1020
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
