@@ -191,8 +191,13 @@ impl CustomAssetMenuItem {
 					b: preview.color_preview[4 * k + 2] as f32 / 255.0,
 					a: 1.0,
 				};
-				this.cursor_color = cursor_color;
-				this.menu.menu_content.set_cursor_color(cursor_color);
+				if (cursor_color.r + cursor_color.g + cursor_color.b) > 0.0 {
+					this.cursor_color = cursor_color;
+					this.menu.menu_content.set_cursor_color(cursor_color);
+				}
+				else if let Some(color) = GameColor::get() {
+					this.menu.menu_content.set_cursor_color(color.default_color);
+				}
 			}
 			_ => {}
 		}
@@ -276,8 +281,12 @@ impl CustomAssetMenuItem {
 						b: preview.color_preview[4 * k + 2] as f32 / 255.0,
 						a: 1.0,
 					};
-					this.cursor_color = cursor_color;
-					this.menu.menu_content.set_cursor_color(cursor_color);
+					if (cursor_color.r + cursor_color.g + cursor_color.b) > 0.0 {
+						this.menu.menu_content.set_cursor_color(cursor_color);
+					}
+					else if let Some(color) = GameColor::get() {
+						this.menu.menu_content.set_cursor_color(color.default_color);
+					}
 				}
 				_ => {}
 			}

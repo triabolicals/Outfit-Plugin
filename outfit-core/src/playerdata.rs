@@ -174,17 +174,11 @@ impl PlayerOutfitData {
             db.try_get_asset(AssetType::Hair, self.uhair).is_some() ||
             db.try_get_asset(AssetType::Rig, self.rig).is_some() ||
             db.try_get_asset(AssetType::Voice, self.voice).is_some() ||
+            db.try_get_asset(AssetType::Body, self.ubody).is_some() ||
             self.mount.iter().enumerate().any(|(i, m)| db.try_get_asset(AssetType::Mount(i as u8), *m).is_some()) ||
             self.acc.iter().any(|a| db.try_get_asset(Acc(0), *a).is_some());
-        if not_empty { false }
-        /*
-        else if let Some(g) = gender.filter(|g| *g == Gender::Male || *g == Gender::Female){
-            if db.get_dress_gender_hash(self.ubody) == Some(g) { false }
-            else if g == Gender::Male { !self.aoc.iter().any(|a| db.try_get_asset(AssetType::AOC(0), *a).is_some()) }
-            else { !self.aoc_alt.iter().any(|a| db.try_get_asset(AssetType::AOC(0), *a).is_some()) }
-        }
-        */
-        else { true }
+        
+        !not_empty
     }
     pub fn deserialize(stream: &mut Stream, version: i32) -> Self {
         let flag = stream.read_int().unwrap_or(0);

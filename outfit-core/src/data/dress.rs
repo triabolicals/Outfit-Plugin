@@ -170,7 +170,8 @@ impl DressData {
     }
     pub fn get_personal_dress(&self, unit: &Unit) -> Option<&PersonalDressData> {
         let is_female = unit.get_dress_gender() == Gender::Female;
-        self.get_personal_dress_by_person(unit.person, is_female)
+        if unit.person.flag.value & 512 != 0 { self.get_personal_dress_by_name(unit.person.name.unwrap().to_string().as_str(), is_female) }
+        else { self.get_personal_dress_by_person(unit.person, is_female) }
     }
     pub fn get_personal_dress_by_person(&self, person: &PersonData, female: bool) -> Option<&PersonalDressData> {
         let is_lueur = person.parent.index == 1 || person.flag.value & 128 != 0;

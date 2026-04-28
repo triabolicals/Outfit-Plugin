@@ -192,7 +192,6 @@ impl CustomAssetMenu {
                         if UnitAssetMenuData::get().menu_adj == 0.0 { UnitAssetMenuData::get().menu_adj = pos.x; }
                         unit_info_char_mask_setup(mask, false);
                         pos.x = (x_max + x_min) * 0.5;
-                        println!("Char Mask: Pos {} {} {}", pos.x, pos.y, pos.z);
                         mask.rect.set_position(pos);
                     }
                 });
