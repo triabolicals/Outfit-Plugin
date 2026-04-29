@@ -426,6 +426,23 @@ impl OutfitData {
         }
         if engaged {
             AnimData::remove(result, true, true);
+            if let Some(god_data) = unit.god_link.or(unit.god_unit).map(|g| g.data.main_data.parent.hash) {
+                if let Some(data) = UnitAssetMenuData::get_by_person_data(god_data, false) {
+                    let hash = data.profile[0].mount[if dress_gender == Gender::Female { 1 } else { 0 } as usize];
+                    if conditions.mode == 2 {
+                        if let Some(body) = self.try_get_asset(AssetType::Body, hash) {
+                            result.dress_model = body.into();
+                            return;
+                        }
+                    } 
+                    else if conditions.mode == 1 {
+                        if let Some(obody) = self.hashes.get_obody(hash) {
+                            result.body_model = obody.into();
+                            return;
+                        }
+                    }
+                }
+            }
             if let Some(data) = conditions.engaged.as_ref().and_then(|eid| self.dress.get_engaged_dress(eid.into())){
                 if data.asset_id == "リュール" {
                     if !unit.is_hero() { data.apply(result, conditions.mode, dress_gender); }

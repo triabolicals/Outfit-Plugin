@@ -1,32 +1,48 @@
 use engage::gamedata::assettable::{AssetTableResult, AssetTableStaticFields};
-use crate::{OUTPUT_ASSET_TABLE_DIR, OUTPUT_DATA};
+use crate::{OUTPUT_ASSET_TABLE_DIR};
 use super::*;
 use std::io::Write;
+use std::path::Path;
 
-pub fn output_unit_result() -> (String, bool) {
+pub fn get_next_filename(dir: &str, stem: &String, ext: &str) -> String {
+	let mut file_path = format!("{}{}.{}", dir, stem, ext);
+	if Path::new(file_path.as_str()).exists() {
+		let mut c = 1;
+		loop {
+			file_path = format!("{}{}-{}.{}", dir, stem, c, ext);
+			if Path::new(file_path.as_str()).exists() { c += 1; }
+			else { break; }
+		}
+	}
+	file_path
+}
+pub fn output_unit_result(preview: bool) -> (String, String, bool) {
 	let person_hash = UnitAssetMenuData::get_preview().person;
 	let emblem = UnitAssetMenuData::get().god_mode;
 	let name = if emblem {
-		GodData::try_get_hash(person_hash).map(|v| format!("{}-{}", Mess::get(v.mid), v.parent.index))
+		GodData::try_get_hash(person_hash)
+			.map(|v| format!("{}", Mess::get(v.mid)))
 			.unwrap_or(format!("Emblem_{}", person_hash))
 	}
 	else {
-		UnitAssetMenuData::get_shop_unit().map(|v| format!("{}-{}", v.get_name(), v.person.parent.index))
+		UnitAssetMenuData::get_shop_unit()
+			.map(|v| format!("{}", v.get_name()))
 			.unwrap_or(format!("Unit_{}", person_hash))
 	};
-	let filename1 = format!("{}{}.txt", OUTPUT_DATA, name);
+	let filename1 = get_next_filename(INPUT_DIR, &name, "txt");
 	if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(filename1.as_str()){
 		writeln!(file, "Outfit Plugin\nVersion: {}", UnitAssetData::version()).unwrap();
-		writeln!(file, "{}", UnitAssetMenuData::get_preview().preview_data.to_string(person_hash)).unwrap();
+		if preview { writeln!(file, "Preview").unwrap(); }
+		writeln!(file, "{}", UnitAssetMenuData::get_preview().preview_data.out(person_hash, preview)).unwrap();
 	}
-	let filename = format!("{}{}.txt", OUTPUT_ASSET_TABLE_DIR, name);
+	let filename = get_next_filename(OUTPUT_ASSET_TABLE_DIR, &name, "txt");
 	if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(filename.as_str()){
 		let entry = result_to_string(UnitAssetMenuData::get_result(), 2);
 		writeln!(&mut file, "Mode: {}", 2).unwrap();
 		writeln!(&mut file, "{}\n", entry).unwrap();
-		return (filename, true);
+		return (filename, filename1, true);
 	}
-	(filename, false)
+	(filename, filename1, false)
 }
 pub fn result_to_string(result: &AssetTableResult, mode: i32) -> String {
 	let bits = &AssetTableStaticFields::get().condition_flags;

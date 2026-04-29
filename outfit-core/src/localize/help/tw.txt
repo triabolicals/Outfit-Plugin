@@ -4,7 +4,7 @@
 400 設定單位的名稱。
 401 更改單位的名稱。 $(Left)$(Right)切換啟動狀態。
 402 更改單位的名稱。
-5 將目前 AssetTable.Result 匯出到 'sd:/engage/outfits/results'\n並將外觀參數匯出到 'sd:/engage/outfit/data'。
+5 將目前 AssetTable.Result 匯出到 'sd:/engage/outfits/results'\n並將外觀參數匯出到 'sd:/engage/outfit/input'。
 6 從 'sd:/engage/outfits/input/' 中選擇外觀參數文件\n以將資料載入到資產設定檔中。
 7 當前資產設定檔資料。
 8 查看預設角色設定。$(Minus)移除所有目前資產參數。

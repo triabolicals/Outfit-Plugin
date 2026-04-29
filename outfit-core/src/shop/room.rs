@@ -347,6 +347,7 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
         let pid = UnitAssetMenuData::get_shop_unit().map(|v| v.person.pid)
             .or_else(|| GodData::try_get_hash(UnitAssetMenuData::get_preview().person).map(|v| v.gid))
             .unwrap_or("PID_リュール".into());
+        println!("Force Load");
         let hash = crate::new_result_get_hash_code(result, None);
         if hash == room.last_hash && reload_type != ReloadType::ForcedUpdate { return; }
         if reload_type == ReloadType::ForcedUpdate { room.destroy_current_char(); }

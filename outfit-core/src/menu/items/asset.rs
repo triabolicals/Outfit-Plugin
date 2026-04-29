@@ -8,6 +8,8 @@ use engage::{
     unitinfo::UnitInfo,
     util::get_singleton_proc_instance,
 };
+use engage::combat::CharacterAppearance;
+use engage::gamedata::assettable::AssetTableResult;
 use engage::gamesound::{GameSound, GameSoundFadeSpeedType};
 use crate::{get_outfit_data, left_right_enclose, new_asset_table_accessory, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS};
 use crate::anim::AnimData;
@@ -83,8 +85,18 @@ impl AssetType {
         }
         if model {
             let mut reload_type = ReloadType::ForcedUpdate;
-            let result = UnitAssetMenuData::get_result();
-            let is_personal = menu_item.menu.menu_kind.to_index() == 10;
+            println!("Updating");
+            let menu_index =  menu_item.menu.menu_kind.to_index();
+            let is_personal = menu_index == 10;
+            let is_engaged = menu_index == 16 || menu_index == 17;
+            let result = if is_engaged {
+                let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
+                println!("IS ENGAGED");
+                let result = AssetTableResult::get_from_pid(2, pid, CharacterAppearance::get_constions(None));
+                result
+            }
+            else { UnitAssetMenuData::get_result() };
+
             let photo = UnitAssetMenuData::is_photo_graph();
             if photo && !is_personal {
                 let hash = menu_item.hash;
@@ -124,15 +136,15 @@ impl AssetType {
                 AssetType::Body => {
                     if let Some(asset) = asset {
                         result.dress_model = asset.as_str().into();
+                        result.body_anim = Some(
+                            if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
+                            else { "AOC_Hub_Hum0F" }.into()
+                        );
                         if UnitAssetMenuData::get_preview().update_dress_gender {
                             UnitAssetMenuData::get_preview().update_dress_gender = false;
                             reload_type = ReloadType::ForcedUpdate;
-                            result.body_anim = Some(
-                                if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
-                                else { "AOC_Hub_Hum0F" }.into()
-                            );
                         }
-                        else if !is_personal { reload_type = ReloadType::Dress; }
+                        else if !is_personal && !is_engaged { reload_type = ReloadType::Dress; }
                     }
                 }
                 AssetType::Rig => {
@@ -171,12 +183,6 @@ impl AssetType {
                         if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
                     }
                     if let Some(asset) = asset {
-                        /*
-                        UnitAssetMenuData::get().model_pos[16] = UnitAssetMenuData::get().model_pos[0];
-                        UnitAssetMenuData::get().model_pos[17] = UnitAssetMenuData::get().model_pos[1];
-                        UnitAssetMenuData::get().model_pos[18] = UnitAssetMenuData::get().model_pos[2];
-
-                         */
                         result.body_anims.clear();
                         let dress = db.get_dress_gender(result.dress_model);
                         let gender = if db.get_dress_gender(result.dress_model) == Gender::Female { "F" } else { "M" };
@@ -304,7 +310,12 @@ impl CustomMenuItem for AssetType {
             match self {
                 Self::Body => {
                     let mode1 = db.hashes.get_obody(menu_item.hash).unwrap_or(Mess::get_item_none());
-                    if UnitAssetMenuData::get().god_mode { format!("Combat: {}\nMap: {}",mode2, mode1).into() }
+                    if UnitAssetMenuData::get().god_mode {
+                        let idx = menu_item.menu.menu_kind.to_index();
+                        if idx == 16 { format!("Male Engaged Outfit\nCombat: {} / Map: {}", mode2, mode1) }
+                        else if idx == 16 { format!("Female Engaged Outfit\nCombat: {} / Map: {}", mode2, mode1) }
+                        else { format!("Combat: {}\nMap: {}", mode2, mode1) }.into()
+                    }
                     else {
                         format!("Combat: {} / Map: {}\n{}Set for break [Experimental: {}].",
                             mode2, mode1, Mess::create_sprite_tag_str(2, "X"),
@@ -381,7 +392,12 @@ impl CustomMenuItem for AssetType {
                 let index = menu_item.index;
                 menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{ x.set_decided(x.index == index && hash != 0); });
             }
-            AssetType::Body => { preview.preview_data.ubody = hash; }
+            AssetType::Body => {
+                let idx = menu_item.menu.menu_kind.to_index();
+                if idx == 16 { preview.preview_data.mount[0] = hash; }
+                else if idx == 17 { preview.preview_data.mount[1] = hash; }
+                else { preview.preview_data.ubody = hash; }
+            }
             AssetType::Hair => { preview.preview_data.uhair = hash; }
             AssetType::Head => { preview.preview_data.uhead = hash; }
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
@@ -416,6 +432,9 @@ impl CustomMenuItem for AssetType {
                 Asset(_) => {
                     let decided = hash == x.hash;
                     x.set_decided(decided);
+                    if decided {
+                        println!("Name: {}", x.name);
+                    }
                     x.rebuild_text();
                 }
                 _ => {}

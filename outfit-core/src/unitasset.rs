@@ -2,13 +2,10 @@ use std::cmp::PartialEq;
 use std::fs::{read_dir, read_to_string};
 use engage::{
     unit::*,
-    gamedata::{Gamedata, GodData, PersonData, assettable::AssetTableResult},
-    gameuserdata::GameUserData,
-    menu::BasicMenuResult
+    gamedata::{Gamedata, GodData, PersonData, assettable::*},
+    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
+    menu::BasicMenuResult, util::try_get_instance,
 };
-use engage::gamedata::assettable::AssetTableStaticFields;
-use engage::sortie::SortieSelectionUnitManager;
-use engage::util::try_get_instance;
 pub use crate::playerdata::*;
 use crate::assets::unit_dress_gender;
 use crate::{get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl};
@@ -321,7 +318,6 @@ impl UnitAssetMenuData {
         }
         for x in 0..16 { menu.preview.scale_preview[x] = (result.scale_stuff[x] * 100.0) as u16; }
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
-
         true
     }
     pub fn set_unit(unit: &Unit) -> bool { Self::set_by_hash(unit.person.parent.hash) }
@@ -405,9 +401,19 @@ impl UnitAssetMenuData {
             let hash = preview.person;
             let new_data = preview.preview_data.clone();
             let index = preview.selected_profile as usize;
-            if let Some(data) = menu.data.iter_mut().find(|x| x.person == hash ){
-                if let Some(d) = data.profile.get_mut(index) {
-                    *d = new_data.clone();
+            if let Some(data) = menu.data.iter_mut().find(|x| x.person == hash) {
+                if let Some(d) = data.profile.get_mut(index) { *d = new_data.clone(); }
+            }
+            if menu.god_mode {
+                let male = preview.preview_data.mount[0];
+                let female = preview.preview_data.mount[1];
+                if male != 0 || female != 0 {
+                    if let Some(data) = menu.data.iter_mut().find(|x| x.person == hash) {
+                        data.profile.iter_mut().for_each(|x| {
+                            x.mount[0] = male;
+                            x.mount[1] = female;
+                        });
+                    }
                 }
             }
         }

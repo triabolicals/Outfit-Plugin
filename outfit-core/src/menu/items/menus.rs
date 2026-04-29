@@ -41,6 +41,7 @@ pub enum CustomAssetMenuKind {
     PauseList,
     ItemList,
     FaceSelection,
+    EngagedBody(bool),
 }
 impl CustomAssetMenuKind {
     pub fn can_facial(&self) -> bool {
@@ -66,6 +67,7 @@ impl CustomAssetMenuKind {
             PauseList => 13,
             ItemList => 14,
             FaceSelection => 15,
+            EngagedBody(female) => 16 + *female as i32,
             ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 104 } else { 100 }, *kind, 4) },    //1020
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
@@ -91,6 +93,7 @@ impl CustomAssetMenuKind {
             13 => PauseList,
             14 => ItemList,
             15 => FaceSelection,
+            16|17 => EngagedBody(value == 17),
             100..108 => ShopBody(((value as u8 - 100) % 4, value >= 104)),
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
@@ -144,6 +147,10 @@ impl CustomAssetMenuKind {
     }
     pub fn get_right(&self) -> Option<Self> {
         match self {
+            EngagedBody(female) => {
+                UnitAssetMenuData::get_preview().update_dress_gender = true;
+                Some(EngagedBody(!female))
+            }
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
                 let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.job_count.1 } else { db.list.job_count.0 } as u8;
@@ -175,6 +182,10 @@ impl CustomAssetMenuKind {
     }
     pub fn get_left(&self) -> Option<Self> {
         match self {
+            EngagedBody(female) => {
+                UnitAssetMenuData::get_preview().update_dress_gender = true;
+                Some(EngagedBody(!female))
+            }
             ClassBodySelection((class, alt)) => {
                 let db = get_outfit_data();
                 let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.job_count.1 } else { db.list.job_count.0 } as u8;
@@ -211,6 +222,7 @@ impl CustomAssetMenuKind {
                 let set = if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.job_f } else { &db.list.job_m };
                 set.get(*class as usize).map(|v| Mess::get(v.label).to_string().into())
             }
+            EngagedBody(_) => { Some(MenuTextCommand::Engage.get()) }
             ShopBody((2, _)) => { Some(MenuTextCommand::Engage.get())}
             ShopBody((3, _)) => { Some(Mess::get("MID_ProfileCard_Stamp_Others")) }
             Head => { Some(Mess::get("MID_Hub_Mascot_Accessories_Head")) }
@@ -284,7 +296,7 @@ impl CustomAssetMenuKind {
                 else {
                     this.full_menu_item_list.add(CustomAssetMenuItem::new_type(CurrentProfile));
                     for x in [
-                        ProfileSelection, ProfileSettings, ShopBody((0, false)), Head, Hair, Rig,
+                        ProfileSelection, ProfileSettings, ShopBody((0, false)), EngagedBody(false), Head, Hair, Rig,
                         ShopAcc(0), VoiceSelection, ShopAoc(0), ShopMount(0), ColorKindSelection, ScaleMenu, Personal, PresetAppearanceMenu(false)]
                     {
                         this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(x));
@@ -335,7 +347,6 @@ impl CustomAssetMenuKind {
                             item.name = d.get_menu_name();
                             this.full_menu_item_list.add(item);
                         }
-
                     });
             }
             Personal => {
@@ -357,15 +368,25 @@ impl CustomAssetMenuKind {
             ProfileSettings => {
                 [FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EnableColor), FlagMenuItem(AssetFlag::EnableScaling),
                     FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), FlagMenuItem(AssetFlag::EngagedAnimation),
-                    FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export), Data(AssetDataMode::Import),
-                    FlagMenuItem(AssetFlag::ViewMode)
-                ].into_iter().for_each(|v|{
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_type(v));
-                });
+                    FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export),
+                    Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
+                ].into_iter().for_each(|v|{ this.full_menu_item_list.add(CustomAssetMenuItem::new_type(v)); });
             }
             ShopBody((0, alt)) => {    // Unit (Same Gender)
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.add_menu_items(AssetType::Body, female, true, false, &db.labels, this.full_menu_item_list);
+            }
+            EngagedBody(female) => {
+                let selected = if *female { preview.preview_data.mount[1] } else { preview.preview_data.mount[0] };
+                preview.update_dress_gender = true;
+                if *female { &db.hashes.female_ou } else { &db.hashes.male_ou }.iter()
+                    .for_each(|v|{
+                        if let Some(body) = db.hashes.body.get(&v.0) {
+                            let name = body.trim_start_matches("uBody_");
+                            let item = CustomAssetMenuItem::new_asset(AssetType::Body, v.0, name.into(), selected == v.0, false);
+                            this.full_menu_item_list.add(item);
+                        }
+                    });
             }
             ShopBody((1, alt))  => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
@@ -520,6 +541,7 @@ impl CustomAssetMenuKind {
     }
     pub fn build_attribute(&self, emblem: bool) -> BasicMenuItemAttribute {
         match self {
+            EngagedBody(_) => if !emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             ShopMount(_)|ShopAoc(_)|PresetAppearanceMenu(_) => if emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
             _ => BasicMenuItemAttribute::Enable,
         }
@@ -567,6 +589,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ItemList => { CustomMenuIcon::Weapon }
             PauseList => { CustomMenuIcon::SolaTail }
             FaceSelection => { CustomMenuIcon::SilverCard }
+            EngagedBody(_) => { CustomMenuIcon::EngageCommon }
         }
     }
     fn get_equipment_box_type(&self, _menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
@@ -622,6 +645,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
                          count)
                 )
             }
+            EngagedBody(female) => { left_right_enclose(&if *female { "Female"} else { "Male"}.to_string()) }
             ShopAcc(kind) => {
                 left_right_enclose(&format!("{} [{}/5]", MenuText::get_command(60 + *kind as i32), *kind + 1))
             }

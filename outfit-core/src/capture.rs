@@ -274,14 +274,7 @@ pub fn save_texture_png(texture2d: &Texture2D, is_face: bool) -> Option<String> 
     if let Some(unit) = UnitAssetMenuData::get_unit() {
         let name = unit.get_name();
         let path = if is_face { THUMB_DIR } else { CAPTURE_DIR };
-        let mut file_path = format!("{}{}.png", path, name);
-        if Path::new(file_path.as_str()).exists() {
-            let mut c = 1;
-            loop {
-                file_path = format!("{}{}-{}.png", path, name, c);
-                if Path::new(file_path.as_str()).exists() { c += 1; } else { break; }
-            }
-        }
+        let file_path = crate::get_next_filename(path, &name.to_string(), "png");
         if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(file_path.as_str()){
             let result = file.write_all(&data);
             if result.is_ok(){ return Some(file_path); }

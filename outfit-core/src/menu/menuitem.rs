@@ -207,6 +207,7 @@ impl CustomAssetMenuItem {
 	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
 	pub fn rebuild_text(&mut self) {
 		Self::on_build_menu_item_content(self, None);
+		let is_decided = self.decided;
 		if let Some(content) = self.menu_item_content.as_ref(){
 			let menu_kind = self.menu_kind.clone();
 			content.build_text_();
@@ -216,6 +217,7 @@ impl CustomAssetMenuItem {
 				content.kind_icon.set_active(true);
 				content.kind_icon_image.set_sprite2(icon);
 			}
+			content.fixed_cursor_object.set_active2(is_decided);
 			self.set_color();
 		}
 	}

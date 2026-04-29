@@ -4,10 +4,11 @@
 400 Set Unit's name.
 401 Change Unit's name. $(Left)$(Right)Toggle active.
 402 Change Unit's name.
-5 Export current AssetTable.Result to'sd:/engage/outfits/results'\nand outfit parameters to 'sd:/engage/outfit/data'
+5 Export current AssetTable.Result to'sd:/engage/outfits/results'\nand outfit parameters to 'sd:/engage/outfit/input'
 6 Select an outfit parameter file from 'sd:/engage/outfits/input/'\nto load data into an asset profile.
 7 The current asset profile data.
 8 $(L)$(R)Change data page.\n$(Minus)Remove all current asset parameters.
+9 Export the current preview as outfit parameters to\n'sd:/engage/outfit/input'
 10 Asset profile to use in battle/map.
 11 Asset profile to when engaged.
 12 Asset profile to use in the Somniel.
@@ -37,6 +38,7 @@
 1010 View assets that belongs to this character.
 1011 Select a file to load.
 1012 Apply assets from a preset character/emblem.
+1016 Select an engaged dress model.\nOnly dress models with both Map and Combat models.
 1020 Assign a dress model.\nMap model (Mode 1) will be replaced if it exists.
 1021 Assign assets to various accessory locators.
 1022 Assign replacement ride dress models.

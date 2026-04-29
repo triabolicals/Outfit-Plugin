@@ -52,7 +52,6 @@ pub fn add_sub_unit_menu_item(proc: &mut ProcInst) {
 	let menu = proc.cast_mut::<BasicMenu<CustomAssetMenuItem>>();
 	menu.full_menu_item_list.add(CustomAssetMenuItem::new_type(UnitInventorySubMenuItem));
 	let len = menu.full_menu_item_list.len();
-	menu.set_show_row_num(len as i32 + 1);
 	menu.reserved_show_row_num = len as i32;
 	menu.show_row_num = len as i32;
 	menu.proc.desc_index = 0;

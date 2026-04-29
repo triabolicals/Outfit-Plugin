@@ -8,6 +8,7 @@ use super::*;
 pub enum AssetDataMode {
     Import,
     Export,
+    ExportPreview,
 }
 
 impl CustomMenuItem for AssetDataMode {
@@ -20,12 +21,14 @@ impl CustomMenuItem for AssetDataMode {
         match self {
             Self::Import => Some(Mess::get("MID_SAVEDATA_LOAD_YES")),
             Self::Export => Some(Mess::get("MID_SAVEDATA_SAVE_TITLE")),
+            Self::ExportPreview => Some(format!("{} [Preview]", Mess::get("MID_SAVEDATA_SAVE_TITLE")).into())
         }
     }
     fn get_help(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
         match self {
             Self::Export => MenuText::get_help(5).unwrap(),
             Self::Import => MenuText::get_help(6).unwrap(),
+            Self::ExportPreview => MenuText::get_help(9).unwrap(),
         }
     }
     fn get_body(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString { "Data".into() }
@@ -33,8 +36,9 @@ impl CustomMenuItem for AssetDataMode {
         match self {
             Self::Import => {
                 let gender =
-                if UnitAssetMenuData::get_flag() & 128 != 0 { Gender::None }
-                else if UnitAssetMenuData::get_current_dress_gender() == 2 { Gender::Female } else { Gender::Male };
+                    if UnitAssetMenuData::get_flag() & 128 != 0 { Gender::None }
+                    else if UnitAssetMenuData::get_current_dress_gender() == 2 { Gender::Female }
+                    else { Gender::Male };
                 match UnitAssetMenuData::get().loaded_data.load_files(gender){
                     LoadResult::Success => {
                         menu_item.menu.kind = 1;
@@ -55,18 +59,20 @@ impl CustomMenuItem for AssetDataMode {
                     }
                 }
             }
-            Self::Export => {
-                let (filename, saved) = crate::output_unit_result();
-                if saved {
-                    GameMessage::create_key_wait(menu_item.menu, format!("AssetTable Result: Saved to\n{}",filename));
-                    BasicMenuResult::se_decide()
-                }
-                else {
-                    GameMessage::create_key_wait(menu_item.menu, format!("AssetTable Result: Failed to saved to\n{}", filename));
-                    BasicMenuResult::se_miss()
-                }
-            }
+            Self::ExportPreview => { output(menu_item, true) }
+            Self::Export => { output(menu_item, false) }
         }
+    }
+}
+fn output(menu_item: &mut CustomAssetMenuItem, preview: bool) -> BasicMenuResult {
+    let (filename, data, saved) = crate::output_unit_result(preview);
+    if saved {
+        GameMessage::create_key_wait(menu_item.menu, format!("Saved\nResult: {}\nData: {}",filename, data).as_str());
+        BasicMenuResult::se_cursor()
+    }
+    else {
+        GameMessage::create_key_wait(menu_item.menu, "Failed to export data/result.") ;
+        BasicMenuResult::se_miss()
     }
 }
 

@@ -177,7 +177,7 @@ impl PlayerOutfitData {
             db.try_get_asset(AssetType::Body, self.ubody).is_some() ||
             self.mount.iter().enumerate().any(|(i, m)| db.try_get_asset(AssetType::Mount(i as u8), *m).is_some()) ||
             self.acc.iter().any(|a| db.try_get_asset(Acc(0), *a).is_some());
-        
+
         !not_empty
     }
     pub fn deserialize(stream: &mut Stream, version: i32) -> Self {
@@ -430,6 +430,28 @@ impl PlayerOutfitData {
         }
         else { None }
     }
+    pub fn out(&self, hash: i32, with_preview: bool) -> String {
+        if with_preview {
+            let db = OUTFIT_DATA.get_or_init(||OutfitData::init());
+            let mut copy = self.clone();
+            let preview = UnitAssetMenuData::get_preview();
+            if db.try_get_asset(AssetType::Body, self.ubody).is_none() { copy.ubody = preview.original_assets[0]; }
+            if db.try_get_asset(AssetType::Head, self.uhead).is_none() { copy.uhead = preview.original_assets[1]; }
+            if db.try_get_asset(AssetType::Hair, self.uhair).is_none() { copy.uhair = preview.original_assets[2]; }
+            for x in 0..8 {
+                for y in 0..4 { copy.colors[x].values[y] = preview.color_preview[4*x + y]; }
+            }
+            for x in 0..16 {
+                if self.scale[x] == 0 || self.scale[x] >= 1000 { copy.scale[x] = preview.scale_preview[x]; }
+            }
+            if db.try_get_asset(AssetType::Voice, self.voice).is_none() { copy.voice = preview.original_assets[14]; }
+            for x in 0..5 {
+                if db.try_get_asset(Acc(x as u8), self.acc[x]).is_none() { copy.acc[x] = preview.original_assets[5+x]; }
+            }
+            copy.to_string(hash)
+        }
+        else { self.to_string(hash) }
+    }
     pub fn to_string(&self, hash: i32) -> String {
         if let Some(mut string) = PersonData::try_get_hash(hash).map(|v| format!("PID={} [{}]", v.pid, Mess::get_name(v.pid)))
             .or_else(|| GodData::try_get_hash(hash).map(|v| format!("GID={} [{}]", v.gid, Mess::get(v.mid))))
@@ -454,8 +476,8 @@ impl PlayerOutfitData {
             for x in 0..5 {
                 string.push_str(format!("{}={}\n", VAR_NAMES[20+x], db.try_get_asset(AssetType::Mount(x as u8), self.mount[x]).unwrap_or(&none)).as_str());
             }
-            string.push_str(format!("{}={}\n", VAR_NAMES[21], db.try_get_asset(AssetType::Voice, self.voice).unwrap_or(&none)).as_str());
-            string.push_str(format!("{}={}\n", VAR_NAMES[22], db.try_get_asset(AssetType::Rig, self.rig).unwrap_or(&none)).as_str());
+            string.push_str(format!("{}={}\n", VAR_NAMES[25], db.try_get_asset(AssetType::Voice, self.voice).unwrap_or(&none)).as_str());
+            string.push_str(format!("{}={}\n", VAR_NAMES[26], db.try_get_asset(AssetType::Rig, self.rig).unwrap_or(&none)).as_str());
             for x in 0..16 { string.push_str(format!("{}={}\n", SCALE_NAME[x],  (self.scale[x] as f32) / 100.0).as_str()); }
             for x in 0..8 {
                 string.push_str(COLORS[x]);
