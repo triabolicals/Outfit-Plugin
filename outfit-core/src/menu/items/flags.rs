@@ -242,7 +242,7 @@ impl CustomMenuItem for AssetFlag {
                     if let Some(unit) = UnitAssetMenuData::get_unit() {
                         crate::capture::update_face(unit, UnitAssetMenuData::get_person_flag() & 8 != 0);
                     }
-                    menu_item.decided = self.is_decided();
+                    menu_item.decided = UnitAssetMenuData::get_person_flag() & 8 != 0;
                     menu_item.rebuild_text();
                 }
                 _ => { return self.a_call(menu_item); }

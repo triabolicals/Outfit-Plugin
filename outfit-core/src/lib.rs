@@ -118,6 +118,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         klass._2.actual_size = size_of::<CustomAssetMenu>() as u32;
         klass._2.instance_size = size_of::<CustomAssetMenu>() as u32;
     }
+
     skyline::patching::Patch::in_text(0x2173ba4).bytes(&[0x40, 0x01, 0x80, 0x52]).unwrap();
     skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
     skyline::patching::Patch::in_text(0x27b66d4).bytes(&[0x08, 0x01, 0x80, 0x52]).unwrap();

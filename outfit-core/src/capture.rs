@@ -309,7 +309,6 @@ pub fn update_face(unit: &Unit, use_original: bool){
     }
 }
 pub fn reset_faces(title: bool) {
-    println!("Resetting Faces");
     let s = FaceThumbnail::get_static_fields().face_thumb.cache_table.entries.iter()
         .filter(|i| i.key.is_some_and(|a| a.to_string().starts_with("o_")))
         .map(|c| c.key.unwrap().to_string())

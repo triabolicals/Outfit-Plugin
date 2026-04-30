@@ -1,22 +1,47 @@
 use cobapi::{Event, SystemEvent};
-use engage::gamemessage::GameMessage;
-use engage::proc::ProcInst;
+use engage::{
+    gamemessage::GameMessage, proc::ProcInst,
+    sequence::mainsequence::MainSequence,
+};
 use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
-use engage::sequence::mainsequence::MainSequence;
-
 #[allow(static_mut_refs)] pub mod enums;
 #[allow(static_mut_refs)] pub mod assets;
 
-pub static mut DISABLED: bool = false;
-extern "C" fn event_install(event: &Event<SystemEvent>) {
+// Required to get `event_install` function to fully compile?
+extern "C" fn dvc_check_warning(event: &Event<SystemEvent>) {
     if let Event::Args(ev) = event {
         match ev {
             SystemEvent::ProcInstBind {proc, parent: _} => {
                 let hash = proc.borrow().hashcode;
-                if hash == engage::proc::TITLE_LOOP_SEQUENCE {
-                    if let Some(main_sequence) = MainSequence::get_instance() {
-                        if main_sequence.pad == 0 {
+                match hash {
+                    engage::proc::TITLE_LOOP_SEQUENCE => {
+                        if let Some(main_sequence) = MainSequence::get_instance() {
+                            if main_sequence.pad == 1 {
+                                main_sequence.pad += 1;
+                                GameMessage::create_key_wait(
+                                    main_sequence,
+                                    "Outfit plugin will be ignored for this session.\nDVC's version of the Outfit Plugin will be used."
+                                );
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => { }
+        }
+    }
+}
+extern "C" fn event_install(event: &Event<SystemEvent>) {
+    if MainSequence::get_instance().is_some_and(|v| v.pad == 0) {
+        if let Event::Args(ev) = event {
+            match ev {
+                SystemEvent::ProcInstBind { proc, parent: _ } => {
+                    let hash = proc.borrow().hashcode;
+                    match hash {
+                        engage::proc::TITLE_LOOP_SEQUENCE => {
+                            println!("[Outfit Plugin {}]", outfit_core::VERSION);
                             if !UnitAssetMenuData::get().init {
                                 outfit_core::install_outfit_plugin(false);
                                 skyline::install_hooks!(
@@ -27,30 +52,22 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                     assets::transform::transformation_chain_atk,
                                     assets::create_break_effect_hook,
                                 );
-                            }
-                            else { outfit_core::reset_faces(true); }
-                            unsafe { DISABLED = false; }
+                            } else { outfit_core::reset_faces(true); }
                         }
-                        else if main_sequence.pad == 1 {
-                            main_sequence.pad += 1;
-                            unsafe { DISABLED = true; }
-                            UnitAssetMenuData::get().init = true;
-                            GameMessage::create_key_wait(main_sequence, "Outfit plugin will be ignored for this session.\nDVC's version of the Outfit Plugin will be used.");
-                        }
+                        engage::proc::UNIT_SELECT_SUB_MENU => { menu_item_add(&mut proc.borrow_mut()); }
+                        _ => {}
                     }
                 }
-                else if hash == engage::proc::UNIT_SELECT_SUB_MENU && !unsafe { DISABLED } { menu_item_add(&mut proc.borrow_mut()); }
+                _ => {}
             }
-            _ => {},
         }
     }
 }
-fn menu_item_add(proc: &mut ProcInst) {
-    outfit_core::add_sub_unit_menu_item(proc);
-}
+fn menu_item_add(proc: &mut ProcInst) { outfit_core::add_sub_unit_menu_item(proc); }
 #[skyline::main(name = "outfits")]
 pub fn main() {
     cobapi::register_system_event_handler(event_install);
+    cobapi::register_system_event_handler(dvc_check_warning);
     Patch::in_text(0x2517830).bytes(&[0xc0, 0x02, 0x80, 0x52]).unwrap();   // GameUserData Version 21
     Patch::in_text(0x1bb5f88).bytes(&[0x15, 0x00, 0x80, 0x52]).unwrap();    // Bypass the default variable in generating cutscene characters.
     std::panic::set_hook(Box::new(|info| {
