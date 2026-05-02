@@ -1,13 +1,12 @@
-use engage::combat::{CharacterAppearance, CharacterFactoryAsync};
-use engage::gamedata::{Gamedata, GodData, PersonData};
-use engage::gamedata::assettable::AssetTableResult;
-use engage::menu::{menu_item::BasicMenuItem, BasicMenuFields, BasicMenuResult};
-use engage::sequence::Bindable;
-use engage::unit::UnitPool;
-use engage::sequence::photograph::*;
-use engage::unityengine::{Camera, UnityComponent, UnityObject, UnityTransform};
-use unity::prelude::*;
-use unity::system::action::{SystemDelegate, Action};
+use engage::{
+    combat::{CharacterAppearance, CharacterFactoryAsync},
+    gamedata::{Gamedata, GodData, PersonData},
+    gamedata::assettable::AssetTableResult,
+    menu::{menu_item::BasicMenuItem, BasicMenuFields, BasicMenuResult},
+    sequence::Bindable, unit::UnitPool, sequence::photograph::*,
+    unityengine::{Camera, UnityComponent, UnityObject, UnityTransform}
+};
+use unity::{prelude::*, system::action::{SystemDelegate, Action}};
 use crate::{print_asset_table_result, CustomAssetMenu, MenuMode, UnitAssetMenuData};
 
 #[unity::class("App", "PhotographEditDisposMenu")]

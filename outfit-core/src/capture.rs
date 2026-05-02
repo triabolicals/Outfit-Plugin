@@ -1,12 +1,8 @@
 use std::{io::Write, path::Path, f32::consts::PI};
 use engage::{
-    combat::Kaneko,
-    gamedata::{Gamedata, PersonData},
-    gamemessage::GameMessage,
-    gamevariable::GameVariableManager,
-    proc::Bindable,
-    unit::Unit,
-    unitinfo::{UnitInfo, UnitInfoSide},
+    combat::Kaneko, gamedata::{Gamedata, PersonData},
+    gamemessage::GameMessage, gamevariable::GameVariableManager,
+    proc::Bindable, unit::Unit, unitinfo::{UnitInfo, UnitInfoSide},
     unityengine::{Camera, RenderTexture, Transform, UnityComponent, UnityObject, UnityTransform},
 };
 use engage::spriteatlasmanager::FaceThumbnail;

@@ -1,9 +1,9 @@
 use std::collections::{HashMap, HashSet};
-use engage::combat::CharacterAppearance;
-use engage::gamedata::{Gamedata, GodData, JobData, PersonData, assettable::*};
-use engage::gamedata::item::ItemData;
-use engage::unit::{Gender, Unit};
-use engage::mess::Mess;
+use engage::{
+    gamedata::{Gamedata, GodData, JobData, PersonData, assettable::*},
+    combat::CharacterAppearance, gamedata::item::ItemData,
+    unit::{Gender, Unit}, mess::Mess
+};
 use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC};
 use crate::data::util::{parse_arg_from_name, AssetTableIndexes};
 
@@ -163,6 +163,7 @@ impl DressData {
     pub fn get_engaged_dress(&self, asset: &Il2CppString) -> Option<&EngagedDressData> {
         let mut str = asset.to_string();
         if str.starts_with("EID_") { str = str.trim_start_matches("EID_").to_string(); }
+        println!("Finding Dress: {}", str);
         self.engaged.iter().find(|x| x.asset_id == str)
     }
     pub fn get_job_dress(&self, job: &JobData, gender: Gender) -> Option<&JobDressData> {
@@ -599,9 +600,12 @@ impl EngagedDressData {
             if mode == 2 { result.dress_model = body.into() }
             else { result.body_model = body.into(); }
         }
-        body.push_str(self.body_prefix.as_str());
-        body.push_str(if gender == Gender::Male { "M_c000" } else { "F_c000" });
-        if mode == 2 { result.dress_model = body.into(); } else { result.body_model = body.into(); }
+        else {
+            body.push_str(self.body_prefix.as_str());
+            body.push_str(if gender == Gender::Male { "M_c000" } else { "F_c000" });
+            if mode == 2 { result.dress_model = body.into(); }
+            else { result.body_model = body.into(); }
+        }
         if self.hair_color != 0 { ColorPreset::set_color(&mut result.unity_colors[0], self.hair_color); }
         if self.hair_grad != 0 { ColorPreset::set_color(&mut result.unity_colors[1], self.hair_grad); }
     }

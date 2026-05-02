@@ -1,10 +1,5 @@
-use engage::gamedata::assettable::AssetTableResult;
-use engage::mess::Mess;
-use engage::random::Random;
-use engage::util::get_instance;
-use unity::il2cpp::class::VirtualInvoke;
-use unity::macro_context::Il2CppClass;
-use unity::prelude::Il2CppString;
+use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
+use unity::{il2cpp::class::VirtualInvoke, prelude::*};
 use crate::assets::new_asset_table_accessory;
 pub trait Randomizer<T> {
     fn get_random_element(&self, rng: &Random) -> Option<&T>;

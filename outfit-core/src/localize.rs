@@ -1,8 +1,5 @@
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::sync::{OnceLock, RwLock};
-use engage::language::{Language, LanguageLangs};
-use engage::mess::Mess;
+use std::{fmt::{Display, Formatter}, collections::HashMap, sync::{OnceLock, RwLock}};
+use engage::{language::{Language, LanguageLangs}, mess::Mess};
 use unity::prelude::Il2CppString;
 
 pub static LOCAL_TEXT: OnceLock<RwLock<MenuText>> = OnceLock::new();

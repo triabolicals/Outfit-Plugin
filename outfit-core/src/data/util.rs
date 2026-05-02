@@ -1,5 +1,4 @@
-use engage::gamedata::{Gamedata, JobData};
-use engage::gamedata::assettable::{AssetTable, AssetTableConditionFlags, AssetTableResult, AssetTableStaticFields};
+use engage::{gamedata::{Gamedata, JobData}, gamedata::assettable::*,};
 #[derive(Default)]
 pub struct AssetTableIndexes {
     pub mode_1: Vec<i32>,

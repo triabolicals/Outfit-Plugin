@@ -1,8 +1,5 @@
 use bitflags::bitflags;
-use engage::gamedata::assettable::*;
-use engage::gamedata::Gamedata;
-use engage::gamedata::item::ItemData;
-use engage::mess::Mess;
+use engage::{gamedata::assettable::*, gamedata::Gamedata, gamedata::item::ItemData, mess::Mess};
 use unity::prelude::Il2CppString;
 use crate::{capitalize_first, get_remove, AssetLabelTable, AssetType, OutfitHashes};
 

@@ -1,11 +1,14 @@
 use std::fs;
-use engage::dialog::BasicDialog2;
-use engage::gamevariable::GameVariableManager;
-use engage::mess::Mess;
-use engage::pad::{NpadButton, Pad};
-use engage::random::Random;
-use engage::sequence::hubaccessory::HubAccessoryShopSequence;
-use engage::sequence::hubaccessory::room::HubAccessoryRoom;
+use engage::{
+    dialog::BasicDialog2, gamevariable::GameVariableManager,
+    mess::Mess, pad::{NpadButton, Pad}, random::Random,
+    sequence::{
+        hubaccessory::HubAccessoryShopSequence,
+        hubaccessory::room::HubAccessoryRoom,
+        photograph::*
+    },
+    spriteatlasmanager::FaceThumbnail, tmpro::TextMeshProUGUI
+};
 use unity::prelude::Il2CppString;
 use crate::{is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR};
 use crate::data::items::Profile;
@@ -15,9 +18,6 @@ use crate::menu::items::{AssetFlag, CustomAssetMenuKind, CustomMenuItem};
 use crate::menu::*;
 pub use CustomAssetMenuItemKind::*;
 pub use CustomAssetMenuKind::*;
-use engage::sequence::photograph::*;
-use engage::spriteatlasmanager::FaceThumbnail;
-use engage::tmpro::TextMeshProUGUI;
 use unity::system::action::{Action, Action1};
 use crate::localize::{MenuText, MenuTextCommand};
 

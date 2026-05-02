@@ -1,10 +1,14 @@
-use engage::gamedata::{Gamedata, GodData, JobData, StructBaseFields};
-use engage::gamedata::assettable::*;
-use engage::gamedata::skill::SkillData;
-use engage::unit::{Gender, Unit};
-use unity::get_generic_class;
-use unity::macro_context::Il2CppClassData;
-use unity::prelude::Il2CppString;
+use engage::{
+    gamedata::{Gamedata, GodData, JobData, StructBaseFields},
+    gamedata::assettable::*,
+    gamedata::skill::SkillData,
+    unit::{Gender, Unit}
+};
+use unity::{
+    get_generic_class,
+    macro_context::Il2CppClassData,
+    prelude::Il2CppString
+};
 use crate::{Mount, StructTemplate, StructTemplateStaticFields};
 use crate::assets::{new_asset_table_accessory};
 

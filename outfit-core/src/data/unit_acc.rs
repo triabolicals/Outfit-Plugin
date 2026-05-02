@@ -1,7 +1,9 @@
-use engage::gamedata::accessory::AccessoryData;
-use engage::gamedata::assettable::{AssetTable, AssetTableResult, AssetTableStaticFields};
-use engage::gamedata::{Gamedata, PersonData};
-use engage::unit::{Unit, UnitAccessoryList};
+use engage::{
+    gamedata::accessory::AccessoryData,
+    gamedata::assettable::{AssetTable, AssetTableResult, AssetTableStaticFields},
+    gamedata::{Gamedata, PersonData},
+    unit::{Unit, UnitAccessoryList}
+};
 
 pub struct AccessoryConditions {
     pub mode_1: Vec<Vec<i32>>,

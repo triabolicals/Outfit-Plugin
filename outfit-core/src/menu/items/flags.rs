@@ -1,7 +1,4 @@
-use engage::gamemessage::GameMessage;
-use engage::gamevariable::GameVariableManager;
-use engage::mess::Mess;
-use engage::unit::UnitStatusField;
+use engage::{gamemessage::GameMessage, gamevariable::GameVariableManager, mess::Mess, unit::UnitStatusField};
 use unity::prelude::Il2CppString;
 use crate::menu::icons::CustomMenuIcon;
 use crate::{r_l_press, set_detail_box, CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview, UnitAssetMenuData, THUMB_DIR};

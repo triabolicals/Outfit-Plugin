@@ -1,6 +1,5 @@
 use engage::gameicon::*;
-use unity::engine::Sprite;
-use unity::prelude::Il2CppClassData;
+use unity::{engine::Sprite, prelude::Il2CppClassData};
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]

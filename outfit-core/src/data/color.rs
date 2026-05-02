@@ -1,6 +1,5 @@
 use std::fmt::Display;
-use engage::gamedata::assettable::AssetTableResult;
-use engage::stream::Stream;
+use engage::{gamedata::assettable::AssetTableResult, stream::Stream};
 use unity::engine::Color;
 use crate::localize::MenuTextCommand;
 pub use super::*;

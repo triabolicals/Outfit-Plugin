@@ -1,8 +1,5 @@
 use super::*;
-use engage::{
-    combat::{CharacterAppearance, CombatSide, CombatRecord},
-    battle::{BattleCalculator, BattleSideType},
-};
+use engage::{combat::{CharacterAppearance, CombatSide, CombatRecord}, battle::{BattleCalculator, BattleSideType}};
 
 pub const MONSTERS: [&str; 8] = ["JID_幻影飛竜", "JID_異形飛竜", "JID_幻影狼", "JID_異形狼",  "JID_E006ラスボス", "JID_幻影竜", "JID_異形竜", "JID_邪竜"];
 pub const MONSTER_PERSONS: [&str; 8] = [

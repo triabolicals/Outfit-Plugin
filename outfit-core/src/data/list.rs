@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::io::{Cursor, Read};
 use engage::mess::Mess;
-use unity::prelude::Il2CppString;
-use unity::system::List;
+use unity::{prelude::Il2CppString, system::List};
 use crate::{Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData};
 use crate::data::item::*;
 use crate::data::util::parse_label;

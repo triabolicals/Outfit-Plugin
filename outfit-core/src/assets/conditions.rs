@@ -74,7 +74,7 @@ impl AssetConditions {
             unit.as_ref()
                 .filter(|x| x.status.value & UnitStatusField::Engaging != 0 )
                 .and_then(|u| u.god_link.or(u.god_unit))
-                .map(|g_unit| g_unit.data.asset_id.to_string());
+                .map(|g_unit| g_unit.data.gid.to_string().trim_start_matches("GID_").to_string());
 
         let kind = item.map(|x|{
             if x.flag.value & 67108864 != 0 { 9 }
@@ -210,7 +210,6 @@ impl AssetFlags {
             }
             if condition_unit.status.value & UnitStatusField::Summon != 0 { flags.set(AssetFlags::Summon, true); }
             if get_outfit_data().is_monster_class(unit) {
-                println!("{} is in a monster class: #{} {}", unit.get_name(), unit.job.parent.index, engage::mess::Mess::get_name(unit.job.jid));
                 Self::set_condition_key(unit.job.jid, false);
                 flags.set(AssetFlags::CombatTranforming, true);
                 flags.set(AssetFlags::Monster, false);

@@ -1,11 +1,8 @@
-use std::collections::HashSet;
-use std::fs::{read_to_string, DirEntry};
-use engage::gamedata::assettable::AssetTableResult;
-use engage::gamedata::{Gamedata, GodData, PersonData};
-use engage::unit::Gender;
-use engage::gameuserdata::GameUserData;
-use engage::mess::Mess;
-use engage::stream::Stream;
+use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
+use engage::{
+    gamedata::{assettable::AssetTableResult, Gamedata, GodData, PersonData},
+    unit::Gender, gameuserdata::GameUserData, mess::Mess, stream::Stream
+};
 use unity::prelude::*;
 use crate::assets::new_asset_table_accessory;
 use crate::{apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA};

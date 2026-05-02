@@ -1,12 +1,12 @@
 pub use engage::{
-    unit::Unit,
-    gamedata::{accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData},
-    mess::Mess,
-    resourcemanager::*,
+    gamedata::{
+        accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData,
+        assettable::*
+    },
+    unit::Unit, mess::Mess, resourcemanager::*,
+    gamevariable::GameVariableManager,
+    random::Random
 };
-// use std::fs::File;
-
-// use assets::*;
 pub use super::*;
 
 mod color;
@@ -24,9 +24,6 @@ pub use item::*;
 pub use list::*;
 pub use unit_acc::AccessoryConditions;
 
-use engage::gamedata::assettable::{AssetTableResult, AssetTableStaticFields};
-use engage::gamevariable::GameVariableManager;
-use engage::random::Random;
 use anim::AnimData;
 use crate::data::dress::{DressData, JobDressData};
 use crate::enums::Mount;
@@ -257,7 +254,19 @@ impl OutfitData {
                                     let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                     o_hash = find_mode_1_body(cond_idx, gender).map(|obody| { hash_string(obody) });
                                     if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
+                                        let female = gender == Gender::Female;
                                         new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == Gender::Female);
+                                        if let Some(o_hash) = o_hash {
+                                            if female {
+                                                hashes.female_u.push(hash);
+                                                hashes.female_ou.push((hash, o_hash));
+                                            }
+                                            else {
+                                                hashes.male_u.push(hash);
+                                                hashes.male_ou.push((hash, o_hash));
+                                            }
+                                        }
+                                        else { hashes.add_body(asset.as_str(), female); }
                                         added = true;
                                     }
                                     else if gender != Gender::None {
@@ -416,7 +425,10 @@ impl OutfitData {
     pub fn adjust_dress(&self, result: &mut AssetTableResult, unit: &Unit, conditions: &AssetConditions) {
         let job = unit.job.parent.hash;
         let engaged = unit.status.value & UnitStatusField::Engaging != 0;
-        let dress_gender = if conditions.mode == 2 { self.get_dress_gender(result.dress_model) } else { self.get_dress_gender(result.body_model) };
+
+        let dress_gender = if conditions.mode == 2 { self.get_dress_gender(result.dress_model) } 
+            else { self.get_dress_gender(result.body_model) };
+        
         let mount = if engaged { None } else { self.anims.get_mount_type(unit, dress_gender) };
         let transforming = conditions.flags.contains(AssetFlags::CombatTranforming);
         if transforming { AnimData::remove(result, true, true); }
@@ -455,7 +467,7 @@ impl OutfitData {
                     }
                 }
                 else { data.apply(result, conditions.mode, dress_gender); }
-
+                print_asset_table_result(result, conditions.mode);
                 return;
             }
         }

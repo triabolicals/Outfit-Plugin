@@ -1,12 +1,12 @@
-use engage::unit::{Gender};
-use engage::gameicon::GameIcon;
-use engage::menu::content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo};
-use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
-use engage::mess::Mess;
-use engage::unityengine::GameObject;
-use unity::engine::Sprite;
-use unity::engine::ui::IsImage;
-use unity::system::Il2CppString;
+use engage::{
+    unit::{Gender},
+    gameicon::GameIcon,
+    menu::content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo},
+    menu::menu_item::accessory::AccessoryMenuItemContent,
+    mess::Mess,
+    unityengine::GameObject
+};
+use unity::{engine::Sprite, engine::ui::IsImage, system::Il2CppString};
 use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData};
 use crate::items::Profile;
 use crate::menu::icons::CustomMenuIcon;

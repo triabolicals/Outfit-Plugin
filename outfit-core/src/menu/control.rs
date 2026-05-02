@@ -1,9 +1,11 @@
-use engage::combat::{Character, CharacterJoint};
-use engage::unitinfo::UnitInfo;
-use engage::unityengine::{Camera, Quaternion, Renderer, Transform, UnityComponent, UnityTransform};
+use engage::{
+    combat::{Character, CharacterJoint},
+    unitinfo::UnitInfo,
+    unityengine::{Camera, Quaternion, Renderer, Transform, UnityComponent, UnityTransform},
+    sequence::photograph::*
+};
 use unity::engine::Vector3;
 use crate::{clamp_value, MenuMode};
-use engage::sequence::photograph::*;
 
 pub struct PositionRotation {
     pub pos: Vector3<f32>,

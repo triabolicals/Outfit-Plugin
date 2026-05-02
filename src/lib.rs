@@ -1,8 +1,5 @@
 use cobapi::{Event, SystemEvent};
-use engage::{
-    gamemessage::GameMessage, proc::ProcInst,
-    sequence::mainsequence::MainSequence,
-};
+use engage::{gamemessage::GameMessage, proc::ProcInst, sequence::mainsequence::MainSequence};
 use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
 #[allow(static_mut_refs)] pub mod enums;

@@ -1,14 +1,14 @@
 use std::sync::OnceLock;
-use engage::gamedata::accessory::AccessoryData;
-use engage::menu::{BasicMenuItemAttribute, BasicMenuResult};
-use engage::menu::menu_item::accessory::*;
-use unity::engine::{Color, Vector2};
-use unity::engine::ui::IsImage;
-use unity::prelude::*;
-use engage::game::GameColor;
-use engage::menu::menu_item::accessory::AccessoryMenuItemContent;
-use engage::menu::menu_item::MenuItem;
-use engage::spriteatlasmanager::FaceThumbnail;
+use engage::{
+	gamedata::accessory::AccessoryData,
+	menu::{BasicMenuItemAttribute, BasicMenuResult},
+	menu::menu_item::accessory::*,
+	game::GameColor,
+	menu::menu_item::accessory::AccessoryMenuItemContent,
+	menu::menu_item::MenuItem,
+	spriteatlasmanager::FaceThumbnail
+};
+use unity::{engine::{Color, Vector2}, engine::ui::IsImage, prelude::*};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
 use super::{*, items::{CustomMenuItem, *}};
 

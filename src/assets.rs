@@ -1,8 +1,5 @@
 use unity::prelude::*;
-use engage::{
-    unit::*,
-    gamedata::{assettable::*, item::ItemData, skill::*, *},
-};
+use engage::{unit::*, gamedata::{assettable::*, item::ItemData, skill::*, *}, };
 pub mod transform;
 pub mod dress;
 

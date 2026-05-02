@@ -1,15 +1,15 @@
 use std::sync::OnceLock;
 use engage::{
     combat::CharacterAppearance, gameuserdata::GameUserData,
-    god::GodPool,
-    unityengine::Component,
+    god::GodPool, unityengine::Component,
     menu::{
-        menus::shop::shopunitselect::*, 
+        menus::shop::shopunitselect::*,
         menu_item::{MenuItem, MenuItemContent}, BasicMenu, BasicMenuResult
     },
     util::get_singleton_proc_instance,
     mess::Mess, unit::{Unit, UnitFor, UnitPool},
-    proc::Bindable, spriteatlasmanager::FaceThumbnail, gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
+    proc::Bindable, spriteatlasmanager::FaceThumbnail, 
+    gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
 };
 use unity::{prelude::*, engine::{ui::IsImage, Color}};

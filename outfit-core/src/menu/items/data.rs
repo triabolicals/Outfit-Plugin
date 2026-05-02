@@ -1,6 +1,4 @@
-use engage::unit::Gender;
-use engage::gamemessage::GameMessage;
-use engage::mess::Mess;
+use engage::{unit::Gender, gamemessage::GameMessage, mess::Mess};
 use crate::{LoadResult, UnitAssetMenuData};
 use crate::localize::MenuText;
 use super::*;

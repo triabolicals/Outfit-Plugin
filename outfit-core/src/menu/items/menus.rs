@@ -1,7 +1,9 @@
-use engage::gamedata::{Gamedata, GodData, PersonData};
-use engage::unit::{Gender};
-use engage::menu::BasicMenuItemAttribute;
-use engage::mess::Mess;
+use engage::{
+    gamedata::{Gamedata, GodData, PersonData},
+    unit::{Gender},
+    menu::BasicMenuItemAttribute, mess::Mess,
+    sequence::photograph::*, titlebar::KeyHelpButton
+};
 use unity::prelude::Il2CppString;
 use crate::{
     add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
@@ -11,8 +13,6 @@ use crate::data::items::{AssetFlag, CustomMenuItem, Profile};
 use crate::menu::icons::CustomMenuIcon;
 use super::*;
 use crate::data::room::hub_room_set_by_result;
-use engage::sequence::photograph::*;
-use engage::titlebar::KeyHelpButton;
 use crate::localize::{MenuText, MenuTextCommand};
 use crate::room::ReloadType;
 
