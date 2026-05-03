@@ -8,14 +8,15 @@ use engage::{
     },
     util::get_singleton_proc_instance,
     mess::Mess, unit::{Unit, UnitFor, UnitPool},
-    proc::Bindable, spriteatlasmanager::FaceThumbnail, 
+    proc::Bindable, spriteatlasmanager::FaceThumbnail,
     gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
 };
 use unity::{prelude::*, engine::{ui::IsImage, Color}};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData};
-use crate::room::ReloadType;
-use crate::shop::room::hub_room_set_by_result;
+use crate::{
+    EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType,
+    shop::room::hub_room_set_by_result
+};
 static SHOP_UNIT_SELECT_CLASS: OnceLock<&'static Il2CppClass> = OnceLock::new();
 
 #[derive(Default)]

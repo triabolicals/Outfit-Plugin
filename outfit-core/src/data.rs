@@ -395,6 +395,7 @@ impl OutfitData {
         new_list.final_add(&mut hashes);
         let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
+        hashes.get_info_anim();
         Self {
             dress, anims,
             list: new_list,
@@ -426,9 +427,9 @@ impl OutfitData {
         let job = unit.job.parent.hash;
         let engaged = unit.status.value & UnitStatusField::Engaging != 0;
 
-        let dress_gender = if conditions.mode == 2 { self.get_dress_gender(result.dress_model) } 
+        let dress_gender = if conditions.mode == 2 { self.get_dress_gender(result.dress_model) }
             else { self.get_dress_gender(result.body_model) };
-        
+
         let mount = if engaged { None } else { self.anims.get_mount_type(unit, dress_gender) };
         let transforming = conditions.flags.contains(AssetFlags::CombatTranforming);
         if transforming { AnimData::remove(result, true, true); }
@@ -467,7 +468,6 @@ impl OutfitData {
                     }
                 }
                 else { data.apply(result, conditions.mode, dress_gender); }
-                print_asset_table_result(result, conditions.mode);
                 return;
             }
         }

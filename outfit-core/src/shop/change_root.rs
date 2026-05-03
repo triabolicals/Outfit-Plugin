@@ -20,7 +20,9 @@ pub fn edit_accessory_root_change_unit(change_root: &mut AccessoryShopChangeRoot
     if let Some(end_watching) = change_root.end_watching.as_mut() {
         end_watching.method_ptr = accessory_change_root_key_end_watching as _;
     }
-    if let Some(on_show_ui) = change_root.show_ui.as_mut() { on_show_ui.method_ptr = accessory_change_root_key_on_show_ui as _; }
+    if let Some(on_show_ui) = change_root.show_ui.as_mut() {
+        on_show_ui.method_ptr = accessory_change_root_key_on_show_ui as _;
+    }
 }
 fn change_character(this: &'static mut AccessoryShopChangeRoot, next: bool, watching: bool) {
     UnitAssetMenuData::commit();

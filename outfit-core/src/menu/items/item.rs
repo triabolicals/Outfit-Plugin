@@ -3,23 +3,19 @@ use engage::{
     dialog::BasicDialog2, gamevariable::GameVariableManager,
     mess::Mess, pad::{NpadButton, Pad}, random::Random,
     sequence::{
-        hubaccessory::HubAccessoryShopSequence,
-        hubaccessory::room::HubAccessoryRoom,
-        photograph::*
+        hubaccessory::{HubAccessoryShopSequence, room::HubAccessoryRoom}, photograph::*
     },
     spriteatlasmanager::FaceThumbnail, tmpro::TextMeshProUGUI
 };
-use unity::prelude::Il2CppString;
-use crate::{is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR};
-use crate::data::items::Profile;
-use crate::data::room::hub_room_set_by_result;
-use crate::menu::icons::CustomMenuIcon;
-use crate::menu::items::{AssetFlag, CustomAssetMenuKind, CustomMenuItem};
-use crate::menu::*;
+use unity::{prelude::Il2CppString, system::action::{Action, Action1}};
+use crate::{
+    is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR,
+    data::{items::Profile, room::hub_room_set_by_result},
+    menu::{icons::CustomMenuIcon, items::{AssetFlag, CustomAssetMenuKind, CustomMenuItem}, *},
+    localize::{MenuText, MenuTextCommand}
+};
 pub use CustomAssetMenuItemKind::*;
 pub use CustomAssetMenuKind::*;
-use unity::system::action::{Action, Action1};
-use crate::localize::{MenuText, MenuTextCommand};
 
 pub const PROFILE_MID: [&str; 4] = ["MID_TUT_CATEGORY_TITLE_Battle", "MID_MENU_ENGAGE_COMMAND", "MID_SAVEDATA_SEQ_HUB", "MCID_M007"];
 
@@ -439,6 +435,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { help }
             }
+            CurrentProfile => { get_current_profile_assignment_text().into() }
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
     }
@@ -787,6 +784,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 if change_selected_profile() {
                     menuitem.rebuild_text();
                     EquipmentBoxMode::CurrentProfile.update();
+                    set_detail_box(None, Some(get_current_profile_assignment_text().into()), None, None);
                     BasicMenuResult::se_cursor()
                 }
                 else { BasicMenuResult::new() }
@@ -856,6 +854,26 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
             _ => { BasicMenuResult::new() }
         }
+    }
+}
+fn get_current_profile_assignment_text() -> String {
+    let help = MenuText::get_help(1).unwrap();
+    let selected = UnitAssetMenuData::get_preview().selected_profile;
+    let profiles_used =
+        UnitAssetMenuData::get_current_asset_data()
+            .map(|d|
+                d.set_profile.iter().enumerate().filter(|(i, v)| **v == selected && *i < 3)
+                    .map(|(i, _)| i)
+                    .collect::<Vec<usize>>()
+            )
+            .unwrap_or(Vec::new());
+    if profiles_used.is_empty() { format!("{}\n<color=\"yellow\">Profile is not assigned.</color>", help) } else {
+        let emblem = UnitAssetMenuData::get().god_mode;
+        let mut profile_str = String::new();
+        profiles_used.iter().for_each(|i| {
+            if !profile_str.is_empty() { profile_str += ", "; } else { profile_str += get_profile_name(*i as i32, emblem).to_string().as_str() }
+        });
+        format!("{}\nAssigned to: {}", help, profile_str)
     }
 }
 fn set_unit_name(unit: &Unit, value: &Il2CppString, _: OptionalMethod) {

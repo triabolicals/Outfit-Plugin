@@ -28,6 +28,8 @@ pub struct OutfitHashes {
     pub mounts: HashMap<i32, String>,
     pub voice: HashMap<i32, String>,
     pub rigs: HashMap<i32, String>,
+    pub info_m: Vec<i32>,
+    pub info_f: Vec<i32>,
 }
 impl OutfitHashes {
     pub fn new() -> Self {
@@ -220,5 +222,12 @@ impl OutfitHashes {
             self.hair.iter().find(|x| x.1.contains(str.as_str()) && x.1.ends_with("e") ).map(|x| Il2CppString::new(x.1.as_str()))
         }
         else { None }
+    }
+    pub fn get_info_anim(&mut self) {
+        self.aoc.iter().filter(|x| x.1.contains("Info"))
+            .for_each(|(h, n)|{
+                if self.aoc_f.contains(h) { self.info_f.push(*h); }
+                else if self.aoc_m.contains(h) { self.info_m.push(*h); }
+            });
     }
 }
