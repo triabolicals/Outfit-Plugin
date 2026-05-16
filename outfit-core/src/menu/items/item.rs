@@ -299,7 +299,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             UnitInventorySubMenuItem => { MenuTextCommand::Outfits.get() }
             PresetAppearance|Pause|Item => { menuitem.name }
             OutfitDataFile => { menuitem.name }
-            Menu(menu) => menu.get_menu_item_name().unwrap_or_else(||menuitem.name.to_string().into()),
+            Menu(menu) => menu.get_name(menuitem),
             Asset(ty) => ty.get_name(menuitem),
             FlagMenuItem(flag) => flag.get_name(menuitem),
             ScaleMenuItem(scale_index) => {

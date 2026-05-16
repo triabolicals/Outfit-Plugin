@@ -36,25 +36,39 @@ impl OutfitHashes {
         let mut new: OutfitHashes = Default::default();
         new.add_acc("uAcc_head_null", Some(1));
         for i in 1..4 { new.add_acc("null", Some(i)); }
-        new.add_hair("uHair_null", None);
+        new.add_hair("uHair_null");
         new.add_head("uHead_null");
         new.add_body("uBody_null", false);
         new.add_body("uBody_null", true);
         new
     }
-    pub fn add(&mut self, asset: &String, ty: AssetType) {
-        match ty {
-            AssetType::Head => { self.add_head(asset); }
-            AssetType::Hair => { self.add_hair(asset, None); }
+    pub fn add_hash(&mut self, asset: &String, hash: i32, kind: AssetType, female: bool) {
+        match kind {
             AssetType::Body => {
-                let female = ["F_c", "f_c", "F1_", "F2_", "F3_", "F4_"].iter().any(|a| asset.contains(*a));
-                self.add_body(asset, female);
+                self.body.insert(hash, asset.clone());
+                if female { self.female_u.push(hash); } else { self.male_u.push(hash); }
             }
-            AssetType::Mount(_) => { self.add_ride_model(asset); }
-            AssetType::Acc(kind) => { self.add_acc(asset, Some(kind as i32)); }
+            AssetType::Head => { self.head.insert(hash, asset.clone()); }
+            AssetType::Hair => { self.hair.insert(hash, asset.clone()); }
             AssetType::AOC(_) => {
-                let hashcode = hash_string(asset);
-                self.aoc.insert(hashcode, asset.to_string());
+                self.aoc.insert(hash, asset.clone());
+                if female { self.aoc_f.insert(hash); }
+                else { self.aoc_m.remove(&hash); }
+            }
+            AssetType::Acc(_) => {
+                self.acc.insert(hash, asset.clone());
+                let ostr = asset.trim_start_matches("uAcc");
+                if let Some(oacc) = self.o_acc.iter().find(|v| v.1.contains(ostr)) { self.oacc_pair.insert(hash, *oacc.0); }
+                if asset.contains("uAcc_head_") { self.acc_head.insert(hash); }
+                else if asset.contains("uAcc_spine2_") { self.acc_spine.insert(hash); }
+                else if asset.contains("uAcc_shield_") { self.acc_shield.insert(hash); }
+                else if asset.contains("trans") { self.acc_eff.insert(hash); }
+            }
+            AssetType::Mount(_) => {
+                self.mounts.insert(hash, asset.clone());
+                let obody = asset.replace("uBody", "oBody");
+                let obody_hash = hash_string(obody);
+                if self.o_body.contains_key(&obody_hash) { self.mount_ou.push((hash, obody_hash)); }
             }
             _ => {}
         }
@@ -108,13 +122,16 @@ impl OutfitHashes {
         }
         hashcode
     }
-    pub fn try_add_body_pair(&mut self, ubody_hash: i32, obody_hash: i32, female: bool) -> bool {
-        if self.o_body.contains_key(&obody_hash) {
-            if female { self.female_ou.push((ubody_hash, obody_hash )); }
-            else { self.male_ou.push((ubody_hash, obody_hash )); }
-            true
+    pub fn try_add_body_by_hash(&mut self, ubody_hash: i32, obody_hash: Option<i32>, asset: &String, female: bool) {
+        if let Some(o_hash) = obody_hash {
+            if self.o_body.contains_key(&o_hash) {
+                if female { self.female_ou.push((ubody_hash,o_hash )); }
+                else { self.male_ou.push((ubody_hash, o_hash )); }
+            }
         }
-        else { false }
+        self.body.insert(ubody_hash, asset.clone());
+        if female { self.female_u.push(ubody_hash); } else { self.male_u.push(ubody_hash); }
+
     }
     pub fn add_body(&mut self, asset: impl Into<&'static Il2CppString>, is_female: bool) -> i32 {
         let asset = asset.into();
@@ -122,23 +139,7 @@ impl OutfitHashes {
         if self.body.contains_key(&hashcode) { return hashcode }
         let str = asset.to_string();
         self.body.insert(hashcode, str.clone());
-        if is_female { self.female_u.push(hashcode); }
-        else { self.male_u.push(hashcode); }
-        let spilt = str.split("_").collect::<Vec<&str>>();
-        if spilt.len() > 2 {
-            let mut obody = format!("oBody_{}_{}", spilt[1], spilt[2]);
-            if self.try_add_body_pair(hashcode, hash_string(&obody), is_female) { return hashcode; }
-            else if let Some(v) = self.o_body.iter().find(|x| obody.contains(x.1.as_str())) {
-                self.try_add_body_pair(hashcode, *v.0, is_female);
-            }
-            else if let Some(v) = self.o_body.iter().find(|x| x.1.contains(spilt[1])){
-                self.try_add_body_pair(hashcode, *v.0, is_female);
-            }
-            else {
-                obody = format!("oBody_{}_c000", spilt[1]);
-                self.try_add_body_pair(hashcode, hash_string(&obody), is_female);
-            }
-        }
+        if is_female { self.female_u.push(hashcode); } else { self.male_u.push(hashcode); }
         hashcode
     }
     pub fn add_head(&mut self, asset: impl Into<&'static Il2CppString>) -> i32 {
@@ -146,56 +147,13 @@ impl OutfitHashes {
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
         self.head.insert(hashcode, str.clone());
-        let spilt = str.split("_c").collect::<Vec<&str>>();
-        if spilt.len() > 1 {
-            let ohair = format!("oHair_h{}", spilt[1]);
-            if let Some(ohair_hash) = self.o_hair.iter().find(|x| *x.1 == ohair)
-                .or_else(|| self.o_hair.iter().find(|x| ohair.contains(x.1.as_str())))
-                .map(|x| *x.0){
-                self.head_hair.insert( hashcode, ohair_hash);
-            }
-        }
         hashcode
     }
-    pub fn add_hair(&mut self, asset: impl Into<&'static Il2CppString>, head: Option<&str>) -> i32 {
+    pub fn add_hair(&mut self, asset: impl Into<&'static Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
         self.hair.insert(hashcode, str.clone());
-        if !self.head_hair.contains_key(&hashcode) {
-            if let Some(suffix) = head {
-                let ohair = format!("oHair_h{}", suffix);
-                if let Some(ohair_hash) = self.o_hair.iter().find(|x|*x.1 == ohair)
-                    .or_else(|| self.o_hair.iter().find(|x| x.1.contains(suffix)))
-                    .map(|x| *x.0)
-                {
-                    self.head_hair.insert( hashcode, ohair_hash);
-                    return hashcode;
-                }
-            }
-            let spilt_by = if str.contains("_Hair") { "_Hair" } else { "_h" };
-            if let Some(suffix) = head.or_else(||str.split(spilt_by).last()) {
-                let mut sfx = suffix.to_string();
-                while sfx.len() >= 3 {
-                    let ohair = format!("oHair_h{}", sfx);
-                    if let Some(ohair_hash) = self.o_hair.iter().find(|x|*x.1 == ohair)
-                        .or_else(|| self.o_hair.iter().find(|x| x.1.contains(sfx.as_str())))
-                        .map(|x| *x.0)
-                    {
-                        self.head_hair.insert( hashcode, ohair_hash);
-                        break;
-                    }
-                    else { sfx.pop(); }
-                }
-            }
-        }
-        hashcode
-    }
-    pub fn add_aoc(&mut self, asset: impl Into<&'static Il2CppString>, female: bool) -> i32 {
-        let asset = asset.into();
-        let hashcode = asset.get_hash_code();
-        self.aoc.insert(hashcode, asset.to_string());
-        if female { self.aoc_f.insert(hashcode); } else { self.aoc_m.insert(hashcode); }
         hashcode
     }
     pub fn add_ride_model(&mut self, asset: impl Into<&'static Il2CppString>) -> i32 {

@@ -3,11 +3,6 @@ use transform::has_enemy_tiki;
 use crate::assets::transform::is_dragonstone;
 use super::*;
 
-/*
-fn is_preview_unit(unit: &Unit) -> bool {
-   unit.force.is_some_and(|x| (1 << x.force_type) & 25 != 0) && unit.status.value & 35184372088832 == 0
-}
- */
 pub fn commit_for_unit_dress(
     result: &mut AssetTableResult,
     mode: i32,
@@ -107,14 +102,3 @@ fn hair_adjustment(result: &mut AssetTableResult) {
         }
     }
 }
-/*
-fn eve_sforgia_correction(result: &mut AssetTableResult, mode: i32) {
-    if mode != 1 { return; }
-    if !result.body_model.is_null() {
-        let body = result.body_model.to_string();
-        if body.contains("c451") { result.body_model = body.replace("c451", "c000").into(); }
-        if body.contains("c151") { result.body_model = body.replace("c151", "c000").into(); }
-    }
-}
-
- */

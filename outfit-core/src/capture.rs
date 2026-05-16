@@ -4,8 +4,8 @@ use engage::{
     gamemessage::GameMessage, gamevariable::GameVariableManager,
     proc::Bindable, unit::Unit, unitinfo::{UnitInfo, UnitInfoSide},
     unityengine::{Camera, RenderTexture, Transform, UnityComponent, UnityObject, UnityTransform},
+    spriteatlasmanager::FaceThumbnail,
 };
-use engage::spriteatlasmanager::FaceThumbnail;
 use unity::{
     engine::{Color, FilterMode, ImageConversion, Rect, Sprite, SpriteMeshType, Texture2D, Vector2},
     prelude::*,

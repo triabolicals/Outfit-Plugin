@@ -1,8 +1,18 @@
 use engage::{gamemessage::GameMessage, gamevariable::GameVariableManager, mess::Mess, unit::UnitStatusField};
 use unity::prelude::Il2CppString;
-use crate::menu::icons::CustomMenuIcon;
-use crate::{r_l_press, set_detail_box, CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview, UnitAssetMenuData, THUMB_DIR};
-use crate::localize::MenuText;
+use crate::{
+    menu::icons::CustomMenuIcon,
+    r_l_press,
+    set_detail_box,
+    CustomAssetMenu,
+    EquipmentBoxPage,
+    LoadResult,
+    MenuTextCommand,
+    ReloadPreview,
+    UnitAssetMenuData,
+    THUMB_DIR,
+    localize::MenuText
+};
 use super::*;
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]

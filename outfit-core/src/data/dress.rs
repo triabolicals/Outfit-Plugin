@@ -163,7 +163,6 @@ impl DressData {
     pub fn get_engaged_dress(&self, asset: &Il2CppString) -> Option<&EngagedDressData> {
         let mut str = asset.to_string();
         if str.starts_with("EID_") { str = str.trim_start_matches("EID_").to_string(); }
-        println!("Finding Dress: {}", str);
         self.engaged.iter().find(|x| x.asset_id == str)
     }
     pub fn get_job_dress(&self, job: &JobData, gender: Gender) -> Option<&JobDressData> {

@@ -6,15 +6,15 @@ use engage::{
 };
 use unity::prelude::Il2CppString;
 use crate::{
-    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
-    AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData
-};
-use crate::data::items::{AssetFlag, CustomMenuItem, Profile};
-use crate::menu::icons::CustomMenuIcon;
+    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data,
+    AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
+    data::{
+        items::{AssetFlag, CustomMenuItem, Profile},
+        room::hub_room_set_by_result
+    },
+    menu::icons::CustomMenuIcon,
+    localize::{MenuText, MenuTextCommand}, room::ReloadType, left_right_enclose};
 use super::*;
-use crate::data::room::hub_room_set_by_result;
-use crate::localize::{MenuText, MenuTextCommand};
-use crate::room::ReloadType;
 
 #[repr(C)]
 #[derive(PartialEq, Copy, Clone)]
@@ -217,11 +217,6 @@ impl CustomAssetMenuKind {
             ProfileSettings => { Some(MenuTextCommand::Settings.get()) }
             ShopBody((0, _))  => { Some(Mess::get("MID_Hub_amiibo_Accessory_Trade")) }
             ShopBody((1, _)) => { Some(MenuTextCommand::Class.get()) }
-            ClassBodySelection((class, alt)) => {
-                let db = get_outfit_data();
-                let set = if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.job_f } else { &db.list.job_m };
-                set.get(*class as usize).map(|v| Mess::get(v.label).to_string().into())
-            }
             EngagedBody(_) => { Some(MenuTextCommand::Engage.get()) }
             ShopBody((2, _)) => { Some(MenuTextCommand::Engage.get())}
             ShopBody((3, _)) => { Some(Mess::get("MID_ProfileCard_Stamp_Others")) }
@@ -393,7 +388,14 @@ impl CustomAssetMenuKind {
                 let class_count = if female { db.list.job_count.1 } else { db.list.job_count.0 } as usize;
                 let set = if female { &db.list.job_f } else { &db.list.job_m };
                 for x in 0..class_count{
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)),  Mess::get(set[x].label)));
+                    let s = Mess::get(set[x].label);
+                    let item =
+                    if s.to_string().len() > 0 { CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)), s) }
+                    else {
+                        let new_label = format!("MJID_{}", set[x].label);
+                        CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)), Mess::get(new_label))
+                    };
+                    this.full_menu_item_list.add(item);
                 }
             }
             ClassBodySelection((class, alt)) => {
@@ -419,7 +421,7 @@ impl CustomAssetMenuKind {
                     .filter(|x| x.female == female)
                     .for_each(|a|{
                         let item = CustomAssetMenuItem::new_asset3(&a, &db.labels, true);
-                        item.name = Mess::get(a.label.as_str());
+                        item.name = a.get_name(&db.labels, true);
                         this.full_menu_item_list.add(item);
                     });
             }
@@ -441,6 +443,7 @@ impl CustomAssetMenuKind {
             ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
                 let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == Gender::Female).unwrap_or(female);
+                println!("Is Female: {} [PAGE: {}]", female, *page);
                 db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
             }
             ShopMount(mount) => {
@@ -605,15 +608,11 @@ impl CustomMenuItem for CustomAssetMenuKind {
         }
     }
 
-    fn get_name(&self, _menuitem: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_name(&self, menuitem: &CustomAssetMenuItem) -> &'static Il2CppString {
         match self {
             ProfileSettings => { MenuTextCommand::Settings.get() }
             ShopBody(_)  => { Mess::get("MID_Hub_amiibo_Accessory_Trade") }
-            ClassBodySelection((class, alt)) => {
-                let db = get_outfit_data();
-                if UnitAssetMenuData::get_gender(*alt) == 2 { &db.list.job_f }
-                else { &db.list.job_m }.get(*class as usize).map(|v| Mess::get(v.label)).unwrap()
-            }
+            ClassBodySelection((_, _)) => { menuitem.name }
             ShopAcc(_) => { Mess::get("MID_Hub_Mascot_Accessories_Parts") }
             VoiceSelection => { MenuTextCommand::Voice.get() }
             Head => { Mess::get("MID_Hub_Mascot_Accessories_Head") }

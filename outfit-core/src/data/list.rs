@@ -1,10 +1,10 @@
-use std::collections::HashMap;
-use std::io::{Cursor, Read};
+use std::{collections::HashMap, io::{Cursor, Read}};
 use engage::mess::Mess;
 use unity::{prelude::Il2CppString, system::List};
-use crate::{Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData};
-use crate::data::item::*;
-use crate::data::util::parse_label;
+use crate::{
+    Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData,
+    data::{item::*, util::parse_label}
+};
 
 pub struct OutfitLists {
     pub null: AssetGroup,   // 1st
@@ -106,24 +106,6 @@ impl OutfitLists {
                 asset: AssetItem { hash: sola_hash, count: 0, kind: AssetType::Acc(3), flags: AssetItemFlags::empty(), },
             }
         );
-        [("uBody_DummyM", false), ("uBody_DummyF", true)].iter().for_each(|i|{
-            if let Some(asset) = OtherAssetItem::new("Dummy", i.0, i.1, 0, false) {
-                hashes.body.insert(asset.asset.hash, i.0.to_string());
-                if i.1 { hashes.female_u.push(asset.asset.hash); }
-                else { hashes.male_u.push(asset.asset.hash); }
-                self.other.push(asset);
-            }
-        });
-        ["AM_c000", "AM_c998", "AM_c999", "BR_c000"].iter().enumerate()
-            .for_each(|(i, x)|{
-                let asset = format!("uBody_Box0{}", x);
-                if i == 3 { hashes.add_ride_model(&asset); }
-                else {
-                    let hash = crate::utils::hash_string(&asset);
-                    hashes.body.insert(hash, asset.clone());
-                }
-                self.add(asset, false, Some("Box"), 0);
-            });
         for x in 1..3 {
             let head = format!("uHead_dummy{}", x);
             if let Some(mut asset) = OtherAssetItem::new("Dummy", head.as_str(), false, 0, false) {

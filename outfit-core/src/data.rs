@@ -1,3 +1,4 @@
+use std::{collections::HashSet, io::{Cursor, Read, Seek}};
 pub use engage::{
     gamedata::{
         accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData,
@@ -31,8 +32,6 @@ use crate::enums::Mount;
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
 pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
 
-const AOC: [&str; 4] = ["Info", "Talk", "Demo", "Hub"];
-
 pub struct OutfitData {
     pub hashes: OutfitHashes,
     pub accessory_conditions: AccessoryConditions,
@@ -54,345 +53,195 @@ impl OutfitData {
                 let hash = v.get_hash_code();
                 if !hashes.voice.contains_key(&hash) { hashes.voice.insert(hash, v.to_string()); }
             });
-
-        let mut assets: Vec<_> = ResourceManager::class().get_static_fields::<ResourceManagerStaticFields>()
+        let mut assets: Vec<(i32, String)> = ResourceManager::class().get_static_fields::<ResourceManagerStaticFields>()
             .files
             .entries.iter()
-            .filter(|x| x.key.is_some_and(|x| !x.str_contains("null") && (x.str_contains("UAS_") || x.str_contains("Item/Acc/") || x.str_contains("Unit/Model/") || x.str_contains("AOC_") || x.str_contains("uRig"))))
+            .filter(|x|
+                x.key.is_some_and(|x| !x.str_contains("null") && !x.str_contains("AT_c") &&
+                    (x.str_contains("UAS_") || x.str_contains("Item/Acc/") || x.str_contains("Unit/Model/") || x.str_contains("AOC_") || x.str_contains("uRig"))))
             .map(|x| { x.key.unwrap().to_string() })
             .flat_map(|x| x.split("/").last().map(|v| v.to_string()))
+            .map(|x| (hash_string(x.as_str()), x))
             .collect();
+
+        let mut remove_hashes: HashSet<i32> = HashSet::new();
         let rig_ends = ["M1", "M", "F", "F1"];
-        // Collect all rigs, oHairs and oBody
-        hashes.rigs = assets.extract_if(.., |s| !s.contains("Wolf") && !s.contains("Drag") && s.contains("uRig_") && (s.contains("Humn") || rig_ends.iter().any(|x| s.ends_with(*x))))
-            .map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
+        hashes.rigs = assets.extract_if(.., |(_, s)|
+            !s.contains("Wolf") && !s.contains("Drag") && s.contains("uRig_") && (s.contains("Humn") || rig_ends.iter().any(|x| s.ends_with(*x))))
+            .collect();
 
-        hashes.o_hair = assets.extract_if(.., |s| s.contains("oHair_h") || s.contains("oHair_dummy")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
-        hashes.o_body = assets.extract_if(.., |s| s.contains("oBody_")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
-        hashes.o_acc = assets.extract_if(.., |s| s.contains("oAcc_")).map(|s| (Il2CppString::new(s.as_str()).get_hash_code(), s)).collect();
+        hashes.o_hair = assets.extract_if(.., |(_, s)| s.contains("oHair_h") || s.contains("oHair_dummy")).collect();
+        hashes.o_body = assets.extract_if(.., |(_, s)| s.contains("oBody_")).collect();
+        hashes.o_acc = assets.extract_if(.., |(_, s)| s.contains("oAcc_")).collect();
 
-        EMBLEM.iter().for_each(|(i, d)| {
-            let mpid = format!("MPID_{}", i);
-            if let Some(s) = get_remove(&mut assets, format!("uBody_{}1AM", d).as_str()) {
-                new_list.add_engaged_body(mpid.as_str(), s.as_str(), false);
-                hashes.add_body(s.as_str(), false);
-            }
-            if let Some(s) = get_remove(&mut assets, format!("uBody_{}1AF", d).as_str()) {
-                new_list.add_engaged_body(mpid.as_str(), s.as_str(), true);
-                hashes.add_body(s.as_str(), true);
-            }
-        });
-
-        [("File", "Filene"), ("Brod", "Brodia"), ("Irci", "Ircion"), ("Solu", "Solum"), ("Lith", "Lithos"), ("Swim", "Swimwear")]
-            .iter().enumerate()
-            .for_each(|(n, x)| {
-                ["M", "F"].iter().enumerate().map(|(i, g)| (i == 1, g)).for_each(|(female, gen)| {
-                    if n < 5 {
-                        for y in 0..6 {
-                            let i = y + 1;
-                            let label_i = (y % 3) + 1;
-                            let label = format!("MAID_{}{}{}{}", x.1, if y < 3 { "Formal" } else { "Casual" }, label_i, gen);
-                            if let Some(asset) = get_remove(&mut assets, format!("uBody_{}{}{}_c000", x.0, i, gen).as_str()) {
-                                hashes.add_body(asset.as_str(), female);
-                                new_list.add_other_body(label.as_str(), asset.as_str(), female, 0, true);
-                            }
-                            if let Some(helm) = get_remove(&mut assets, format!("Helm{}{}{}", x.0, i, gen).as_str()) {
-                                hashes.add_acc(helm.as_str(), None);
-                                new_list.add(helm, false, Some(label.as_str()), 0);
-                            }
+        let labels = include_str!("../data/outfits_label.txt").lines().collect::<Vec<&str>>();
+        let mut data = Cursor::new(include_bytes!("../data/outfits.bin"));
+        let mut idx_count: [u8; 2] = [0; 2];
+        let mut count: [u8; 1] = [0; 1];
+        let mut asset_data: [u8; 10] = [0; 10];
+        let mut group_num = 0;
+        [&mut new_list.char_m, &mut new_list.char_f, &mut new_list.job_m, &mut new_list.job_f, &mut new_list.aids].iter_mut().for_each(|group|{
+            data.read_exact(&mut idx_count).unwrap();
+            group_num = idx_count[0];
+            for _ in 0..idx_count[1] {
+                data.read_exact(&mut idx_count).unwrap();
+                let label_idx = u16::from_be_bytes(idx_count) as usize;
+                data.read_exact(&mut count).unwrap();
+                let mut list = vec![];
+                for _ in 0..count[0] {
+                    data.read_exact(&mut asset_data).unwrap();
+                    if let Some((kind, flags)) = AssetType::from_rel_index(asset_data[8] as i32).zip(AssetItemFlags::from_bits(i32::from_be_bytes(asset_data[4..8].try_into().unwrap()))){
+                        let hash = i32::from_be_bytes(asset_data[0..4].try_into().unwrap());
+                        if let Some(asset) = assets.iter().find(|v| v.0 == hash) {
+                            let female = group_num == 1 || group_num == 3 || flags.contains(AssetItemFlags::Female);
+                            hashes.add_hash(&asset.1, hash, kind, female);
+                            remove_hashes.insert(hash);
+                            list.push(AssetItem{ hash, flags, kind, count: asset_data[9] as i32, });
                         }
-                    } else {
-                        for y in 1..4 {
-                            while let Some(asset) = get_remove(&mut assets, format!("uBody_{}{}{}_c000", x.0, gen, y).as_str()) {
-                                let label = format!("MAID_{}{}{}", x.1, y, gen);
-                                hashes.add_body(asset.as_str(), female);
-                                new_list.add_other_body(label.as_str(), asset.as_str(), female, 0, true);
-                            }
+                        else if hashes.voice.iter().find(|v| *v.0 == hash).is_some() {
+                            list.push(AssetItem{ hash, flags, kind, count: asset_data[9] as i32, });
                         }
                     }
-                });
-            });
-        let mut section = 0;
-        let mut voices = hashes.voice.iter().map(|v| v.1.clone()).collect::<Vec<String>>();
-        let mut no_job_body = vec![];
-        let mut no_job_body_f = vec![];
-        include_str!("../data/labels2.txt").lines()
-            .for_each(|line| {
-                if line.starts_with("END") { section += 1; } else {
-                    match section {
-                        0 => {
-                            if let Some((g, has_body)) = AssetGroup::new_job_group(line, &mut assets, &mut hashes, false) {
-                                if has_body { new_list.job_m.push(g); } else { no_job_body.push(g); }
-                            }
-                            if let Some((g, has_body)) = AssetGroup::new_job_group(line, &mut assets, &mut hashes, true) {
-                                if has_body { new_list.job_f.push(g); } else { no_job_body_f.push(g); }
-                            }
-                        },
-                        1 => if let Some(g) = AssetGroup::new_character_group(line, &mut assets, &mut voices, &mut hashes) { new_list.char_m.push(g); },
-                        2 => if let Some(g) = AssetGroup::new_character_group(line, &mut assets, &mut voices, &mut hashes) { new_list.char_f.push(g); },
-                        4 => if let Some(g) = AssetGroup::new_aid_group(line, &mut assets, &mut hashes) { new_list.aids.push(g); },
-                        5 => {
-                            let mut spilt = line.split_whitespace();
-                            if let Some((label, value)) = spilt.next().zip(spilt.next()) {
-                                if let Some(asset) = get_remove(&mut assets, value) { new_list.add(asset, false, Some(label), 0); }
-                            }
-                        }
-                        6 => { // manually uHead to oHair conversion
-                            let mut spilt = line.split_whitespace();
-                            if let Some(s) = spilt.next() {
-                                let o_hash = hash_string(format!("oHair_{}", s));
-                                while let Some(l) = spilt.next() {
-                                    let u_asset =
-                                        if l.starts_with("Hair") { format!("uAcc_spine2_{}", l) } else if l.starts_with("c") { format!("uHead_{}", l) } else { format!("uHair_{}", l) };
-                                    let u_hash = hash_string(&u_asset);
-                                    hashes.head_hair.insert(u_hash, o_hash);
-                                }
-                            }
-                        }
-                        7 => {  // Skin
-                            let mut spilt = line.split_whitespace();
-                            if let Some((head, color)) = spilt.next().zip(spilt.next()) {
-                                let mut c = AssetColor::new();
-                                color.split(",").flat_map(|v| v.parse::<i32>().ok())
-                                    .enumerate()
-                                    .for_each(|(i, s)| { c.values[i] |= s as u8; });
-                                c.values[3] = 255;
-                                head.split(",").for_each(|head| {
-                                    let hash = hash_string(format!("uHead_c{}", head));
-                                    new_list.skin.insert(hash, c);
-                                });
-                            }
-                        }
-                        _ => {}
+                }
+                group.push(AssetGroup{ label: labels.get(label_idx).unwrap(), list, });
+            }
+        });
+        new_list.job_count = (new_list.job_m.len() as i32, new_list.job_f.len() as i32);
+        let mut asset_data: [u8; 12] = [0; 12];
+        [&mut new_list.engaged, &mut new_list.other].iter_mut().for_each(|group|{
+            data.read_exact(&mut idx_count).unwrap();
+            let imax = if idx_count[0] == 5 { 38 } else { 382 };
+            for _ in 0..imax {
+                data.read_exact(&mut asset_data).unwrap();
+                let label_idx = u16::from_be_bytes(asset_data[0..2].try_into().unwrap()) as usize;
+                if let Some((kind, flags)) = AssetType::from_rel_index(asset_data[10] as i32).zip(AssetItemFlags::from_bits(i32::from_be_bytes(asset_data[6..10].try_into().unwrap()))){
+                    let hash = i32::from_be_bytes(asset_data[2..6].try_into().unwrap());
+                    if let Some(asset) = assets.iter().find(|v| v.0 == hash) {
+                        let female = flags.contains(AssetItemFlags::Female) || flags.contains(AssetItemFlags::LabelFemale);
+                        hashes.add_hash(&asset.1, hash, kind, female);
+                        let count = asset_data[11] as i32;
+                        let is_mess = flags.contains(AssetItemFlags::LabelMess);
+                        let female = flags.contains(AssetItemFlags::LabelFemale);
+                        let label = labels.get(label_idx).map(|v| v.to_string()).unwrap();
+                        remove_hashes.insert(hash);
+                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}});
+                    }
+                    else if hashes.voice.iter().find(|v| *v.0 == hash).is_some() {
+                        let count = asset_data[11] as i32;
+                        let is_mess = flags.contains(AssetItemFlags::LabelMess);
+                        let female = flags.contains(AssetItemFlags::LabelFemale);
+                        let label = labels.get(label_idx).map(|v| v.to_string()).unwrap();
+                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}});
                     }
                 }
-            });
-        // Adding classes that do not have ubodies
-        new_list.job_count.0 = new_list.job_m.len() as i32;
-        new_list.job_count.1 = new_list.job_f.len() as i32;
-        no_job_body.into_iter().for_each(|g| { new_list.job_m.push(g); });
-        no_job_body_f.into_iter().for_each(|g| { new_list.job_f.push(g); });
-
-        voices.iter().for_each(|a| {
-            new_list.other.push(
-                OtherAssetItem {
-                    label: a.to_string(),
-                    asset: AssetItem { hash: hash_string(a), count: 0, flags: AssetItemFlags::empty(), kind: AssetType::Voice },
-                    is_mess: true,
-                    female: false,
-                }
-            )
+            }
         });
-        // Add Char AOC to hashes
-        new_list.char_m.iter().for_each(|g| {
-            g.list.iter().filter(|x| x.kind.to_index() >= 30 && x.kind.to_index() < 34)
-                .for_each(|a| { hashes.aoc_m.insert(a.hash); });
-        });
-        new_list.char_f.iter().for_each(|g| {
-            g.list.iter().filter(|x| x.kind.to_index() >= 30 && x.kind.to_index() < 34)
-                .for_each(|a| { hashes.aoc_f.insert(a.hash); });
-        });
-        include_str!("../data/heads.txt").lines()
-            .enumerate()
-            .map(|(i, x)| (i & 1 != 0, x.split_whitespace()))
-            .for_each(|(female, suffix)| {
-                suffix.for_each(|ss| {
-                    AOC.iter().enumerate().for_each(|(_, a)| {
-                        assets.extract_if(.., |s| s.contains(format!("AOC_{}", a).as_str()) && s.contains(ss) && !s.contains("Photo") && !s.contains("Refresh"))
-                            .for_each(|s| {
-                                hashes.add_aoc(s.as_str(), female);
-                                new_list.add(s, female, None::<String>, 0);
-                            });
-                    });
-                });
-            });
-        let mut npcs = (801..820).collect::<Vec<usize>>();
-        npcs.extend(850..860);
-        for x in npcs {
-            for _ in 0..2 {
-                if let Some(asset) = get_remove(&mut assets, format!("uHead_c{}", x).as_str()) {
-                    hashes.add_head(asset.as_str());
-                    new_list.add(asset.as_str(), false, None::<String>, 0);
+        data.read_exact(&mut idx_count).unwrap();
+        let count = u16::from_be_bytes(idx_count) as usize;
+        let mut asset_data: [u8; 4] = [0; 4];
+        for _ in 0..count {
+            data.read_exact(&mut asset_data).unwrap();
+            let hash = i32::from_be_bytes(asset_data);
+            data.read_exact(&mut asset_data).unwrap();
+            let color = asset_data.clone();
+            new_list.skin.insert(hash, AssetColor{ values: color});
+        }
+        for x in 0..3 {
+            data.read_exact(&mut idx_count).unwrap();
+            let count = u16::from_be_bytes(idx_count) as usize;
+            for _ in 0..count {
+                data.read_exact(&mut asset_data).unwrap();
+                let hash1 = i32::from_be_bytes(asset_data);
+                data.read_exact(&mut asset_data).unwrap();
+                let hash2 = i32::from_be_bytes(asset_data);
+                if x == 0 { hashes.head_hair.insert(hash1, hash2); }
+                else if x == 1 { hashes.male_ou.push((hash1, hash2)); }
+                else { hashes.female_ou.push((hash1, hash2)) }
+                if let Some(body) = assets.iter().find(|h| h.0 == hash1){
+                    if body.1.contains("Head") { hashes.head.insert(hash1, body.1.clone()); }
+                    else if body.1.contains("Hair") { hashes.hair.insert(hash1, body.1.clone()); }
                 }
             }
         }
-        for x in [858, 863, 864, 865, 870] {
-            if let Some(asset) = get_remove(&mut assets, format!("_Hair{}", x).as_str()) {
-                hashes.add_hair(asset.as_str(), None);
-                new_list.add(asset.as_str(), false, None::<String>, 0);
-            }
-        }
+        assets.retain(|(i, _)| !remove_hashes.contains(&i));
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
-        let female = ["f_c", "f1_c", "f2_c", "f3_c", "f4_c"];
-        let male = ["m_c", "m1_c", "m2_c", "m3_c", "m4_c"];
         let mut remove = vec![];
         assets.iter().enumerate()
-            .filter(|(_, s)|{
+            .filter(|(_, (hash, s))|{
                 let lower = s.to_lowercase();
-                !s.contains("null") && !lower.contains("box") && !lower.contains("dummy") && kinds.iter().any(|k| lower.contains(*k))
+                !s.contains("null") && kinds.iter().any(|k| lower.contains(*k))
             })
-            .for_each(|(i, asset)| {
-                let lower = asset.to_lowercase();
-                let hash = hash_string(asset);
-                if let Some(kind) = kinds.iter().position(|k| lower.contains(*k)){
-                    match kind {
-                        0 => {  // Body
-                            if lower.contains("r_c") {
-                                if let Some((condition, _)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.ride_dress_model.is_some_and(|s| s.str_contains(asset))), false){
-                                    let name = get_condition_label(&condition);
-                                    hashes.add_ride_model(asset);
-                                    new_list.add(asset, false, name, 0);
+            .for_each(|(i, (hash, asset))| {
+                if let Some(item) = AssetItem::new(asset, 0) {
+                    match item.kind {
+                        AssetType::Body => {
+                            let mut o_hash = None;
+                            let mut name = None;
+                            let mut added = false;
+                            if let Some((condition, gender)) = find_condition(2, asset, true, item.kind) {
+                                name = get_condition_label(&condition);
+                                let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
+                                o_hash = find_mode_1_body(cond_idx, gender).map(|obody| { hash_string(obody) });
+                                if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
+                                    let female = gender == Gender::Female;
+                                    new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == Gender::Female);
+                                    hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
+                                    added = true;
+                                }
+                                else if gender != Gender::None {
+                                    let female = gender == Gender::Female;
+                                    hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
+                                    new_list.add(asset, female, name.clone(), 0);
+                                    added = true;
                                 }
                             }
-                            else if !lower.contains("t_c") && !hashes.body.contains_key(&hash){
-                                let mut added = false;
-                                let mut o_hash = None;
-                                let mut name = None;
-                                if let Some((condition, gender)) = get_aid_condition(find_entries_with_model_field(2, asset, |entry, asset| entry.dress_model.is_some_and(|s| s.to_string() == asset)), true)
-                                {
-                                    name = get_condition_label(&condition);
-                                    let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
-                                    o_hash = find_mode_1_body(cond_idx, gender).map(|obody| { hash_string(obody) });
-                                    if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
-                                        let female = gender == Gender::Female;
-                                        new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == Gender::Female);
-                                        if let Some(o_hash) = o_hash {
-                                            if female {
-                                                hashes.female_u.push(hash);
-                                                hashes.female_ou.push((hash, o_hash));
-                                            }
-                                            else {
-                                                hashes.male_u.push(hash);
-                                                hashes.male_ou.push((hash, o_hash));
-                                            }
-                                        }
-                                        else { hashes.add_body(asset.as_str(), female); }
-                                        added = true;
-                                    }
-                                    else if gender != Gender::None {
-                                        let female = gender == Gender::Female;
-                                        if let Some(o_hash) = o_hash {
-                                            if female {
-                                                hashes.female_u.push(hash);
-                                                hashes.female_ou.push((hash, o_hash));
-                                            }
-                                            else {
-                                                hashes.male_u.push(hash);
-                                                hashes.male_ou.push((hash, o_hash));
-                                            }
-                                        }
-                                        else { hashes.add_body(asset.as_str(), female); }
-                                        new_list.add(asset, female, name.clone(), 0);
-                                        added = true;
-                                    }
-                                }
-                                if !added {
-                                    if male.iter().any(|&s| lower.contains(s)) {
-                                        if let Some(o_hash) = o_hash {
-                                            hashes.male_u.push(hash);
-                                            hashes.male_ou.push((hash, o_hash));
-                                        }
-                                        else { hashes.add_body(asset.as_str(), false); }
-                                        new_list.add(asset.as_str(),false, name.clone(), 0);
-                                    }
-                                    else if female.iter().any(|&s| lower.contains(s)) {
-                                        if let Some(o_hash) = o_hash {
-                                            hashes.female_u.push(hash);
-                                            hashes.female_ou.push((hash, o_hash));
-                                        }
-                                        else { hashes.add_body(asset.as_str(), true); }
-                                        new_list.add(asset.as_str(),true, name.clone(), 0);
-                                    }
-                                    else {
-                                        if let Some(o_hash) = o_hash {
-                                            hashes.male_ou.push((hash, o_hash));
-                                            hashes.female_ou.push((hash, o_hash));
-                                        }
-                                        new_list.add(asset.as_str(),false, name.clone(), 0);
-                                        new_list.add(asset.as_str(),true, name.clone(), 0);
-                                        hashes.male_u.push(hash);
-                                        hashes.female_u.push(hash);
-                                    }
-                                }
-                                hashes.body.insert(hash, asset.clone());
+                            if !added { // If no gender, add it to both genders.
+                                hashes.try_add_body_by_hash(*hash, o_hash, asset, false);
+                                hashes.try_add_body_by_hash(*hash, o_hash, asset, true);
+                                new_list.add(asset.as_str(), false, name.clone(), 0);
+                                new_list.add(asset.as_str(), true, name.clone(), 0);
                             }
-                            remove.push(i);
                         }
-                        1 => {  // Head
-                            if let Some((condition, gender)) = get_aid_condition(
-                                find_entries_with_model_field(2, asset, |entry, asset| entry.head_model.is_some_and(|s| s.str_contains(asset))), false,
-                            ){
+                        AssetType::Head => {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 let name = get_asset_name(&condition, gender);
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|obody| { hash_string(obody) }) {
-                                    hashes.head_hair.insert(hash, o_hair);
+                                    hashes.head_hair.insert(*hash, o_hair);
                                 }
                                 hashes.add_head(asset.as_str());
                                 new_list.add(asset.as_str(), false, name, 0);
                                 remove.push(i);
                             }
                         }
-                        2 => {  // Hair (uHair_h)
-                            if let Some((condition, gender)) =
-                                get_aid_condition(
-                                    find_entries_with_model_field(
-                                        2,
-                                        asset,
-                                        |entry, asset| entry.hair_model.is_some_and(|s| s.str_contains(asset))
-                                    ),
-                                    false,
-                                )
-                            {
+                        AssetType::Hair => {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
                                 remove.push(i);
-                                hashes.add_hair(asset.as_str(), None);
+                                hashes.add_hair(asset.as_str());
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
-                                if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) {
-                                    hashes.head_hair.insert(hash, o_hair);
-                                }
+                                if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
                                 let name = get_asset_name(&condition, gender);
                                 new_list.add(asset.as_str(), false, name, 0);
                             }
                         }
-                        6 => {  // Effect
-                            hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                            new_list.add(asset.as_str(),false, None::<String>, 0);
-                        }
-                        _ => {  // Accessories
-                            if kind == 3 { hashes.add_hair(asset.as_str(), None); }
-                            else { hashes.add_acc(asset.as_str(), Some(kind as i32 - 4)); }
-                            if let Some((condition, gender)) =
-                                get_aid_condition(
-                                    find_entries_with_model_field(
-                                        2,
-                                        asset,
-                                        |entry, asset| entry.accessory_list.list.iter().any(|a| a.model.is_some_and(|model| model.str_contains(asset)))),
-                                    false
-                                )
-                            {
-                                if kind == 3 {  // uAcc_spine2_HairXXX
-                                    hashes.add_hair(asset.as_str(), None);
-                                    let name = get_asset_name(&condition, gender);
-                                    let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
-                                    if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|obody| { hash_string(obody) }) {
-                                        hashes.head_hair.insert(hash, o_hair);
-                                    }
-                                    new_list.add(asset.as_str(), false, name, 0);
-                                    remove.push(i);
-                                }
-                                else {
-                                    let name = get_asset_name(&condition, gender);
-                                    hashes.add_acc(asset.as_str(), Some(kind as i32 - 4));
-                                    new_list.add(asset.as_str(),false, name, 0);
-                                    remove.push(i);
-                                }
+                        AssetType::Acc(_) => {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
+                                let name = get_asset_name(&condition, gender);
+                                hashes.add_acc(asset.as_str(), None);
+                                new_list.add(asset.as_str(), false, name, 0);
                             }
-                            else { new_list.add(asset.as_str(),false, None::<String>, 0); }
                         }
+                        AssetType::Mount(_) => {
+                            if let Some((condition, _)) = find_condition(2, asset, false, item.kind) {
+                                let name = get_condition_label(&condition);
+                                hashes.add_ride_model(asset);
+                                new_list.add(asset, false, name, 0);
+                            }
+                        }
+                        _ => {}
                     }
-                };
+                }
             });
-        remove.iter().rev().for_each(|&pos| { assets.remove(pos); });
-        new_list.final_add(&mut hashes);
         let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
         hashes.get_info_anim();
@@ -708,4 +557,31 @@ pub fn get_asset_name(condition: &String, gender: Gender) -> Option<String> {
         .or_else(|| PersonData::get(condition.as_str()).and_then(|p| p.name.as_ref() ).map(|name| name.to_string()))
         .or_else(|| JobData::get(condition.as_str()).map(|j| j.name.to_string()))
         .or_else(|| GodData::get(condition.as_str()).map(|g| g.mid.to_string()))
+}
+fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType) -> Option<(String, Gender)> {
+    match kind {
+        AssetType::Body => {
+            let filter = |e: &AssetTable, a: &str| e.dress_model.is_some_and(|s| s.to_string() == a);
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+        }
+        AssetType::Head => {
+            let filter = |e: &AssetTable, a: &str| e.head_model.is_some_and(|s| s.to_string() == a);
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+        }
+        AssetType::Hair => {
+            let filter =
+                if model.contains("uHair") { |e: &AssetTable, a: &str| e.hair_model.is_some_and(|s| s.str_contains(a)) }
+                else { |e: &AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a))) };
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+        }
+        AssetType::Acc(_) => {
+            let filter =  |e: &AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a)));
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+        }
+        AssetType::Mount(_) => {
+            let filter = |e: &AssetTable, a: &str| e.ride_dress_model.is_some_and(|s| s.str_contains(a));
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+        }
+        _ => { None }
+    }
 }
