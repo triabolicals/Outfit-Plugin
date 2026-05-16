@@ -19,12 +19,6 @@ use crate::room::ReloadType;
 
 pub static mut UNIT_ASSET: UnitAssetMenuData = UnitAssetMenuData::default();
 
-#[derive(PartialEq, Copy, Clone)]
-pub enum PreviewAsset {
-    PreviewAsset(AssetType),
-    Scale(u8),
-    NoAsset,
-}
 #[derive(PartialEq, Copy, Clone, Default)]
 pub enum MenuMode {
     #[default] Inactive,

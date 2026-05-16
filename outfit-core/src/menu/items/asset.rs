@@ -6,11 +6,12 @@ use engage::{
     combat::CharacterAppearance, gamedata::assettable::AssetTableResult,
     gamesound::{GameSound, GameSoundFadeSpeedType}
 };
-use crate::{get_outfit_data, left_right_enclose, new_asset_table_accessory, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS};
-use crate::anim::AnimData;
-use crate::data::room::hub_room_set_by_result;
-use crate::localize::MenuText;
-use crate::room::ReloadType;
+use crate::{
+    get_outfit_data, left_right_enclose, new_asset_table_accessory,
+    EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData,
+    ACC_LOC, V_EVENTS,
+    anim::AnimData, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType
+};
 use super::*;
 
 #[derive(PartialEq, Copy, Clone)]
@@ -79,14 +80,12 @@ impl AssetType {
             }
         }
         if model {
-            let mut reload_type = ReloadType::ForcedUpdate;
-            println!("Updating");
+            let mut reload_type = ReloadType::ForcedUpdate;;
             let menu_index =  menu_item.menu.menu_kind.to_index();
             let is_personal = menu_index == 10;
             let is_engaged = menu_index == 16 || menu_index == 17;
             let result = if is_engaged {
                 let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
-                println!("IS ENGAGED");
                 let result = AssetTableResult::get_from_pid(2, pid, CharacterAppearance::get_constions(None));
                 result
             }
@@ -427,9 +426,6 @@ impl CustomMenuItem for AssetType {
                 Asset(_) => {
                     let decided = hash == x.hash;
                     x.set_decided(decided);
-                    if decided {
-                        println!("Name: {}", x.name);
-                    }
                     x.rebuild_text();
                 }
                 _ => {}

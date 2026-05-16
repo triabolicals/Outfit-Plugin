@@ -497,7 +497,7 @@ pub fn game_user_data_on_serialize(this: &GameUserData, stream: &mut Stream, _me
     });
     let mut hash_map: HashSet<i32> = menu_data.data.iter().map(|v| v.person).collect();
     let _ = stream.write_int(hash_map.len() as i32).unwrap();
-    println!("Serializing... {} Outfits Version: {}, ", menu_data.data.len(), UnitAssetData::version());
+    // println!("Serializing... {} Outfits Version: {}, ", menu_data.data.len(), UnitAssetData::version());
     menu_data.data.iter().for_each(|outfit| {
         if hash_map.contains(&outfit.person) {
             outfit.serialize(stream);
@@ -515,7 +515,7 @@ pub fn game_user_data_on_deserialize(this: &GameUserData, stream: &mut Stream, v
         if version < 6 { return; }
         let count = stream.read_int().unwrap_or(0);
         menu_data.data.clear();
-        println!("Deserializing... {} Outfits", count);
+        // println!("Deserializing... {} Outfits", count);
         for _ in 0..count {
             let data = UnitAssetData::deserialize(stream, version);
             menu_data.add_data(data);

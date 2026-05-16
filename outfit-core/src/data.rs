@@ -165,7 +165,6 @@ impl OutfitData {
         }
         assets.retain(|(i, _)| !remove_hashes.contains(&i));
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
-        let mut remove = vec![];
         assets.iter().enumerate()
             .filter(|(_, (hash, s))|{
                 let lower = s.to_lowercase();
@@ -211,12 +210,10 @@ impl OutfitData {
                                 }
                                 hashes.add_head(asset.as_str());
                                 new_list.add(asset.as_str(), false, name, 0);
-                                remove.push(i);
                             }
                         }
                         AssetType::Hair => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
-                                remove.push(i);
                                 hashes.add_hair(asset.as_str());
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }

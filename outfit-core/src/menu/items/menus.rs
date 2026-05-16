@@ -443,7 +443,6 @@ impl CustomAssetMenuKind {
             ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
                 let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == Gender::Female).unwrap_or(female);
-                println!("Is Female: {} [PAGE: {}]", female, *page);
                 db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
             }
             ShopMount(mount) => {

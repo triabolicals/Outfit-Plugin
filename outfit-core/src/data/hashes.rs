@@ -10,9 +10,6 @@ pub struct OutfitHashes {
     pub female_u: Vec<i32>,
     pub head_hair: HashMap<i32, i32>,
     pub oacc_pair: HashMap<i32, i32>,
-    pub acc_head: HashSet<i32>,
-    pub acc_spine: HashSet<i32>,
-    pub acc_shield: HashSet<i32>,
     pub acc_eff: HashSet<i32>,
     pub mount_ou: Vec<(i32, i32)>,
     pub body: HashMap<i32, String>,
@@ -59,10 +56,6 @@ impl OutfitHashes {
                 self.acc.insert(hash, asset.clone());
                 let ostr = asset.trim_start_matches("uAcc");
                 if let Some(oacc) = self.o_acc.iter().find(|v| v.1.contains(ostr)) { self.oacc_pair.insert(hash, *oacc.0); }
-                if asset.contains("uAcc_head_") { self.acc_head.insert(hash); }
-                else if asset.contains("uAcc_spine2_") { self.acc_spine.insert(hash); }
-                else if asset.contains("uAcc_shield_") { self.acc_shield.insert(hash); }
-                else if asset.contains("trans") { self.acc_eff.insert(hash); }
             }
             AssetType::Mount(_) => {
                 self.mounts.insert(hash, asset.clone());
@@ -105,21 +98,6 @@ impl OutfitHashes {
         let ostr = str.trim_start_matches("uAcc");
         if let Some(oacc) = self.o_acc.iter().find(|v| v.1.contains(ostr)) { self.oacc_pair.insert(hashcode, *oacc.0); }
         self.acc.insert(hashcode, str);
-
-        if let Some(kind) = acc_kind {
-            match kind {
-                0 => { self.acc_head.insert(hashcode); }
-                1 => { self.acc_spine.insert(hashcode); }
-                2 => { self.acc_shield.insert(hashcode); }
-                3 => { self.acc_eff.insert(hashcode); }
-                _ => {}
-            }
-        }
-        else {
-            if asset.str_contains("uAcc_head_") { self.acc_head.insert(hashcode); }
-            else if asset.str_contains("uAcc_spine2_") { self.acc_spine.insert(hashcode); }
-            else if asset.str_contains("uAcc_shield_") { self.acc_shield.insert(hashcode); }
-        }
         hashcode
     }
     pub fn try_add_body_by_hash(&mut self, ubody_hash: i32, obody_hash: Option<i32>, asset: &String, female: bool) {

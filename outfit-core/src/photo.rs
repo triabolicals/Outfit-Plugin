@@ -38,7 +38,7 @@ pub fn photograph_edit_dispos_menu_minus(this: &PhotographEditDisposMenu, _optio
 pub fn update_character(dispos_info: &'static mut PhotographDisposInfo, result: &AssetTableResult) {
     let obj = PhotographDisposInfo77::instantiate();
     let locator = dispos_info.m_locator.get_transform();
-    print_asset_table_result(result, 2);
+    // print_asset_table_result(result, 2);
     obj.character_cmp = CharacterFactoryAsync::create_for_talk(CharacterAppearance::create_from_result(result, 1), locator, true);
     obj.character_id = dispos_info.current_character_id;
     obj.body_acc = dispos_info.body_acc_data;
