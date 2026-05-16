@@ -19,7 +19,7 @@ use engage::{
     ut::Ut
 };
 use unity::{prelude::*, system::action::{SystemDelegate, Action}, system::List};
-use crate::{get_outfit_data, print_asset_table_result, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
+use crate::{get_outfit_data, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
 
 #[unity::class("", ".<>c__DisplayClass31_0")]
 pub struct HubAccessoryRoomAction31 {
@@ -306,9 +306,7 @@ fn change_scaling(builder: &CharacterBuilder, result: Option<&mut AssetTableResu
     }
     else {
         let preview = UnitAssetMenuData::get_preview();
-        for x in 0..16 {
-            scale_values[x] = preview.scale_preview[x] as f32 * 0.01 + 0.0001;
-        }
+        for x in 0..16 { scale_values[x] = preview.scale_preview[x] as f32 * 0.01 + 0.01; }
     }
     if let Some(char_prop) = builder.get_component::<CharacterProportion>() {
         char_prop.proportion_parameters.scale_all = scale_values[0];
@@ -338,7 +336,6 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
         let pid = UnitAssetMenuData::get_shop_unit().map(|v| v.person.pid)
             .or_else(|| GodData::try_get_hash(UnitAssetMenuData::get_preview().person).map(|v| v.gid))
             .unwrap_or("PID_リュール".into());
-        println!("Force Load");
         let hash = crate::new_result_get_hash_code(result, None);
         if hash == room.last_hash && reload_type != ReloadType::ForcedUpdate { return; }
         if reload_type == ReloadType::ForcedUpdate { room.destroy_current_char(); }
@@ -348,7 +345,7 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
         room.load_character(appearance, pid);
     }
     else if let Some((unit, info)) = UnitAssetMenuData::get_unit().zip(UnitInfo::get_instance()) {
-        print_asset_table_result(result, 2);
+        // print_asset_table_result(result, 2);
         let char_model_window = &mut info.windows[0].unit_info_window_chara_model;
         let is_mount = reload_type == ReloadType::Mount;
         char_model_window.padding = if is_mount { 1 } else { 0 };
@@ -481,7 +478,7 @@ pub extern "C" fn hub_accessory_init(hub_room: &mut HubAccessoryRoom, _optional_
     else {
         let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom".into());
         SceneManager::set_active_scene(scene);
-        hub_room.camera_pos = HubAccessoryRoomCamera::find_object(true); // find_object_of_type::<HubAccessoryRoomCamera>(get_type_(room_camera_type, None), None);
+        hub_room.camera_pos = HubAccessoryRoomCamera::find_object(true);
         RenderManager::push_render_scale2(1.0);
     }
 }

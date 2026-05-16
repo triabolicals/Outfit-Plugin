@@ -59,198 +59,195 @@ impl AssetType {
             )
         }
     }
-    pub fn update_preview(&self, menu_item: &CustomAssetMenuItem, equipment_box: bool, model: bool) {
-        if equipment_box {
-            self.get_equipment_box_type(menu_item).update();
-            match self {
-                AssetType::Body => { EquipmentBoxMode::set_cursor(Some(1)); }
-                AssetType::Head => { EquipmentBoxMode::set_cursor(Some(2)) }
-                AssetType::Hair => { EquipmentBoxMode::set_cursor(Some(3)) }
-                AssetType::Rig => { EquipmentBoxMode::set_cursor(Some(4)); }
-                AssetType::Acc(k) => { EquipmentBoxMode::set_cursor(Some(*k as i32 + 1)); }
-                AssetType::Mount(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
-                AssetType::AOC(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
-                AssetType::Voice => { EquipmentBoxMode::set_cursor(Some(5)); }
-                AssetType::ColorPreset(kind) => {
-                    EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)).update();
-                    let color_kind = *kind as i32;
-                    let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
-                    EquipmentBoxMode::set_cursor(Some(cursor_pos));
-                }
-            }
+    pub fn update_model(&self, menu_item: &CustomAssetMenuItem) {
+        let mut reload_type = ReloadType::ForcedUpdate;
+        let menu_index =  menu_item.menu.menu_kind.to_index();
+        let is_personal = menu_index == 10;
+        let is_engaged = menu_index == 16 || menu_index == 17;
+        let result = if is_engaged {
+            let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
+            let result = AssetTableResult::get_from_pid(2, pid, CharacterAppearance::get_constions(None));
+            result
         }
-        if model {
-            let mut reload_type = ReloadType::ForcedUpdate;;
-            let menu_index =  menu_item.menu.menu_kind.to_index();
-            let is_personal = menu_index == 10;
-            let is_engaged = menu_index == 16 || menu_index == 17;
-            let result = if is_engaged {
-                let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
-                let result = AssetTableResult::get_from_pid(2, pid, CharacterAppearance::get_constions(None));
-                result
-            }
-            else { UnitAssetMenuData::get_result() };
+        else { UnitAssetMenuData::get_result() };
 
-            let photo = UnitAssetMenuData::is_photo_graph();
-            if photo && !is_personal {
-                let hash = menu_item.hash;
-                let preview = UnitAssetMenuData::get_preview();
-                match self {
-                    AssetType::ColorPreset(kind) => {
-                        for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
-
-                        reload_type = ReloadType::ColorScale;
-                    }
-                    AssetType::Body => {
-                        preview.preview_data.ubody = hash;
-                        if !is_personal { reload_type = ReloadType::Dress; }
-                    }
-                    AssetType::Hair => { preview.preview_data.uhair = hash; }
-                    AssetType::Head => { preview.preview_data.uhead = hash; }
-                    AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
-                    AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
-                    AssetType::AOC(kind) => {
-                        if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(Gender::Male) { preview.preview_data.aoc[*kind as usize] = hash; }
-                        else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
-                    }
-                    AssetType::Rig => { preview.preview_data.rig = hash; },
-                    _ => {}
+        let photo = UnitAssetMenuData::is_photo_graph();
+        if photo && !is_personal {
+            let hash = menu_item.hash;
+            let preview = UnitAssetMenuData::get_preview();
+            match self {
+                AssetType::ColorPreset(kind) => {
+                    for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
+                    reload_type = ReloadType::ColorScale;
                 }
-                preview.preview_data.set_result(result, 2, false, false);
-                hub_room_set_by_result(Some(result), reload_type);
+                AssetType::Body => {
+                    preview.preview_data.ubody = hash;
+                    if !is_personal { reload_type = ReloadType::Dress; }
+                }
+                AssetType::Hair => { preview.preview_data.uhair = hash; }
+                AssetType::Head => { preview.preview_data.uhead = hash; }
+                AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
+                AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
+                AssetType::AOC(kind) => {
+                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(Gender::Male) { preview.preview_data.aoc[*kind as usize] = hash; }
+                    else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
+                }
+                AssetType::Rig => { preview.preview_data.rig = hash; },
+                _ => {}
+            }
+            preview.preview_data.set_result(result, 2, false, false);
+            hub_room_set_by_result(Some(result), reload_type);
+            return;
+        }
+        result.ride_dress_model = None;
+        result.ride_model = None;
+        result.left_hand = "null".into();
+        result.right_hand = "null".into();
+        let db = get_outfit_data();
+        let asset = db.try_get_asset(*self, menu_item.hash);
+        match self {
+            AssetType::Body => {
+                if let Some(asset) = asset {
+                    result.dress_model = asset.as_str().into();
+                    result.body_anim = Some(
+                        if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
+                        else { "AOC_Hub_Hum0F" }.into()
+                    );
+                    if UnitAssetMenuData::get_preview().update_dress_gender {
+                        UnitAssetMenuData::get_preview().update_dress_gender = false;
+                        reload_type = ReloadType::ForcedUpdate;
+                    }
+                    else if !is_personal && !is_engaged { reload_type = ReloadType::Dress; }
+                }
+            }
+            AssetType::Rig => {
+                if let Some(asset) = asset {
+                    result.body_model = asset.as_str().into();
+                    if !is_personal { reload_type = ReloadType::Body; }
+                }
+            }
+            AssetType::Head => {
+                if let Some(asset) = asset {
+                    result.head_model = asset.as_str().into();
+                    if !is_personal { reload_type = ReloadType::Head; }
+                }
+            }
+            AssetType::Hair => {
+                if let Some(asset) = asset {
+                    crate::apply_hair(asset, result);
+                    result.replace(2);
+                    if !is_personal { reload_type = ReloadType::Hair; }
+                }
+            }
+            AssetType::Acc(kind) => {
+                if let Some(asset) = asset {
+                    if asset.contains("Msc0AT") { result.left_hand = asset.into(); }
+                    else {
+                        let acc_locator = ACC_LOC[*kind as usize];
+                        result.commit_accessory(new_asset_table_accessory(asset.as_str(), acc_locator));
+                        result.replace(2);
+                        EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1));
+                        if !is_personal { reload_type = ReloadType::Accessories(*kind as usize); }
+                    }
+                }
+            }
+            AssetType::Mount(kind) => {
+                if GameUserData::get_sequence() == 3 {
+                    if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
+                }
+                if let Some(asset) = asset {
+                    result.body_anims.clear();
+                    let dress = db.get_dress_gender(result.dress_model);
+                    let gender = if db.get_dress_gender(result.dress_model) == Gender::Female { "F" } else { "M" };
+                    result.ride_dress_model = Some(asset.into());
+                    result.ride_model = Some(Mount::from_i32(1+*kind as i32).get_default_asset(true).into());
+                    match kind {
+                        0 => {
+                            let anim = format!("Cav0B{}-No1_c000_N", gender);
+                            result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
+                            result.body_anims.add(anim.as_str().into());
+                            result.body_anim = Some(anim.into());
+                        }
+                        1 => {
+                            let anim = format!("Cav2C{}-No1_c000_N", gender);
+                            result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
+                            result.body_anims.add(anim.as_str().into());
+                            result.body_anim = Some(anim.into());
+                        }
+                        2 => {
+                            let anim = format!("Wng2D{}-No1_c000_N", gender);
+                            result.body_anims.add(anim.as_str().into());
+                            result.body_anim = Some(anim.into());
+                        }
+                        3 => {
+                            if dress == Gender::Male { result.dress_model = "uBody_Wng0EF_c000".into(); }
+                            let anim = "Wng0EF-No1_c000_N";
+                            result.body_anims.add(anim.into());
+                            result.body_anim = Some(anim.into());
+                        }
+                        4 => {
+                            let anim = format!("Wng1F{}-No1_c000_N", gender);
+                            result.body_anims.add(anim.as_str().into());
+                            result.body_anim = Some(anim.into());
+                        }
+                        _ => { result.body_anims.add(format!("Com0A{}-No1_c000_N", gender).into()); }
+                    }
+                    hub_room_set_by_result(Some(result), ReloadType::Mount);
+                }
                 return;
             }
-            result.ride_dress_model = None;
-            result.ride_model = None;
-            result.left_hand = "null".into();
-            result.right_hand = "null".into();
-            let db = get_outfit_data();
-            let asset = db.try_get_asset(*self, menu_item.hash);
-            match self {
-                AssetType::Body => {
-                    if let Some(asset) = asset {
-                        result.dress_model = asset.as_str().into();
-                        result.body_anim = Some(
-                            if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
-                            else { "AOC_Hub_Hum0F" }.into()
-                        );
-                        if UnitAssetMenuData::get_preview().update_dress_gender {
-                            UnitAssetMenuData::get_preview().update_dress_gender = false;
-                            reload_type = ReloadType::ForcedUpdate;
-                        }
-                        else if !is_personal && !is_engaged { reload_type = ReloadType::Dress; }
-                    }
-                }
-                AssetType::Rig => {
-                    if let Some(asset) = asset {
-                        result.body_model = asset.as_str().into();
-                        if !is_personal { reload_type = ReloadType::Body; }
-                    }
-                }
-                AssetType::Head => {
-                    if let Some(asset) = asset {
-                        result.head_model = asset.as_str().into();
-                        if !is_personal { reload_type = ReloadType::Head; }
-                    }
-                }
-                AssetType::Hair => {
-                    if let Some(asset) = asset {
-                        crate::apply_hair(asset, result);
-                        result.replace(2);
-                        if !is_personal { reload_type = ReloadType::Hair; }
-                    }
-                }
-                AssetType::Acc(kind) => {
-                    if let Some(asset) = asset {
-                        if asset.contains("Msc0AT") { result.left_hand = asset.into(); }
-                        else {
-                            let acc_locator = ACC_LOC[*kind as usize];
-                            result.commit_accessory(new_asset_table_accessory(asset.as_str(), acc_locator));
-                            result.replace(2);
-                            EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1));
-                            if !is_personal { reload_type = ReloadType::Accessories(*kind as usize); }
-                        }
-                    }
-                }
-                AssetType::Mount(kind) => {
-                    if GameUserData::get_sequence() == 3 {
-                        if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
-                    }
-                    if let Some(asset) = asset {
-                        result.body_anims.clear();
-                        let dress = db.get_dress_gender(result.dress_model);
-                        let gender = if db.get_dress_gender(result.dress_model) == Gender::Female { "F" } else { "M" };
-                        result.ride_dress_model = Some(asset.into());
-                        result.ride_model = Some(Mount::from_i32(1+*kind as i32).get_default_asset(true).into());
-                        match kind {
-                            0 => {
-                                let anim = format!("Cav0B{}-No1_c000_N", gender);
-                                result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
-                                result.body_anims.add(anim.as_str().into());
-                                result.body_anim = Some(anim.into());
-                            }
-                            1 => {
-                                let anim = format!("Cav2C{}-No1_c000_N", gender);
-                                result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
-                                result.body_anims.add(anim.as_str().into());
-                                result.body_anim = Some(anim.into());
-                            }
-                            2 => {
-                                let anim = format!("Wng2D{}-No1_c000_N", gender);
-                                result.body_anims.add(anim.as_str().into());
-                                result.body_anim = Some(anim.into());
-                            }
-                            3 => {
-                                if dress == Gender::Male { result.dress_model = "uBody_Wng0EF_c000".into(); }
-                                let anim = "Wng0EF-No1_c000_N";
-                                result.body_anims.add(anim.into());
-                                result.body_anim = Some(anim.into());
-                            }
-                            4 => {
-                                let anim = format!("Wng1F{}-No1_c000_N", gender);
-                                result.body_anims.add(anim.as_str().into());
-                                result.body_anim = Some(anim.into());
-                            }
-                            _ => { result.body_anims.add(format!("Com0A{}-No1_c000_N", gender).into()); }
-                        }
-                        hub_room_set_by_result(Some(result), ReloadType::Mount);
-                    }
-                    return;
-                }
-                AssetType::AOC(_) => {
-                    if let Some(asset) = asset {
-                        AnimData::remove(result, true, true);
-                        result.left_hand = "null".into();
-                        result.right_hand = "null".into();
-                        result.info_anims = None;
-                        result.talk_anims = None;
-                        result.demo_anims = None;
-                        result.hub_anims = None;
-                        result.body_anim = Some(asset.into());
-                        AnimData::remove(result, true, true);
-                        return hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
-                    }
-                }
-                AssetType::Voice => { return; }
-                AssetType::ColorPreset(kind) => {
-                    let menu_data = UnitAssetMenuData::get_preview();
-                    let mut current_color = [0; 3];
-                    let color_kind = *kind as usize;
-                    for x in 0..3 { current_color[x] = menu_data.original_color[4*color_kind+x]; }
-                    let selected_color: [u8; 3] = [
-                        (menu_item.hash & 255) as u8,
-                        ((menu_item.hash >> 8) & 255) as u8,
-                        ((menu_item.hash >> 16) & 255) as u8
-                    ];
-                    result.unity_colors[color_kind].r = selected_color[0] as f32 / 255.0;
-                    result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
-                    result.unity_colors[color_kind].b = selected_color[2] as f32 / 255.0;
-                    hub_room_set_by_result(Some(result), ReloadType::ColorScale);
-                    return;
+            AssetType::AOC(_) => {
+                if let Some(asset) = asset {
+                    AnimData::remove(result, true, true);
+                    result.left_hand = "null".into();
+                    result.right_hand = "null".into();
+                    result.info_anims = None;
+                    result.talk_anims = None;
+                    result.demo_anims = None;
+                    result.hub_anims = None;
+                    result.body_anim = Some(asset.into());
+                    AnimData::remove(result, true, true);
+                    return hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
                 }
             }
-            if UnitAssetMenuData::is_unit_info() && *self != AssetType::Body { result.body_anim = result.hub_anims; }
-            hub_room_set_by_result(Some(result), reload_type);
+            AssetType::Voice => { return; }
+            AssetType::ColorPreset(kind) => {
+                let menu_data = UnitAssetMenuData::get_preview();
+                let mut current_color = [0; 3];
+                let color_kind = *kind as usize;
+                for x in 0..3 { current_color[x] = menu_data.original_color[4*color_kind+x]; }
+                let selected_color: [u8; 3] = [
+                    (menu_item.hash & 255) as u8,
+                    ((menu_item.hash >> 8) & 255) as u8,
+                    ((menu_item.hash >> 16) & 255) as u8
+                ];
+                result.unity_colors[color_kind].r = selected_color[0] as f32 / 255.0;
+                result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
+                result.unity_colors[color_kind].b = selected_color[2] as f32 / 255.0;
+                hub_room_set_by_result(Some(result), ReloadType::ColorScale);
+                return;
+            }
+        }
+        if UnitAssetMenuData::is_unit_info() && *self != AssetType::Body { result.body_anim = result.hub_anims; }
+        hub_room_set_by_result(Some(result), reload_type);
+    }
+    pub fn update_box(&self, menu_item: &CustomAssetMenuItem){
+        self.get_equipment_box_type(menu_item).update();
+        match self {
+            AssetType::Body => { EquipmentBoxMode::set_cursor(Some(1)); }
+            AssetType::Head => { EquipmentBoxMode::set_cursor(Some(2)) }
+            AssetType::Hair => { EquipmentBoxMode::set_cursor(Some(3)) }
+            AssetType::Rig => { EquipmentBoxMode::set_cursor(Some(4)); }
+            AssetType::Acc(k) => { EquipmentBoxMode::set_cursor(Some(*k as i32 + 1)); }
+            AssetType::Mount(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
+            AssetType::AOC(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
+            AssetType::Voice => { EquipmentBoxMode::set_cursor(Some(5)); }
+            AssetType::ColorPreset(kind) => {
+                EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)).update();
+                let color_kind = *kind as i32;
+                let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
+                EquipmentBoxMode::set_cursor(Some(cursor_pos));
+            }
         }
     }
 }
@@ -424,8 +421,7 @@ impl CustomMenuItem for AssetType {
         menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{
             match x.menu_kind {
                 Asset(_) => {
-                    let decided = hash == x.hash;
-                    x.set_decided(decided);
+                    x.set_decided(hash == x.hash);
                     x.rebuild_text();
                 }
                 _ => {}

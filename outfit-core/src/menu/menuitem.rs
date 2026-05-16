@@ -331,14 +331,16 @@ impl CustomAssetMenuItem {
 		}
 	}
 }
-pub fn accessory_menu_item_content_build_text(this: &AccessoryMenuItemContent, _optional_method: OptionalMethod) {
+pub fn accessory_menu_item_content_build_text(this: &AccessoryMenuItemContent, _: OptionalMethod) {
 	this.build_text_();
 	if !UnitAssetMenuData::get().is_preview { return; }
 	let custom_item = unsafe { std::mem::transmute::<&BasicMenuItem, &CustomAssetMenuItem>(this.parent.menu_item) };
 	this.name_text.set_text(custom_item.menu_kind.get_name(custom_item), true);
 	this.fixed_cursor_object.set_active(custom_item.decided);
-	if custom_item.original {
-		if let Some(game_color) = GameColor::get() { this.name_text.set_color(game_color.yellow_text); }
+	if let Some(game_color) = GameColor::get() {
+		if custom_item.original { this.name_text.set_color(game_color.yellow_text); }
+		else { this.name_text.set_color(game_color.default_color); }
 	}
+	println!("Accessory Menu Item Build Text");
 	return;
 }

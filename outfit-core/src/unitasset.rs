@@ -77,6 +77,8 @@ pub struct UnitAssetMenuData {
     pub debug: bool,
     pub facial: usize,
     pub menu_adj: f32,
+    pub reload_type: Option<ReloadPreview>,
+    pub reload_delay: bool,
     pub control: PhotoCameraControl,
     pub photo_profiles: Vec<PlayerOutfitData>,
     pub unit_select: UnitSelectList,
@@ -89,10 +91,12 @@ pub enum LoadResult {
 }
 #[derive(PartialEq, Copy, Clone)]
 pub enum ReloadPreview {
-    Scale(i32),
+    Scale,
     Color(i32),
+    ResetColor(i32),
     Preset(usize),
-    NoScaleColor,
+    Asset,
+    Full,
     LoadedData,
     Forced,
 }
@@ -184,6 +188,8 @@ impl UnitAssetMenuData {
             debug: false,
             facial: 0,
             menu_adj: 0.0,
+            reload_type: None,
+            reload_delay: false,
             control: PhotoCameraControl::default(),
             unit_select: UnitSelectList::new(),
         }
@@ -320,55 +326,68 @@ impl UnitAssetMenuData {
         if data.god_mode { None }
         else { PersonData::try_get_hash(data.preview.person).and_then(|p| UnitPool::get_from_person_force_mask(p, -1)) }
     }
-    pub fn reload_unit(kind: ReloadPreview, forced: bool, result: Option<&mut AssetTableResult>) -> BasicMenuResult {
+    pub fn set_reload(kind: ReloadPreview, delay: bool) {
         let data = Self::get();
-        if data.is_changed || forced  {
-            match kind {
-                ReloadPreview::Color(kind) => {
-                    let result = result.unwrap_or(Self::get_result());
-                    let mut color: i32 = 0;
-                    for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
-                    if color > 0 {
-                        result.unity_colors[kind as usize].r = data.preview.color_preview[4*kind as usize] as f32 / 255.0;
-                        result.unity_colors[kind as usize].g = data.preview.color_preview[4*kind as usize+1] as f32 / 255.0;
-                        result.unity_colors[kind as usize].b = data.preview.color_preview[4*kind as usize+2] as f32 / 255.0;
-                    }
-                    hub_room_set_by_result(Some(result), ReloadType::ColorScale);
+        data.reload_type = Some(kind);
+        data.reload_delay = delay;
+    }
+    pub fn reload_unit(kind: ReloadPreview) {
+        let data = Self::get();
+        let result = Self::get_result();
+        match kind {
+            ReloadPreview::Asset => { return; }
+            ReloadPreview::Color(kind) => {
+                let mut color: i32 = 0;
+                let k = kind as usize;
+                for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
+                if color > 0 {
+                    result.unity_colors[k].r = data.preview.color_preview[4*k] as f32 / 255.0;
+                    result.unity_colors[k].g = data.preview.color_preview[4*k+1] as f32 / 255.0;
+                    result.unity_colors[k].b = data.preview.color_preview[4*k+2] as f32 / 255.0;
                 }
-                ReloadPreview::Scale(_kind) => { hub_room_set_by_result(result, ReloadType::Scale); }
-                ReloadPreview::Preset(index) => {
-                    let result = result.unwrap_or(Self::get_result());
-                    let db = get_outfit_data();
-                    if let Some(appearance) = db.dress.personal.get(index) {
-                        appearance.apply_appearance(result, 2, false, None, &db.hashes, true);
-                        result.ride_dress_model = None;
-                        result.ride_model = None;
-                        result.left_hand = "null".into();
-                        result.right_hand = "null".into();
-                        result.body_anim = Some(
-                            if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
-                            else { "AOC_Hub_Hum0F" }.into()
-                        );
-                        hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
-                    }
-                }
-                ReloadPreview::LoadedData => {
-                    let result = result.unwrap_or(Self::get_result());
-                    let menu = UnitAssetMenuData::get();
-                    if let Some(loaded) = menu.loaded_data.selected_index.and_then(|i| menu.loaded_data.loaded_data.get_mut(i as usize)) {
-                        let flag = loaded.data.flag;
-                        loaded.data.flag |= 193;
-                        loaded.data.set_result(result, 2, false, false);
-                        loaded.data.flag = flag;
-                    }
+                hub_room_set_by_result(Some(result), ReloadType::ColorScale);
+            }
+            ReloadPreview::ResetColor(kind) => {
+                let k = kind as usize;
+                result.unity_colors[k].r = data.preview.original_color[4*k] as f32 / 255.0;
+                result.unity_colors[k].g = data.preview.original_color[4*k+1] as f32 / 255.0;
+                result.unity_colors[k].b = data.preview.original_color[4*k+2] as f32 / 255.0;
+                hub_room_set_by_result(Some(result), ReloadType::ColorScale);
+            }
+            ReloadPreview::Scale => {
+                hub_room_set_by_result(Some(result), ReloadType::Scale);
+            }
+            ReloadPreview::Preset(index) => {
+                let db = get_outfit_data();
+                if let Some(appearance) = db.dress.personal.get(index) {
+                    appearance.apply_appearance(result, 2, false, None, &db.hashes, true);
+                    result.ride_dress_model = None;
+                    result.ride_model = None;
+                    result.left_hand = "null".into();
+                    result.right_hand = "null".into();
+                    result.body_anim = Some(
+                        if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
+                        else { "AOC_Hub_Hum0F" }.into()
+                    );
                     hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
                 }
-                _ => {}
             }
-            data.is_changed = false;
-            BasicMenuResult::se_cursor()
+            ReloadPreview::LoadedData => {
+                if let Some(loaded) = data.loaded_data.selected_index.and_then(|i| data.loaded_data.loaded_data.get_mut(i as usize)) {
+                    let flag = loaded.data.flag;
+                    loaded.data.flag |= 193;
+                    loaded.data.set_result(result, 2, false, false);
+                    loaded.data.flag = flag;
+                }
+                hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
+            }
+            ReloadPreview::Forced => {
+                hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
+            ReloadPreview::Full => {
+                hub_room_set_by_result(Some(result), ReloadType::All);
+            }
         }
-        else { BasicMenuResult::new() }
+        data.reload_type = None;
     }
     pub fn get_flag() -> i32 { Self::get().preview.preview_data.flag }
     pub fn set_flag(flag: i32) {

@@ -2,16 +2,9 @@ use engage::{gamemessage::GameMessage, gamevariable::GameVariableManager, mess::
 use unity::prelude::Il2CppString;
 use crate::{
     menu::icons::CustomMenuIcon,
-    r_l_press,
-    set_detail_box,
-    CustomAssetMenu,
-    EquipmentBoxPage,
-    LoadResult,
-    MenuTextCommand,
-    ReloadPreview,
-    UnitAssetMenuData,
-    THUMB_DIR,
-    localize::MenuText
+    r_l_press, set_detail_box,
+    CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview,
+    UnitAssetMenuData, THUMB_DIR, localize::MenuText
 };
 use super::*;
 #[repr(u8)]
@@ -214,7 +207,7 @@ impl CustomMenuItem for AssetFlag {
         }
         menu_item.decided = self.is_decided();
         menu_item.rebuild_text();
-        if change_unit { UnitAssetMenuData::reload_unit(ReloadPreview::NoScaleColor, true, None); }
+        if change_unit { UnitAssetMenuData::reload_unit(ReloadPreview::Full); }
         BasicMenuResult::se_cursor()
     }
     fn custom_call(&self, menu_item: &mut CustomAssetMenuItem) -> BasicMenuResult {
@@ -256,7 +249,7 @@ impl CustomMenuItem for AssetFlag {
             }
             menu_item.rebuild_text();
             if change_unit {
-                UnitAssetMenuData::reload_unit(ReloadPreview::NoScaleColor, true, None);
+                UnitAssetMenuData::reload_unit(ReloadPreview::Full);
                 if *self == Self::ViewMode { UnitAssetMenuData::set_original_assets(); }
             }
             EquipmentBoxMode::CurrentProfile.update();

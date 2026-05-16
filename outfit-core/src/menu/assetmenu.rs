@@ -21,7 +21,9 @@ use engage::{
     combat::Kaneko,
     tmpro::TextMeshProUGUI,
 };
+use engage::gamedata::accessory::AccessoryDataKinds::Back;
 use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
+use crate::is_up_down_press;
 use crate::menu::items::{CustomAssetMenuKind, MainShop};
 
 pub static CUSTOM_ASSET_MENU: OnceLock<&'static mut Il2CppClass> = OnceLock::new();
@@ -59,6 +61,7 @@ pub struct CustomAssetMenu {
     pub request_close: Option<&'static mut AccessoryShopChangeMenuRequestCloseHandler>,
     pub change_kind: u64,
     pub menu_kind: CustomAssetMenuKind,
+    pub next: Option<CustomAssetMenuKind>,
 }
 impl Il2CppClassData for CustomAssetMenu {
     const NAMESPACE: &'static str = "App";
@@ -483,6 +486,17 @@ impl CustomAssetMenu {
                 let r = Pad::is_trigger(NpadButton::new().with_r(true));
                 if (l || r) && l != r { Self::lr_base(this, r); }
             }
+        }
+        let menu = UnitAssetMenuData::get();
+        if let Some(next) = this.next.take() {
+            this.full_menu_item_list.clear();
+            next.create_menu_items(this);
+            this.menu_kind = next;
+            this.rebuild_menu();
+        }
+        else if let Some(reload) = menu.reload_type{
+            if !is_up_down_press() { menu.reload_delay = false; }
+            if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
         }
         this.tick_input_base()
     }
