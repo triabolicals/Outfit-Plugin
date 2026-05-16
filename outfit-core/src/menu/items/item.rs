@@ -667,9 +667,9 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     BasicMenuResult::se_cursor()
                 } else { BasicMenuResult::se_miss() }
             }
-            FaceThumb => {
+            FaceThumb|OutfitDataFile => {
                 let message = format!("Delete '{}'?", menuitem.name);
-                let action = Action::new_method_mut(Some(menuitem), delete_face_item);
+                let action = Action::new_method_mut(Some(menuitem), if self.to_index() == -4 { delete_face_item } else { delete_outfit_data });
                 BasicDialog2::create_confirm_cancel_bind(menuitem.menu, message, Some(action));
                 BasicMenuResult::se_cursor()
             }
@@ -948,5 +948,24 @@ fn delete_face_item(menu_item: &mut CustomAssetMenuItem, _: OptionalMethod) {
             menu_item.menu.menu_kind = FaceSelection;
         }
         menu_item.menu.rebuild_menu();
+    }
+}
+fn delete_outfit_data(menu_item: &mut CustomAssetMenuItem, _: OptionalMethod) {
+    let list = &mut UnitAssetMenuData::get().loaded_data.loaded_data;
+    let name = menu_item.name.to_string();
+    if let Some(pos) = list.iter().position(|x| x.get_filename() == name) {
+        let file = list.remove(pos);
+        if fs::remove_file(file.path).is_ok() {
+            menu_item.menu.full_menu_item_list.clear();
+            if list.len() == 0 {
+                ProfileSettings.create_menu_items(menu_item.menu);
+                menu_item.menu.menu_kind = ProfileSettings;
+            }
+            else {
+                FaceSelection.create_menu_items(menu_item.menu);
+                menu_item.menu.menu_kind = LoadData;
+            }
+            menu_item.menu.rebuild_menu();
+        }
     }
 }

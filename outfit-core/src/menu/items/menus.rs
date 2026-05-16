@@ -565,7 +565,7 @@ impl CustomAssetMenuKind {
                     let help = if UnitAssetMenuData::get_person_flag() & 8 != 0 { "Replace Face" } else { "Capture Face" };
                     add_key_help(KeyHelpButton::Minus, help);
                 }
-                else if idx == 15 {
+                else if idx == 15 || idx == 11 {
                     add_key_help(KeyHelpButton::Minus, Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
                 }
                 else { disable_key_help(KeyHelpButton::Minus); }
