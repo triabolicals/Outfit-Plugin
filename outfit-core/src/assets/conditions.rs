@@ -109,10 +109,11 @@ pub enum CharacterAssetMode {
     Demo,   //  デモ
     Talk,   //  会話
     Combat, // コンバット
+    PrivateClothes, // 私服
     None,
 }
 impl CharacterAssetMode {
-    const CONDITIONS: [&'static str; 7] = ["クラスチェンジ中", "詳細", "情報", "拠点", "デモ", "会話", "コンバット"];
+    const CONDITIONS: [&'static str; 8] = ["クラスチェンジ中", "詳細", "情報", "拠点", "デモ", "会話", "コンバット", "私服"];
     pub fn get() -> Self {
         let sf = AssetTableStaticFields::get();
         if let Some(pos) = Self::CONDITIONS.iter().position(|x|{ sf.condition_flags.keys.iter().find(|x2| x2.str_contains(x)).is_some() }) {
@@ -124,6 +125,7 @@ impl CharacterAssetMode {
                 4 => CharacterAssetMode::Demo,
                 5 => CharacterAssetMode::Talk,
                 6 => CharacterAssetMode::Combat,
+                7 => CharacterAssetMode::PrivateClothes,
                 _ => CharacterAssetMode::None,
             }
         }
