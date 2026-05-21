@@ -341,6 +341,5 @@ pub fn accessory_menu_item_content_build_text(this: &AccessoryMenuItemContent, _
 		if custom_item.original { this.name_text.set_color(game_color.yellow_text); }
 		else { this.name_text.set_color(game_color.default_color); }
 	}
-	println!("Accessory Menu Item Build Text");
 	return;
 }

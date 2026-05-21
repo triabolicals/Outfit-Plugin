@@ -38,7 +38,6 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                     let hash = proc.borrow().hashcode;
                     match hash {
                         engage::proc::TITLE_LOOP_SEQUENCE => {
-                            println!("[Outfit Plugin {}]", outfit_core::VERSION);
                             if !UnitAssetMenuData::get().init {
                                 outfit_core::install_outfit_plugin(false);
                                 skyline::install_hooks!(

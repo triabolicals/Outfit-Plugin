@@ -5,6 +5,7 @@ use std::io::Write;
 use std::path::Path;
 
 pub fn get_next_filename(dir: &str, stem: &String, ext: &str) -> String {
+	let stem = stem.replace("é", "e");
 	let mut file_path = format!("{}{}.{}", dir, stem, ext);
 	if Path::new(file_path.as_str()).exists() {
 		let mut c = 1;

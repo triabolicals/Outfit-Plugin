@@ -193,6 +193,7 @@ impl CustomAssetMenuItemKind {
                     }
                     EquipmentBoxMode::LoadData(data.loaded_data.equipment_box_state).set_preset_appearance(menu_item.hash);
                 }
+                UnitAssetMenuData::set_reload(ReloadPreview::Full, true);
             }
             Pause => {
                 if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager) {

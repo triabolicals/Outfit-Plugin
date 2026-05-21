@@ -8,10 +8,7 @@ use unity::prelude::Il2CppString;
 use crate::{
     add_key_help, disable_key_help, get_current_profile_name, get_outfit_data,
     AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
-    data::{
-        items::{AssetFlag, CustomMenuItem, Profile},
-        room::hub_room_set_by_result
-    },
+    data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result},
     menu::icons::CustomMenuIcon,
     localize::{MenuText, MenuTextCommand}, room::ReloadType, left_right_enclose};
 use super::*;

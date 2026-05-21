@@ -1,7 +1,7 @@
-use bitflags::bitflags;
+use bitflags::{bitflags, Flags};
 use engage::{gamedata::assettable::*, gamedata::Gamedata, gamedata::item::ItemData, mess::Mess};
 use unity::prelude::Il2CppString;
-use crate::{capitalize_first, get_remove, AssetLabelTable, AssetType, OutfitHashes};
+use crate::{capitalize_first, AssetLabelTable, AssetType};
 
 const ACC: [&str; 10] = ["Band", "Dress", "Ear", "Glass", "Hat", "Kings", "Tiara", "Helm", "Shield", "Hood"];
 bitflags! {
@@ -34,6 +34,7 @@ bitflags! {
         const MAID = 1 << 25;
         const DEMO = 1 << 26;
         const HUB = 1 << 27;
+        const ADDED = 1 << 28;
         const AccessoryShop = 1 << 30;
         const NoPhotograph = 1 << 31;
     }
@@ -44,8 +45,8 @@ impl AssetItemFlags {
         s = capitalize_first(s.as_str());
         if self.contains(AssetItemFlags::Male) { add_str(&mut s, "M"); }
         else if self.contains(AssetItemFlags::Female) { add_str(&mut s, "F") }
-
-        if self.contains(AssetItemFlags::Base) { add_mess(&mut s, "MID_SYS_BasicPosition"); }
+        if self.contains(AssetItemFlags::ADDED) { add_str(&mut s, "(Mod)"); }
+        else if self.contains(AssetItemFlags::Base) { add_mess(&mut s, "MID_SYS_BasicPosition"); }
         else if self.contains(AssetItemFlags::Promoted) { add_mess(&mut s, "MID_SYS_SeniorPosition"); }
         else if self.contains(AssetItemFlags::Somniel) { add_mess(&mut s,"MID_Hub_Solanel"); }
         else if self.contains(AssetItemFlags::Engaged) { add_mess(&mut s, "MID_BGM_Evt_Engage_ST_Play"); }

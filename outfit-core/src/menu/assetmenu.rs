@@ -117,8 +117,8 @@ impl CustomAssetMenu {
                 let menu = CUSTOM_ASSET_MENU.get_or_init(|| Self::create_class()).instantiate_as::<CustomAssetMenu>().unwrap();
                 menu.base_ctor(list, content, None, None, None, None, None);
                 let count = 50;
-                let klass = Il2CppClass::from_name("App", "BasicMenuSelect").expect("Unable to find BasicMenuSelect Class");
-                menu.selects = Il2CppArray::new_from_element_class(klass, count).expect("Failed to create BasicMenuSelect[]");
+                let klass = Il2CppClass::from_name("App", "BasicMenuSelect").unwrap();
+                menu.selects = Il2CppArray::new_from_element_class(klass, count).unwrap();
                 for i in 0..count {
                     menu.selects[i] = BasicMenuSelect::instantiate().unwrap();
                     menu.selects[i].index = 0;

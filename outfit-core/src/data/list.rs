@@ -200,25 +200,18 @@ pub struct AssetLabelTable {
 }
 impl AssetLabelTable {
     pub fn new() -> Self {
-        let mut section = 0;
         let mut body = HashMap::new();
         let mut suffix = HashMap::new();
         include_str!("../../data/labels2.txt").lines()
             .for_each(|line|{
-                if line.starts_with("END") { section += 1; }
-                else if section < 4 {
-                    let mut line = line.split_whitespace();
-                    if let Some((name, value)) = line.next().zip(line.next()) {
-                        let (label, flag) = parse_label(value);
-                        if section == 0 { body.insert(label, AssetLabel::new(name, flag)); }
-                        else {
+                let mut line = line.split_whitespace();
+                if let Some((name, value)) = line.next().zip(line.next()) {
+                    let (label, flag) = parse_label(value);
+                    suffix.insert(label, AssetLabel::new(name, flag));
+                    while let Some(s) = line.next() {
+                        if s.starts_with("c") {
+                            let (label, flag) = parse_label(s);
                             suffix.insert(label, AssetLabel::new(name, flag));
-                            while let Some(s) = line.next() {
-                                if s.starts_with("c") {
-                                    let (label, flag) = parse_label(s);
-                                    suffix.insert(label, AssetLabel::new(name, flag));
-                                }
-                            }
                         }
                     }
                 }

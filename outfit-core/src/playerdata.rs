@@ -69,7 +69,9 @@ impl UnitAssetData {
         Self { set_profile, person, profile, flag: person_flag }
     }
     pub fn profile_index(&self, engaged_dark: bool) -> i32 {
-        let index = if GameUserData::get_sequence() == 4 { 2 } else if engaged_dark { 1 } else { 0 };
+        let index =
+            if GameUserData::get_sequence() == 4 { 2 }
+            else if engaged_dark { 1 } else { 0 };
         self.set_profile[index as usize]
     }
     pub fn get_active_flag(&self, engaged: bool) -> i32 {
@@ -515,7 +517,6 @@ pub fn game_user_data_on_deserialize(this: &GameUserData, stream: &mut Stream, v
         if version < 6 { return; }
         let count = stream.read_int().unwrap_or(0);
         menu_data.data.clear();
-        // println!("Deserializing... {} Outfits", count);
         for _ in 0..count {
             let data = UnitAssetData::deserialize(stream, version);
             menu_data.add_data(data);

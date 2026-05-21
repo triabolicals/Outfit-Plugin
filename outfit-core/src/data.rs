@@ -190,15 +190,15 @@ impl OutfitData {
                                 else if gender != Gender::None {
                                     let female = gender == Gender::Female;
                                     hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
-                                    new_list.add(asset, female, name.clone(), 0);
+                                    new_list.add(asset, female, name.clone(), 1 << 28);
                                     added = true;
                                 }
                             }
                             if !added { // If no gender, add it to both genders.
                                 hashes.try_add_body_by_hash(*hash, o_hash, asset, false);
                                 hashes.try_add_body_by_hash(*hash, o_hash, asset, true);
-                                new_list.add(asset.as_str(), false, name.clone(), 0);
-                                new_list.add(asset.as_str(), true, name.clone(), 0);
+                                new_list.add(asset.as_str(), false, name.clone(), 1 << 28);
+                                new_list.add(asset.as_str(), true, name.clone(), 1 << 28);
                             }
                         }
                         AssetType::Head => {
@@ -209,7 +209,7 @@ impl OutfitData {
                                     hashes.head_hair.insert(*hash, o_hair);
                                 }
                                 hashes.add_head(asset.as_str());
-                                new_list.add(asset.as_str(), false, name, 0);
+                                new_list.add(asset.as_str(), false, name, 1 << 28);
                             }
                         }
                         AssetType::Hair => {
@@ -218,21 +218,21 @@ impl OutfitData {
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
                                 let name = get_asset_name(&condition, gender);
-                                new_list.add(asset.as_str(), false, name, 0);
+                                new_list.add(asset.as_str(), false, name, 1 << 28);
                             }
                         }
                         AssetType::Acc(_) => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
                                 let name = get_asset_name(&condition, gender);
                                 hashes.add_acc(asset.as_str(), None);
-                                new_list.add(asset.as_str(), false, name, 0);
+                                new_list.add(asset.as_str(), false, name, 1 << 28);
                             }
                         }
                         AssetType::Mount(_) => {
                             if let Some((condition, _)) = find_condition(2, asset, false, item.kind) {
                                 let name = get_condition_label(&condition);
                                 hashes.add_ride_model(asset);
-                                new_list.add(asset, false, name, 0);
+                                new_list.add(asset, false, name, 1 << 28);
                             }
                         }
                         _ => {}
@@ -320,7 +320,7 @@ impl OutfitData {
         if job == 185671037 {   // Alear Fell Child
             if let Some(d) = self.dress.get_job_dress(unit.job, dress_gender) { d.apply(result, conditions.mode, true, engaged); }
         }
-        else if transforming  || (unit.force.is_some_and(|x| x.force_type == 1 || x.force_type == 2) && !conditions.flags.is_generic()){
+        else if transforming  || (unit.force.is_some_and(|x| x.force_type == 1 || x.force_type == 2) && !conditions.flags.is_generic() && !engaged){
             if let Some(person_data) = self.dress.get_personal_dress(unit) {
                 person_data.apply(result, conditions.mode, unit.job.rank > 0 || unit.level > 20, None, &self.hashes);
                 return;
