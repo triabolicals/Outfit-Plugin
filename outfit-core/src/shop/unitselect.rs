@@ -12,11 +12,9 @@ use engage::{
     gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
 };
+use engage::menu::BasicMenuMethods;
 use unity::{prelude::*, engine::{ui::IsImage, Color}};
-use crate::{
-    EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType,
-    shop::room::hub_room_set_by_result
-};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, print_asset_table_result, CustomAssetMenu};
 static SHOP_UNIT_SELECT_CLASS: OnceLock<&'static Il2CppClass> = OnceLock::new();
 
 #[derive(Default)]
@@ -60,6 +58,7 @@ impl UnitSelectList {
             self.selected = Some(new);
         }
         else { self.selected = Some(0); }
+        UnitAssetMenuData::get().unit_select_index = self.selected.unwrap_or(0);
     }
     pub fn get_selected(&self) -> Option<UnitSelect> { self.selected.and_then(|v| self.list.get(v as usize).cloned()) }
     pub fn get_result(&self, hub: bool) -> &'static mut AssetTableResult {
@@ -189,6 +188,7 @@ impl ShopUnitSelectMenuItem2 {
         else if let Some((select_handler, unit)) = this.decided_handler.as_ref().zip(this.unit.as_ref()){
             select_handler.invoke(0x81, unit, this.menu.scroll_index);
         }
+        UnitAssetMenuData::get().unit_select_index = this.index;
         BasicMenuResult::new().with_se_decide(true).with_close_this(true)
     }
     pub fn on_select(this: &ShopUnitSelectMenuItem2, _optional_method: OptionalMethod) {
@@ -199,9 +199,11 @@ impl ShopUnitSelectMenuItem2 {
             if let Some(select) = select.get_selected() {
                 if let Some(unit) = select.try_get_unit() {
                     UnitAssetMenuData::set_unit(unit);
+                    CustomAssetMenu::set_unit_name(unit.get_name());
                     let sequence = GameUserData::get_sequence();
-                    let result = if sequence == 2 || sequence == 3 || sequence == 6 { AssetTableResult::get_from_unit(2, unit, CharacterAppearance::get_constions(None)) }
-                    else { AssetTableResult::get_for_accessory(unit) };
+                    let result =
+                        if sequence != 4 { AssetTableResult::get_for_kizuna(unit.person.pid, CharacterAppearance::get_constions(None)) }
+                        else { AssetTableResult::get_for_accessory(unit) };
                     room.set_unit_core(unit, 0, true);
                     result.left_hand = "null".into();
                     result.right_hand = "null".into();
@@ -211,6 +213,7 @@ impl ShopUnitSelectMenuItem2 {
                 else if let Some(god) = select.try_get_god() {
                     UnitAssetMenuData::set_god(god);
                     let result = AssetTableResult::get_for_hub_god(god);
+                    CustomAssetMenu::set_unit_name(Mess::get(god.mid));
                     room.last_pid = god.gid.to_string().into();
                     let appearance = CharacterAppearance::create_from_result(result, 1);
                     room.loading_appearance = Some(appearance);
@@ -223,6 +226,7 @@ impl ShopUnitSelectMenuItem2 {
                 }
                 else if let Some(person) = select.try_get_person() {
                     UnitAssetMenuData::set_by_hash(person.parent.hash);
+                    CustomAssetMenu::set_unit_name(person.get_name());
                     let result = AssetTableResult::get_for_kizuna(person.pid, CharacterAppearance::get_constions(None));
                     room.last_pid = person.pid.to_string().into();
                     let appearance = CharacterAppearance::create_from_result(result, 1);
@@ -300,6 +304,7 @@ pub extern "C" fn create_accessory_unit_select(this: &mut HubAccessoryShopSequen
             menu.add_item(item);
         });
         menu.proc.desc_index = 0;
+        menu.set_select_index(UnitAssetMenuData::get().unit_select_index);
         EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets)
             .change_equipment_box(this.unit_select_root.equipment);
     }

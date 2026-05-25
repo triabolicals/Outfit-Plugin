@@ -194,11 +194,10 @@ impl OutfitData {
                                     added = true;
                                 }
                             }
-                            if !added { // If no gender, add it to both genders.
-                                hashes.try_add_body_by_hash(*hash, o_hash, asset, false);
-                                hashes.try_add_body_by_hash(*hash, o_hash, asset, true);
-                                new_list.add(asset.as_str(), false, name.clone(), 1 << 28);
-                                new_list.add(asset.as_str(), true, name.clone(), 1 << 28);
+                            if !added {
+                                let female = asset.contains("F_c") || asset.contains("f_c");
+                                hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
+                                new_list.add(asset.as_str(), female, name.clone(), 1 << 28);
                             }
                         }
                         AssetType::Head => {
@@ -516,9 +515,7 @@ impl OutfitData {
             else if self.hashes.female_ou.iter().any(|b| b.1 == hash) { Gender::Female }
             else { Gender::None }
         }
-        else {
-            self.get_dress_gender_hash(dress_model.get_hash_code()).unwrap_or(Gender::None)
-        }
+        else { self.get_dress_gender_hash(dress_model.get_hash_code()).unwrap_or(Gender::None) }
     }
     pub fn get_dress_gender_hash(&self, hashcode: i32) -> Option<Gender> {
         if self.hashes.male_u.contains(&hashcode) { Some(Gender::Male) }

@@ -165,7 +165,6 @@ impl AssetItem {
             else if self.flags.contains(AssetItemFlags::HUB) { format!("Hub{}", mid.as_ref()) }
             else if self.flags.contains(AssetItemFlags::DEMO) { format!("Demo_{}", mid.as_ref()) }
             else { mid.as_ref().to_string() };
-        println!("Other Asset Label: {}", label);
         let mut s = Mess::get(label).to_string();
 
         if s.len() < 1 { s = mid.as_ref().to_string(); }

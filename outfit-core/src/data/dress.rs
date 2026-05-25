@@ -488,9 +488,10 @@ impl JobDressData {
     pub fn new(hash: i32, prefix: &str, ride_dress: &Option<String>, ride_body: &Option<String>, hair_color: i32) -> Self {
         let dress_model = if prefix.len() > 6 { format!("uBody_{}", prefix) } else { format!("uBody_{}_c000", prefix) };
         let gender = if dress_model.contains("M_c") { Gender::Male } else { Gender::Female };
+        let body_model = if prefix.contains("c") { Some(dress_model.replace("uBody", "oBody")) } else { None };
         Self {
             hash, gender, dress_model, hair_color,
-            body_model: None,
+            body_model,
             mount: Mount::from(prefix),
             ride_dress: ride_dress.clone(),
             ride_body: ride_body.clone(),

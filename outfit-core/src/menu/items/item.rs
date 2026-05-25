@@ -143,7 +143,7 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::Asset, false);
             }
             RGBA {kind, color: _} => {
-                let color_kind = *kind as usize;;
+                let color_kind = *kind as usize;
                 let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
                 EquipmentBoxMode::set_cursor(Some(cursor_pos as i32));
                 UnitAssetMenuData::set_reload(ReloadPreview::Color(*kind as i32), false);
@@ -281,8 +281,17 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let kind = *kind as usize;
                 let r = *color as usize;
                 let preview = UnitAssetMenuData::get_preview();
-                let v = preview.color_preview[4*kind + r];
-                format!("{}: {}", MenuText::get_command(90 + *color as i32), v).into()
+                if kind < 8 {
+                    let v = preview.color_preview[4*kind + r];
+                    format!("{}: {}", MenuText::get_command(90 + *color as i32), v).into()
+                }
+                else {
+                    let v = preview.eye_color[r];
+                    let eye_type = r / 3;
+                    let color = r % 3;
+                    let c = ["Base", "Black", "Decal 1", "Decal 2", "Decal 3", "Decal 4"];
+                    format!("{} {}: {}", c[eye_type],  MenuText::get_command(90 + color as i32), v).into()
+                }
             }
             CurrentProfile => {
                 let emblem = UnitAssetMenuData::get().god_mode;
@@ -345,23 +354,26 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             RGBA {kind, color} => {
                 let k = *kind as i32;
                 let c = *color as i32;
-                let current = UnitAssetMenuData::get_current_color(*kind as i32, *color as i32);
-                let original = UnitAssetMenuData::get().preview.color_preview[(4*k + c) as usize];
-                let enabled = if UnitAssetMenuData::get_flag() & 1 == 0 { " <color=\"yellow\">[Not Active]</color>" } else { ""};
-                if current != original {
-                    format!("{} {}{}\n{} {} {}",
-                        MenuTextCommand::LeftRight, MenuTextCommand::Original.insert_right(original), enabled,
-                        MenuTextCommand::A.to_right(MenuTextCommand::Confirm),
-                        MenuTextCommand::X.to_right(MenuTextCommand::Random),
-                        MenuTextCommand::Minus.to_right(MenuTextCommand::Reset),
-                    ).into()
+                if k < 8 {
+                    let current = UnitAssetMenuData::get_current_color(*kind as i32, *color as i32);
+                    let original = UnitAssetMenuData::get().preview.color_preview[(4*k + c) as usize];
+                    let enabled = if UnitAssetMenuData::get_flag() & 1 == 0 { " <color=\"yellow\">[Not Active]</color>" } else { ""};
+                    if current != original {
+                        format!("{} {}{}\n{} {} {}",
+                                MenuTextCommand::LeftRight, MenuTextCommand::Original.insert_right(original), enabled,
+                                MenuTextCommand::A.to_right(MenuTextCommand::Confirm),
+                                MenuTextCommand::X.to_right(MenuTextCommand::Random),
+                                MenuTextCommand::Minus.to_right(MenuTextCommand::Reset),
+                        ).into()
+                    }
+                    else {
+                        format!("{}{}{}\n{}",
+                                MenuTextCommand::LeftRight, MenuTextCommand::Original.insert_right(original), enabled,
+                                MenuTextCommand::X.to_right(MenuTextCommand::Random)
+                        ).into()
+                    }
                 }
-                else {
-                    format!("{}{}{}\n{}",
-                        MenuTextCommand::LeftRight, MenuTextCommand::Original.insert_right(original), enabled,
-                        MenuTextCommand::X.to_right(MenuTextCommand::Random)
-                    ).into()
-                }
+                else { format!("{}", MenuTextCommand::LeftRight).into() }
             },
             ScaleMenuItem(scale_index) => {
                 let i = *scale_index as usize;
@@ -559,14 +571,22 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let (i, c) = (*kind as usize, *color as usize);
                 let preview = UnitAssetMenuData::get_preview();
                 let random_value = rng.get_value(255) as u8;
-                if random_value != preview.original_color[4 * i + c] {
-                    preview.color_preview[4 * i + c] = random_value;
-                    preview.preview_data.colors[i].values[c] = random_value;
-                    UnitAssetMenuData::set_reload(ReloadPreview::Color(*kind as i32), false);
+                if *kind < 8 {
+                    if random_value != preview.original_color[4 * i + c] {
+                        preview.color_preview[4 * i + c] = random_value;
+                        preview.preview_data.colors[i].values[c] = random_value;
+                        UnitAssetMenuData::set_reload(ReloadPreview::Color(*kind as i32), false);
+                        menuitem.rebuild_text();
+                        BasicMenuResult::se_decide()
+                    }
+                    else { BasicMenuResult::se_miss() }
+                }
+                else {
+                    preview.eye_color[*color as usize] = random_value;
+                    UnitAssetMenuData::set_reload(ReloadPreview::Scale, false);
                     menuitem.rebuild_text();
                     BasicMenuResult::se_decide()
                 }
-                else { BasicMenuResult::se_miss() }
             }
             Asset(AssetType::Body) => {
                 if !UnitAssetMenuData::get().god_mode && !UnitAssetMenuData::is_photo_graph() {
@@ -685,22 +705,40 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { BasicMenuResult::new() }
             }
             RGBA { kind, color } => {
-                let i = (4*kind + color) as usize;
                 let preview = UnitAssetMenuData::get_preview();
-                let trigger =  pad.npad_state.buttons.a() && pad.old_buttons.a();
-                let left = r_l_press(true, false, trigger);
-                let right = r_l_press(false, true, trigger);
-                if left || right {
-                    let amount = if pad.npad_state.buttons.y() { 5 } else { 1 };
-                    let change = amount * if left { -1 } else { 1 };
-                    preview.color_preview[i] = ((preview.color_preview[i] as i32 + change) % 255) as u8;
-                    preview.preview_data.colors[*kind as usize].values[*color as usize] = preview.color_preview[i];
-                    self.on_select(menuitem);
-                    hub_room_set_by_result(None, ReloadType::ColorScale);
-                    menuitem.rebuild_text();
-                    BasicMenuResult::se_cursor()
+                if *kind < 8 {
+                    let i = (4*kind + color) as usize;
+                    let trigger =  pad.npad_state.buttons.a() && pad.old_buttons.a();
+                    let left = r_l_press(true, false, trigger);
+                    let right = r_l_press(false, true, trigger);
+                    if left || right {
+                        let amount = if pad.npad_state.buttons.y() { 5 } else { 1 };
+                        let change = amount * if left { -1 } else { 1 };
+                        preview.color_preview[i] = ((preview.color_preview[i] as i32 + change) % 255) as u8;
+                        preview.preview_data.colors[*kind as usize].values[*color as usize] = preview.color_preview[i];
+                        self.on_select(menuitem);
+                        hub_room_set_by_result(None, ReloadType::ColorScale);
+                        menuitem.rebuild_text();
+                        BasicMenuResult::se_cursor()
+                    }
+                    else { BasicMenuResult::new() }
                 }
-                else { BasicMenuResult::new() }
+                else {
+                    let trigger = pad.npad_state.buttons.a() && pad.old_buttons.a();
+                    let left = r_l_press(true, false, trigger);
+                    let right = r_l_press(false, true, trigger);
+                    if left || right {
+                        let amount = if pad.npad_state.buttons.y() { 5 } else { 1 };
+                        let change = amount * if left { -1 } else { 1 };
+                        let init_value = preview.eye_color[*color as usize] as i32;
+                        preview.eye_color[*color as usize] = ((init_value + change) % 255) as u8;
+                        self.on_select(menuitem);
+                        hub_room_set_by_result(None, ReloadType::ColorScale);
+                        menuitem.rebuild_text();
+                        BasicMenuResult::se_cursor()
+                    }
+                    else { BasicMenuResult::new() }
+                }
             }
             CurrentProfile => {
                 if change_selected_profile() {

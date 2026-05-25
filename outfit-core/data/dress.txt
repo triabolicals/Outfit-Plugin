@@ -43,7 +43,7 @@ JID_ソードペガサス,JID_ランスペガサス,JID_アクスペガサス Wn
 JID_グリフォンナイト    Wng1F*  ride=Wng1FR
 JID_ドラゴンナイト Wng2D*  ride=Wng2DR
 JID_シーフ Dge0A*
-JID_ダンサー    Dnc0AM
+JID_ダンサー    Dnc0AM_c403
 JID_蛮族  Bbr0A*
 JID_メリュジーヌ_味方   Msn0DF_c553b    ride=Msn0DR_c553b    oride=Msn0DR_c553
 JID_メリュジーヌ  Msn0DF_c553    ride=Msn0DR_c553 oride=Msn0DR_c553

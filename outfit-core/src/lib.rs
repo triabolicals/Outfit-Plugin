@@ -5,6 +5,7 @@ use engage::{
     spriteatlasmanager::FaceThumbnailStaticFields, gamedata::GamedataArray,
     keyhelp::KeyHelpData, proc::ProcInst,
 };
+use skyline::install_hook;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -31,7 +32,7 @@ pub use assets::*;
 pub use assets::new_result_get_hash_code;
 pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
-pub const VERSION: &'static str = "2.6.5";
+pub const VERSION: &'static str = "2.6.5c";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -72,6 +73,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
+    install_hook!(appearance_create_from_result);
     let mut init = false;
     println!("Installing Outfit Plugin...");
     OUTFIT_DATA.get_or_init(|| {

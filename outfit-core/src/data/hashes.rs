@@ -109,7 +109,6 @@ impl OutfitHashes {
         }
         self.body.insert(ubody_hash, asset.clone());
         if female { self.female_u.push(ubody_hash); } else { self.male_u.push(ubody_hash); }
-
     }
     pub fn add_body(&mut self, asset: impl Into<&'static Il2CppString>, is_female: bool) -> i32 {
         let asset = asset.into();

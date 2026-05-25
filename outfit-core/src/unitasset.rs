@@ -8,7 +8,7 @@ use engage::{
 };
 pub use crate::playerdata::*;
 use crate::assets::unit_dress_gender;
-use crate::{get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl};
+use crate::{get_outfit_data, print_asset_table_result, AssetConditions, AssetType, Mount, PhotoCameraControl};
 use crate::data::room::hub_room_set_by_result;
 
 mod load;
@@ -36,6 +36,7 @@ pub struct UnitAssetPreview {
     pub color_preview: [u8; 32],
     pub scale_preview: [u16; 20],
     pub original_color: [u8; 32],
+    pub eye_color: [u8; 18],
     pub original_assets: [i32; 20],
     pub update_dress_gender: bool,
 
@@ -51,6 +52,7 @@ impl UnitAssetPreview {
             scale_preview: [0; 20],
             original_scaling: [0; 20],
             color_preview: [0; 32],
+            eye_color: [0; 18],
             original_assets: [0; 20],
             update_dress_gender: false,
         }
@@ -82,6 +84,7 @@ pub struct UnitAssetMenuData {
     pub control: PhotoCameraControl,
     pub photo_profiles: Vec<PlayerOutfitData>,
     pub unit_select: UnitSelectList,
+    pub unit_select_index: i32,
 }
 
 pub enum LoadResult {
@@ -169,6 +172,7 @@ impl UnitAssetMenuData {
     }
     const fn default() -> Self {
         Self {
+            unit_select_index: 0,
             mode: MenuMode::Inactive,
             data: Vec::new(),
             photo_profiles: Vec::new(),
@@ -339,12 +343,15 @@ impl UnitAssetMenuData {
             ReloadPreview::Color(kind) => {
                 let mut color: i32 = 0;
                 let k = kind as usize;
-                for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
-                if color > 0 {
-                    result.unity_colors[k].r = data.preview.color_preview[4*k] as f32 / 255.0;
-                    result.unity_colors[k].g = data.preview.color_preview[4*k+1] as f32 / 255.0;
-                    result.unity_colors[k].b = data.preview.color_preview[4*k+2] as f32 / 255.0;
+                if k < 8 {
+                    for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
+                    if color > 0 {
+                        result.unity_colors[k].r = data.preview.color_preview[4*k] as f32 / 255.0;
+                        result.unity_colors[k].g = data.preview.color_preview[4*k+1] as f32 / 255.0;
+                        result.unity_colors[k].b = data.preview.color_preview[4*k+2] as f32 / 255.0;
+                    }
                 }
+
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
             ReloadPreview::ResetColor(kind) => {

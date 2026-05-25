@@ -3,8 +3,10 @@ pub(crate) mod change_root;
 pub(crate) mod unitselect;
 
 use engage::gameuserdata::GameUserData;
+use engage::hub::variable::HubVariable;
 use engage::menu::BasicMenuResult;
 use engage::menu::menu_item::BasicMenuItem;
+use engage::sequence::hub::HubSequence;
 use unity::macro_context::Il2CppClass;
 use unity::prelude::OptionalMethod;
 use crate::data::room::CustomHubAccessoryRoom;
@@ -37,8 +39,14 @@ pub fn sortie_menu_x_call_edit() {
 pub fn sortie_top_menu_inventory_y_call(this: &mut BasicMenuItem, _method_info: OptionalMethod) -> BasicMenuResult {
     if GameUserData::get_sequence() == 2 { BasicMenuResult::se_miss() }
     else {
+        UnitAssetMenuData::get().unit_select_index = 0;
+        if HubSequence::get_instance().is_some() {
+            if !HubVariable::get_current_scene_name().to_string().contains("Hub_Solanel") { 
+                return BasicMenuResult::se_miss();
+            }
+        }
         let asset = UnitAssetMenuData::get();
-        asset.is_shop_combat = GameUserData::get_sequence() != 4;
+        asset.is_shop_combat = false;
         asset.mode = MenuMode::Shop;
         asset.is_preview = true;
         CustomHubAccessoryRoom::create_bind(this.menu);

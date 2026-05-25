@@ -18,6 +18,9 @@ use engage::{
     sequence::photograph::*,
     ut::Ut
 };
+use engage::gamedata::PersonData;
+use engage::hub::util::HubUtil;
+use engage::hub::variable::HubVariable;
 use unity::{prelude::*, system::action::{SystemDelegate, Action}, system::List};
 use crate::{get_outfit_data, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
 
@@ -143,24 +146,27 @@ impl CustomHubAccessoryRoom {
         else {
             if let Some(char) = proc.character.as_ref() { char.destroy(); }
             if let Some(camera) = proc.camera_pos.as_ref() { camera.destroy(); }
+            println!("Proc Return Scene Name: {}", proc.return_scene_name);
+            let scene = SceneManager::get_scene_by_name(proc.return_scene_name);
+            SceneManager::set_active_scene(scene);
             if proc.disable_list.len() > 0 {
-                let scene = SceneManager::get_scene_by_name(proc.return_scene_name);
-                SceneManager::set_active_scene(scene);
                 proc.disable_list.iter().for_each(|g|{ g.set_active(true); });
             }
             if GameUserData::get_sequence() == 3 { UnitInfo::set_visible_side(UnitInfoSide::Left, true); }
         }
     }
-    pub extern "C" fn is_character_loading(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) -> bool {
+    pub extern "C" fn is_character_loading(proc: &mut HubAccessoryRoom, _: OptionalMethod) -> bool {
         if HubSequence::get_instance().is_some() { proc.is_character_loading() } else { ResourceManager::is_loading() }
     }
-    pub extern "C" fn exit_other(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
+    pub extern "C" fn exit_other(proc: &mut HubAccessoryRoom, _: OptionalMethod) {
         if Self::is_hub_solanel()  { proc.exit_other(); }
     }
-    pub extern "C" fn exit_after(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
+    pub extern "C" fn exit_after(proc: &mut HubAccessoryRoom, _: OptionalMethod) {
         if Self::is_hub_solanel()  { proc.exit_after(); }
     }
-    pub extern "C" fn is_hub_solanel() -> bool { HubSequence::get_instance().is_some() }
+    pub extern "C" fn is_hub_solanel() -> bool {
+        HubSequence::get_instance().is_some()
+    }
 }
 #[repr(C)]
 pub struct MyCharacterBuilderObject {
@@ -466,6 +472,12 @@ pub extern "C" fn create_accessory_change_menu(this: &mut HubAccessoryShopSequen
             .unwrap_or(Mess::get("MPID_Unknown"));
 
         this.change_root.unit_name.set_text(god_name, true);
+    }
+    else if let Some(unit) = UnitAssetMenuData::get_unit() {
+        this.change_root.unit_name.set_text(unit.get_name(), true);
+    }
+    else if let Some(person) = PersonData::try_get_hash(UnitAssetMenuData::get().preview.person){
+        this.change_root.unit_name.set_text(person.get_name(), true);
     }
     EquipmentBoxMode::CurrentProfile.change_equipment_box(this.change_root.equipment_menu);
     TitleBar::hide_footer();

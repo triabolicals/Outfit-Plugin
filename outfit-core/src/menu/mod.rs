@@ -8,6 +8,8 @@ pub use engage::{
 	unityengine::*,
 	util::{get_instance, try_get_instance},
 };
+use engage::combat::CharacterAppearance;
+use engage::gamedata::assettable::AssetTableResult;
 use engage::proc::ProcInst;
 use unity::prelude::*;
 pub use crate::unitasset::*;
@@ -81,4 +83,10 @@ pub fn change_selected_profile() -> bool {
 		true
 	}
 	else { false }
+}
+#[skyline::hook(offset= 0x2b0ed80)]
+pub fn appearance_create_from_result(this: &mut AssetTableResult, map_distance: i32, optional_method: OptionalMethod) -> &'static mut CharacterAppearance {
+	let appearance: &'static mut CharacterAppearance = call_original!(this, map_distance, optional_method);
+	if let Some(pid) = this.pid.map(|v| v.get_hash_code()) { appearance.person_hash = pid; }
+	appearance
 }

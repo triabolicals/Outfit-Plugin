@@ -95,7 +95,7 @@ impl CustomAssetMenuKind {
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
             130..135 => ShopAoc(value as u8 - 130),
-            140..148 => ColorSelection(value as u8 - 140),
+            140..150 => ColorSelection(value as u8 - 140),
             150..158 => RGBAMenu(value as u8 - 150),
             170..250 => ClassBodySelection(((value as u8 - 170) % 40, value >= 210)),
             _ => { unreachable!() },
@@ -459,28 +459,35 @@ impl CustomAssetMenuKind {
             }
             ColorKindSelection => {
                 this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::EnableColor)));
-                for x in 0..8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
+                for x in 0..9 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
             }
             ColorSelection(page) => {
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page)));
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(RGBAMenu(*page)));
-                let kind = *page;
-                let preview = UnitAssetMenuData::get_preview();
-                db.list.color_presets.iter()
-                    .filter(|x| x.colors[kind as usize ] != 0)
-                    .for_each(|x| {
-                        let hash = x.colors[kind as usize];
-                        let mut selected = true;
-                        let mut original = true;
-                        for x in 0..3 {
-                            let r = ((hash >> 8*x) & 255) as u8;
-                            if preview.preview_data.colors[kind as usize].values[x] != r { selected = false; }
-                            if preview.original_color[4*kind as usize + x] != r { original = false; }
-                        }
-                        let name = x.get_name();
-                        let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind), x.colors[kind as usize], name, selected, original);
-                        this.full_menu_item_list.add(item);
-                    });
+                if *page < 8 {
+                    this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page)));
+                    this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(RGBAMenu(*page)));
+                    let kind = *page;
+                    let preview = UnitAssetMenuData::get_preview();
+                    db.list.color_presets.iter()
+                        .filter(|x| x.colors[kind as usize ] != 0)
+                        .for_each(|x| {
+                            let hash = x.colors[kind as usize];
+                            let mut selected = true;
+                            let mut original = true;
+                            for x in 0..3 {
+                                let r = ((hash >> 8*x) & 255) as u8;
+                                if preview.preview_data.colors[kind as usize].values[x] != r { selected = false; }
+                                if preview.original_color[4*kind as usize + x] != r { original = false; }
+                            }
+                            let name = x.get_name();
+                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind), x.colors[kind as usize], name, selected, original);
+                            this.full_menu_item_list.add(item);
+                        });
+                }
+                else {
+                    for x in 0..18 {
+                        this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA { kind: *page, color: x }));
+                    }
+                }
             }
             VoiceSelection => {
                 db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list);
