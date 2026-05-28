@@ -1,15 +1,16 @@
 use std::sync::OnceLock;
 use engage::{
 	gamedata::accessory::AccessoryData,
-	menu::{BasicMenuItemAttribute, BasicMenuResult},
-	menu::menu_item::accessory::*,
+	menu::{
+		BasicMenuItemAttribute, BasicMenuResult,
+		menu_item::{accessory::AccessoryMenuItemContent, accessory::*, MenuItem}
+	},
 	game::GameColor,
-	menu::menu_item::accessory::AccessoryMenuItemContent,
-	menu::menu_item::MenuItem,
 	spriteatlasmanager::FaceThumbnail
 };
 use unity::{engine::{Color, Vector2}, engine::ui::IsImage, prelude::*};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
+use crate::menu::icons::CustomMenuIcon;
 use super::{*, items::{CustomMenuItem, *}};
 
 pub static CUSTOM_ASSET_MENU_ITEM: OnceLock<&'static Il2CppClass> = OnceLock::new();
@@ -180,29 +181,34 @@ impl CustomAssetMenuItem {
 	}
 	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
 		this.on_select_base();
+		let rgb: Option<(u8, u8, u8)>;
 		match this.menu_kind {
 			UnitInventorySubMenuItem => { return; }
-			RGBA { kind, color: _} => {
+			RGBA(kind) => {
 				let k = kind as usize;
-				if k < 8 {
-					let preview = UnitAssetMenuData::get_preview();
-					let cursor_color = Color {
-						r: preview.color_preview[4 * k] as f32 / 255.0,
-						g: preview.color_preview[4 * k + 1] as f32 / 255.0,
-						b: preview.color_preview[4 * k + 2] as f32 / 255.0,
-						a: 1.0,
-					};
-					if (cursor_color.r + cursor_color.g + cursor_color.b) > 0.0 {
-						this.cursor_color = cursor_color;
-						this.menu.menu_content.set_cursor_color(cursor_color);
-					}
-					else if let Some(color) = GameColor::get() {
-						this.menu.menu_content.set_cursor_color(color.default_color);
-					}
-				}
-
+				let preview = UnitAssetMenuData::get_preview();
+				rgb = Some((preview.color_preview[4 * k], preview.color_preview[4 * k + 1], preview.color_preview[4 * k + 2]));
 			}
-			_ => {}
+			Asset(AssetType::ColorPreset(_)) => {
+				rgb = Some(((this.hash & 255) as u8, (this.hash >> 8) as u8 & 255, (this.hash >> 16) as u8 & 255));
+			}
+			ResetColor(kind) => {
+				let k = kind as usize;
+				let preview = UnitAssetMenuData::get_preview();
+				rgb = Some((preview.original_color[4 * k], preview.original_color[4 * k + 1], preview.original_color[4 * k + 2]));
+			}
+			_ => { rgb = None; }
+		}
+		if let Some((r, g, b)) = rgb.filter(|(r, g, b)| r != g &&  r != b){
+			let color = Color::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 1.0);
+			this.cursor_color = color;
+			this.menu.menu_content.set_cursor_color(color);
+		}
+		else {
+			if let Some(color) = GameColor::get() {
+				if this.original { this.menu.menu_content.set_cursor_color(color.yellow_text); }
+				else { this.menu.menu_content.set_cursor_color(color.default_color); }
+			}
 		}
 		this.menu_kind.on_select(this);
 		this.set_color();
@@ -210,19 +216,12 @@ impl CustomAssetMenuItem {
 	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
 	pub fn rebuild_text(&mut self) {
 		Self::on_build_menu_item_content(self, None);
-		let is_decided = self.decided;
-		if let Some(content) = self.menu_item_content.as_ref(){
-			let menu_kind = self.menu_kind.clone();
+		let menu_kind = self.menu_kind.clone();
+		if let Some(content) = self.menu_item_content.as_ref() {
 			content.build_text_();
 			content.name_text.set_text(menu_kind.get_name(self), true);
-			let icon = menu_kind.get_icon(self);
-			if let Some(icon) = icon.get_icon(){
-				content.kind_icon.set_active(true);
-				content.kind_icon_image.set_sprite2(icon);
-			}
-			content.fixed_cursor_object.set_active2(is_decided);
-			self.set_color();
 		}
+		self.set_color();
 	}
 	pub fn set_decided(&mut self, decided: bool) {
 		let ami = unsafe { std::mem::transmute::<&CustomAssetMenuItem, &AccessoryMenuItem>(self) };
@@ -244,59 +243,91 @@ impl CustomAssetMenuItem {
 			}
 		}
 	}
-	fn set_color(&mut self) { return; }
+	fn set_color(&mut self) {
+		let is_decided = self.decided;
+		let menu_kind = self.menu_kind.clone();
+		let mut idx = menu_kind.to_index();
+		if let Some(content) = self.menu_item_content.as_ref(){
+			let icon = menu_kind.get_icon(self);
+			if icon == CustomMenuIcon::Color {
+				let preview = UnitAssetMenuData::get_preview();
+				if idx >= 1140 && idx < 1156 {
+					let kind = idx - 1140;
+					if preview.preview_data.colors[kind as usize].has_color() { idx = 100 + kind; }
+					else { idx = 30 + kind; }
+				}
+				if idx >= 30 && idx < 46 {	// Default Color
+					let k = (idx - 30) as usize;
+					content.kind_icon_image.set_no_sprite();
+					let (r, g, b) =
+					if k < 8 {
+						(preview.original_color[4 * k] as f32 / 255.0,
+						preview.original_color[4 * k + 1] as f32 / 255.0,
+						preview.original_color[4 * k + 2] as f32 / 255.0)
+					}
+					else { (0.0, 0.0, 0.0) };
+					content.kind_icon_image.set_color2(r, g, b,1.0);
+				}
+				else if idx >= 100 && idx < 116 {	// Preview Color / Set Color
+					let k = (idx - 100) as usize;
+					content.kind_icon_image.set_no_sprite();
+					let preview = UnitAssetMenuData::get_preview();
+					let r = preview.color_preview[4 * k] as f32 / 255.0;
+					let g = preview.color_preview[4 * k + 1] as f32 / 255.0;
+					let b = preview.color_preview[4 * k + 2] as f32 / 255.0;
+					content.kind_icon_image.set_color2(r, g, b,1.0);
+				}
+				else if idx >= 80 && idx < 96 {	// Color Preset
+					content.kind_icon_image.set_no_sprite();
+					let r = (self.hash & 255) as f32 / 255.0;
+					let g = ((self.hash >> 8) & 255) as f32 / 255.0;
+					let b = ((self.hash >> 16) & 255)  as f32 / 255.0;
+					content.kind_icon_image.set_color2(r, g, b,1.0);
+				}
+			}
+			else {
+				content.kind_icon_image.set_color2(1.0, 1.0, 1.0,1.0);
+				if let Some(icon) = icon.get_icon(){
+					content.kind_icon.set_active(true);
+					content.kind_icon_image.set_sprite2(icon);
+				}
+				content.fixed_cursor_object.set_active2(is_decided);
+			}
+		}
+	}
 	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
 	}
 	pub fn on_build(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
-		if this.menu_kind == UnitInventorySubMenuItem { this.set_color(); }
+		// if this.menu_kind == UnitInventorySubMenuItem { this.set_color(); }
 	}
 	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
 		let idx = this.hash;
 		let kind = this.menu_kind.clone();
-		if let Some(game_color) = GameColor::get() {
-			match kind {
-				UnitInventorySubMenuItem => { return; }
-				FaceThumb => {
-					let name = this.name.to_string().trim_end_matches(".png").to_string();
-					if let Some(content) = this.menu_item_content.as_mut() {
-						content.name_text.set_text(name.into(), true);
-						content.name_text.set_color(game_color.default_color);
-						if let Some(sprite) = FaceThumbnail::get_item(format!("LOAD_{}", idx)) {
-							content.kind_icon.set_active(true);
-							if let Some(rect) = content.kind_icon.get_component_by_type::<RectTransform>() {
-								rect.set_anchored_position_injected(&Vector2::new(90.0, 0.0));
-								rect.set_size_delta(Vector2::new(127.0, 50.0));
-							}
-							if let Some(rect) = content.name_object.get_component_by_type::<RectTransform>() {
-								rect.set_anchored_position_injected(&Vector2::new(160.0, -40.0));
-							}
-							content.kind_icon_image.set_sprite2(sprite);
-						}
+		let kind_idx = kind.to_index();
+		if kind_idx == 0 { return; }	// UnitInventorySubMenuItem
+		else if kind_idx == -4 {	// FaceThumb
+			let name = this.name.to_string().trim_end_matches(".png").to_string();
+			if let Some(content) = this.menu_item_content.as_mut() {
+				content.name_text.set_text(name.into(), true);
+				content.name_text.set_color(GameColor::get().as_ref().unwrap().default_color);
+				if let Some(sprite) = FaceThumbnail::get_item(format!("LOAD_{}", idx)) {
+					content.kind_icon.set_active(true);
+					if let Some(rect) = content.kind_icon.get_component_by_type::<RectTransform>() {
+						rect.set_anchored_position_injected(&Vector2::new(90.0, 0.0));
+						rect.set_size_delta(Vector2::new(127.0, 50.0));
 					}
-					return;
-				}
-				RGBA { kind, color: _ } => {
-					let k = kind as usize;
-					if k < 8 {
-						let preview = UnitAssetMenuData::get_preview();
-						let cursor_color = Color {
-							r: preview.color_preview[4 * k] as f32 / 255.0,
-							g: preview.color_preview[4 * k + 1] as f32 / 255.0,
-							b: preview.color_preview[4 * k + 2] as f32 / 255.0,
-							a: 1.0,
-						};
-						if (cursor_color.r + cursor_color.g + cursor_color.b) > 0.0 {
-							this.menu.menu_content.set_cursor_color(cursor_color);
-						}
-						else if let Some(color) = GameColor::get() {
-							this.menu.menu_content.set_cursor_color(color.default_color);
-						}
+					if let Some(rect) = content.name_object.get_component_by_type::<RectTransform>() {
+						rect.set_anchored_position_injected(&Vector2::new(160.0, -40.0));
 					}
+					content.kind_icon_image.set_sprite2(sprite);
 				}
-				_ => {}
 			}
+			return;
+		}
+		else {
+			let game_color = GameColor::get().as_ref().unwrap();
 			let name = kind.get_name(this);
 			let icon = kind.get_icon(this);
 			let decided = this.decided;
@@ -328,11 +359,8 @@ impl CustomAssetMenuItem {
 					}
 					content.kind_icon_image.set_sprite2(icon);
 				}
-				else {
-					content.kind_icon.set_active(false);
-					content.fixed_cursor_object.set_active(false);
-				}
 			}
+			this.set_color();
 		}
 	}
 }
