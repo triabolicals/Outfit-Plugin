@@ -241,6 +241,7 @@ impl OutfitData {
         let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
         hashes.get_info_anim();
+        new_list.add_eye_presets(&new_labels);
         Self {
             dress, anims,
             list: new_list,
@@ -330,17 +331,17 @@ impl OutfitData {
             }
         }
         if transforming  { return; }
+        if !engaged {
+            if let Some(dress_data) = self.dress.job.iter().find(|x| x.hash == unit.job.parent.hash) {
+                dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
+            }
+        }
         if job != 1443627162 && JobDressData::is_sword_fighter(result, conditions.mode) {
             if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, unit.job)) {
                 dress_data.apply(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted), !engaged);
             }
             else if let Some(person_data) = self.dress.get_personal_dress(unit) {
                 person_data.apply(result, conditions.mode, unit.job.rank > 0 || unit.level > 20, mount, &self.hashes);
-            }
-            if !engaged {
-                if let Some(dress_data) = self.dress.job.iter().find(|x| x.hash == unit.job.parent.hash) {
-                    dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
-                }
             }
         }
         // Check for Missing

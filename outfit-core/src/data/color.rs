@@ -28,7 +28,10 @@ impl AssetColor{
     pub fn is_zero(&self) -> bool { self.values[0] == 0 && self.values[1] == 0 && self.values[2] == 0 }
     pub fn set_result_color(&self, result: &mut AssetTableResult, result_index: usize) {
         if self.has_color() {
-            result.unity_colors[result_index] = self.to_unity_color();
+            result.unity_colors[result_index].r = (self.values[0] as f32) / 255.0;
+            result.unity_colors[result_index].g = (self.values[1] as f32) / 255.0;
+            result.unity_colors[result_index].b = (self.values[2] as f32) / 255.0;
+            result.unity_colors[result_index].a = 1.0;
         }
     }
     pub fn from_stream(stream: &mut Stream) -> Self {
@@ -40,14 +43,6 @@ impl AssetColor{
         let mut bytes = 0;
         self.values.iter().for_each(|v|{ bytes += stream.write_u8(*v).unwrap(); });
         bytes
-    }
-    pub fn to_unity_color(&self) -> Color {
-        Color {
-            r: (self.values[0] as f32) / 255.0,
-            g: (self.values[1] as f32) / 255.0,
-            b: (self.values[2] as f32) / 255.0,
-            a: (self.values[3] as f32) / 255.0
-        }
     }
 }
 
@@ -96,11 +91,13 @@ impl ColorPreset {
     }
     pub fn get_name(&self) -> &'static Il2CppString {
         let s =  Mess::get(self.label.as_str());
-        /*
-            if self.count == 0 { Mess::get(self.label.as_str()) }
-            else { format!("{} {}", Mess::get(self.label.as_str()), self.count+1).into() };
-            
-         */
         if self.engaged { format!("{} {}", MenuTextCommand::Engage, s).into() } else { s }
+    }
+}
+pub struct EyePreset { pub color: i32, pub label: AssetLabel, pub count: i32, }
+impl EyePreset {
+    pub fn get_name(&self) -> &'static Il2CppString {
+        if self.count == 0 { self.label.get() }
+        else { format!("{} {}", self.label.get(), self.count+1).into() }
     }
 }

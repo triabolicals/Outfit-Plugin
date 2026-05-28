@@ -1,10 +1,7 @@
 use std::{collections::HashMap, io::{Cursor, Read}};
 use engage::mess::Mess;
 use unity::{prelude::Il2CppString, system::List};
-use crate::{
-    Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData,
-    data::{item::*, util::parse_label}
-};
+use crate::{Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData, data::{item::*, util::parse_label}, EyePreset};
 
 pub struct OutfitLists {
     pub null: AssetGroup,   // 1st
@@ -18,6 +15,7 @@ pub struct OutfitLists {
     pub color_presets: Vec<ColorPreset>,
     pub job_count: (i32, i32),
     pub skin: HashMap<i32, AssetColor>,
+    pub eye_colors: Vec<EyePreset>,
 }
 
 impl OutfitLists {
@@ -53,7 +51,7 @@ impl OutfitLists {
                     colors[x] = color;
                 }
                 let engaged = buff[1] & 1 != 0;
-                color_presets.push(ColorPreset{ colors, engaged, count, label, });
+                color_presets.push(ColorPreset { colors, engaged, count, label, });
             }
         }
         Self {
@@ -61,6 +59,7 @@ impl OutfitLists {
             job_count: (0, 0),
             other: vec![], engaged: vec![], job_m: vec![], job_f: vec![], char_m: vec![], char_f: vec![], aids: vec![],
             skin: HashMap::new(),
+            eye_colors: vec![],
         }
     }
     pub fn add_other_body(&mut self, mid: impl AsRef<str>, asset: impl AsRef<str>, female: bool, flag: i32, is_mess: bool) {
@@ -190,6 +189,27 @@ impl OutfitLists {
         if let Some(acc) = acc_kind {
             let menu_kind = AssetType::Acc(acc);
             menu_item_list.iter_mut().for_each(|a|{ a.menu_kind = Asset(menu_kind); });
+        }
+    }
+    pub fn add_eye_presets(&mut self, labels: &AssetLabelTable) {
+        let mut c = include_bytes!("../../data/eyes.bin");
+        let count = c.len() / 8;
+        let mut asset_data = [0u8; 4];
+        let mut data = Cursor::new(c);
+        for _ in 0..count {
+            data.read_exact(&mut asset_data).unwrap();
+            let id = i32::from_be_bytes(asset_data);
+            data.read_exact(&mut asset_data).unwrap();
+            let color = i32::from_be_bytes(asset_data);
+            let count = id % 10;
+            let id = id/10;
+            let id_str =
+                if id < 10 { format!("c00{}", id) }
+                else if id < 100 { format!("c0{}", id) }
+                else { format!("c{}", id) };
+            if let Some(label) = labels.suffix.get(&id_str).cloned() {
+                self.eye_colors.push(EyePreset{ color, label, count });
+            }
         }
     }
 }
