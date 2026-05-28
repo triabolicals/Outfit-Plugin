@@ -60,4 +60,9 @@
 1145 Mask 75
 1146 Mask 50
 1147 Mask 25
-1150 Custom RGB
+1148 Base Eye
+1149 Black Eye
+1150 Eye Decal 1
+1151 Eye Decal 2
+1152 Eye Decal 3
+1153 Eye Decal 4

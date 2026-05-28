@@ -32,7 +32,7 @@ pub use assets::*;
 pub use assets::new_result_get_hash_code;
 pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
-pub const VERSION: &'static str = "2.6.5c";
+pub const VERSION: &'static str = "2.7.1";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -75,7 +75,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     }
     install_hook!(appearance_create_from_result);
     let mut init = false;
-    println!("Installing Outfit Plugin...");
+    println!("Installing Outfit Plugin v{} ...", VERSION);
     OUTFIT_DATA.get_or_init(|| {
         init = true;
         let data = OutfitData::init();

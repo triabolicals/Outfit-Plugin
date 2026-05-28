@@ -4,15 +4,15 @@
 400 Set Unit's name.
 401 Change Unit's name. $(Left)$(Right)Toggle active.
 402 Change Unit's name.
-5 Export current AssetTable.Result to'sd:/engage/outfits/results'\nand outfit parameters to 'sd:/engage/outfit/input'
+5 Export current AssetTable.Result to 'sd:/engage/outfits/results'\nand outfit parameters to 'sd:/engage/outfits/input'
 6 Select an outfit parameter file from 'sd:/engage/outfits/input/'\nto load data into an asset profile.
 7 The current asset profile data.
 8 $(L)$(R)Change data page.\n$(Minus)Remove all current asset parameters.
-9 Export the current preview as outfit parameters to\n'sd:/engage/outfit/input'
-10 Asset profile to use in battle/map.
-11 Asset profile to when engaged.
-12 Asset profile to use in the Somniel.
-13 Asset profile when emblem is dark.
+9 Export the current preview as outfit parameters to\n'sd:/engage/outfits/input'
+10 Asset profile to use in battle/map.\n$(Left)$(Right) Change profile.
+11 Asset profile to when engaged.\n$(Left)$(Right) Change profile.
+12 Asset profile to use in the Somniel.\n$(Left)$(Right) Change profile.
+13 Asset profile when emblem is dark.\n$(Left)$(Right) Change profile.
 20 $(A)Applies custom color values.
 210 Unit will wear the default engaged outfit.\n$(Left)$(Right)Change mode.
 211 Unit will not wear the default engaged outfit.\n$(Left)$(Right)Change mode.
@@ -24,6 +24,7 @@
 26 $(Left)$(Right)Change the preview context of the asset profile.
 27 $(A)Use class combat animations when engaged if possible.
 28 Enable the use of a custom face thumbnail.
+29 $(A)Applies color value to eye material (MtEye).
 30 Reset this color parameter.
 31 Reset this color parameter (No change).
 1001 Assign asset profiles.
@@ -31,7 +32,7 @@
 1003 Assign a head model.\nSkin color will match if the head cannot be colored.
 1004 Assign a hair model.\nMap hair model (Mode 1) will be replaced if exists.
 1005 Select a voice-set.\nWill not replace voice-set in the Somniel.
-1006 Change/edit color parameters.
+1006 Change/edit color parameters.\nModels must have colors adjustable for colors to apply.
 1007 Edit body scaling parameters.
 1008 Assign accessory shop accessories.
 1009 Select a rig for the dress model.
@@ -66,12 +67,21 @@
 1131 Animation set for text dialogue.
 1132 Animation set for cutscenes.
 1133 Animation set for exploration/Somniel.
-1140 Select a preset or edit RGB for hair color.
-1141 Select a preset or edit RGB for hair gradient color.
-1142 Select a preset or edit RGB for skin color.
-1143 Select a preset or edit RGB for toon-ramp color.
-1144 Select a preset or edit RGB for color palette 100.
-1145 Select a preset or edit RGB for color palette 75.
-1146 Select a preset or edit RGB for color palette 50.
-1147 Select a preset or edit RGB for color palette 25.
-1150 Manually edit RGBA values.
+1140 Change hair color.
+1141 Change hair gradient color used in engaged hairs.
+1142 Change skin color.
+1143 Change cel-shading color.
+1144 Change outfit color palette 100.
+1145 Change outfit color palette 75.
+1146 Change outfit color palette 50.
+1147 Change outfit color palette 25.
+1148 Change colors in the eye material.
+1150 Select a color from hair color presets.
+1151 Select a color from hair gradient color presets.
+1152 Select a color from skin color presets.
+1153 Select a color from toon-ramp color presets.
+1154 Select a color from color palette 100 presets.
+1155 Select a color from color palette 75 presets.
+1156 Select a color from color palette 55 presets.
+1157 Select a color from color palette 25 presets.
+1158 Select a color from base eye presets.
