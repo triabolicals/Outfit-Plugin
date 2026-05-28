@@ -19,7 +19,10 @@ const SCALE_NAME: [&str; 16] = [
     "All", "Head", "Neck", "Torso", "Shoulder", "Arms", "Hands", "Legs", "Feet", "V_Bust", "V_Abdomen", "V_Torso",
     "V_BaseArms", "V_BaseLegs", "V_Arms", "V_Legs"
 ];
-const COLORS: [&str; 8] = ["HairColor", "HairGrad", "Skin", "Toon", "Mask100", "Mask75", "Mask50", "Mask25"];
+const COLORS: [&str; 14] = [
+    "HairColor", "HairGrad", "Skin", "Toon", "Mask100", "Mask75", "Mask50", "Mask25",
+    "BaseEye", "BlackEye", "Decal1", "Decal2", "Decal3", "Decal4"
+];
 
 const VAR_NAMES: [&str; 27] = [
     "Body", "Head", "Hair", "HeadAcc1", "HeadAcc2", "SpineAcc", "Trans", "Shield",
@@ -270,10 +273,7 @@ impl PlayerOutfitData {
             if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.head_model = head.into(); }
             if !self.colors[2].has_color() || self.flag & 1 == 0 {
                 let head_hash = result.head_model.get_hash_code();
-                if let Some(color) = db.list.skin.get(&head_hash) {
-                    println!("Head: {} Hash: {}", result.head_model, head_hash);
-                    color.set_result_color(result, 2);
-                }
+                if let Some(color) = db.list.skin.get(&head_hash) { color.set_result_color(result, 2); }
             }
             if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_hair(hair, result); }
             if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
@@ -295,12 +295,10 @@ impl PlayerOutfitData {
                     }
                 }
             }
-            if self.flag & 64 != 0 {
-                for x in 0..16 {
-                    if self.scale[x] & 1024 != 0 {
-                        let v = self.scale[x] & 1023;
-                        if v > 0 && v <= 1000 { result.scale_stuff[x] = (v as f32) / 100.0; }
-                    }
+            for x in 0..16 {
+                if self.scale[x] & 1024 != 0 {
+                    let v = self.scale[x] & 1023;
+                    if v > 0 && v <= 1000 { result.scale_stuff[x] = (v as f32) / 100.0; }
                 }
             }
             if let Some(ride_dress_model) = result.ride_dress_model {
@@ -503,7 +501,7 @@ impl PlayerOutfitData {
             string.push_str(format!("{}={}\n", VAR_NAMES[25], db.try_get_asset(AssetType::Voice, self.voice).unwrap_or(&none)).as_str());
             string.push_str(format!("{}={}\n", VAR_NAMES[26], db.try_get_asset(AssetType::Rig, self.rig).unwrap_or(&none)).as_str());
             for x in 0..16 { string.push_str(format!("{}={}\n", SCALE_NAME[x],  (self.scale[x] as f32) / 100.0).as_str()); }
-            for x in 0..8 {
+            for x in 0..14 {
                 string.push_str(COLORS[x]);
                 string.push('=');
                 string.push_str(format!("{} {} {} {}\n", self.colors[x].values[0], self.colors[x].values[1], self.colors[x].values[2], self.colors[x].values[3]).as_str());

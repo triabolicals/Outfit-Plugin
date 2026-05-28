@@ -14,7 +14,7 @@ use engage::{
 };
 use engage::menu::BasicMenuMethods;
 use unity::{prelude::*, engine::{ui::IsImage, Color}};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, print_asset_table_result, CustomAssetMenu};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu};
 static SHOP_UNIT_SELECT_CLASS: OnceLock<&'static Il2CppClass> = OnceLock::new();
 
 #[derive(Default)]

@@ -7,7 +7,7 @@ use engage::{
     unityengine::{Camera, UnityComponent, UnityObject, UnityTransform}
 };
 use unity::{prelude::*, system::action::{SystemDelegate, Action}};
-use crate::{print_asset_table_result, CustomAssetMenu, MenuMode, UnitAssetMenuData};
+use crate::{CustomAssetMenu, MenuMode, UnitAssetMenuData};
 
 #[unity::class("App", "PhotographEditDisposMenu")]
 pub struct PhotographEditDisposMenu {
