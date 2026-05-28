@@ -1,14 +1,15 @@
 use std::cmp::PartialEq;
+use std::collections::HashMap;
 use std::fs::{read_dir, read_to_string};
 use engage::{
     unit::*,
     gamedata::{Gamedata, GodData, PersonData, assettable::*},
-    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
-    menu::BasicMenuResult, util::try_get_instance,
+    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager, 
+    util::try_get_instance,
 };
 pub use crate::playerdata::*;
 use crate::assets::unit_dress_gender;
-use crate::{get_outfit_data, print_asset_table_result, AssetConditions, AssetType, Mount, PhotoCameraControl};
+use crate::{get_outfit_data, hash_string, AssetConditions, AssetType, Mount, PhotoCameraControl};
 use crate::data::room::hub_room_set_by_result;
 
 mod load;
@@ -33,7 +34,7 @@ pub struct UnitAssetPreview {
     pub preview_data: PlayerOutfitData,
     pub selected_profile: i32,
     pub original_scaling: [u16; 20],
-    pub color_preview: [u8; 32],
+    pub color_preview: [u8; 64],
     pub scale_preview: [u16; 20],
     pub original_color: [u8; 32],
     pub eye_color: [u8; 18],
@@ -51,7 +52,7 @@ impl UnitAssetPreview {
             original_color: [0; 32],
             scale_preview: [0; 20],
             original_scaling: [0; 20],
-            color_preview: [0; 32],
+            color_preview: [0; 64],
             eye_color: [0; 18],
             original_assets: [0; 20],
             update_dress_gender: false,
@@ -86,7 +87,6 @@ pub struct UnitAssetMenuData {
     pub unit_select: UnitSelectList,
     pub unit_select_index: i32,
 }
-
 pub enum LoadResult {
     Success,
     NoFiles,
@@ -95,6 +95,7 @@ pub enum LoadResult {
 #[derive(PartialEq, Copy, Clone)]
 pub enum ReloadPreview {
     Scale,
+    ScalePreview(i32),
     Color(i32),
     ResetColor(i32),
     Preset(usize),
@@ -108,9 +109,7 @@ impl UnitAssetMenuData {
     pub fn is_unit_info() -> bool { Self::get().mode == MenuMode::UnitInfo }
     pub fn is_shop() -> bool { Self::get().mode == MenuMode::Shop }
     pub fn add_data(&mut self, data: UnitAssetData) {
-        if self.data.iter().find(|v| v.person == data.person).is_none() {
-            self.data.push(data);
-        }
+        if self.data.iter().find(|v| v.person == data.person).is_none() { self.data.push(data); }
     }
     pub fn init_photo_profiles() {
         let data = Self::get();
@@ -168,7 +167,6 @@ impl UnitAssetMenuData {
             }
             else { engage::map::mind::MapMind::get_unit() }
         }
-
     }
     const fn default() -> Self {
         Self {
@@ -362,6 +360,10 @@ impl UnitAssetMenuData {
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
             ReloadPreview::Scale => {
+                hub_room_set_by_result(Some(result), ReloadType::Scale);
+            }
+            ReloadPreview::ScalePreview(kind) => {
+                result.scale_stuff[kind as usize] = data.preview.scale_preview[kind as usize] as f32 / 100.0;
                 hub_room_set_by_result(Some(result), ReloadType::Scale);
             }
             ReloadPreview::Preset(index) => {

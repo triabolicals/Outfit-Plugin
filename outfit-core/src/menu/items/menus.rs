@@ -30,7 +30,7 @@ pub enum CustomAssetMenuKind {
     ScaleMenu,
     ColorKindSelection,
     ColorSelection(u8),
-    RGBAMenu(u8),
+    ColorPresets(u8, u8),
     PresetAppearanceMenu(bool),
     Rig,
     Personal,
@@ -43,7 +43,7 @@ pub enum CustomAssetMenuKind {
 impl CustomAssetMenuKind {
     pub fn can_facial(&self) -> bool {
         match self {
-            ScaleMenu | RGBAMenu(_) | ProfileSelection|ProfileSettings => { false }
+            ScaleMenu | ProfileSelection|ProfileSettings => { false }
             _ => { self.get_right().is_none() && self.get_left().is_none() }
         }
     }
@@ -69,9 +69,9 @@ impl CustomAssetMenuKind {
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
             ShopAoc(kind) => clamp_menu_index_value(130, *kind, 4),
-            ColorSelection(kind) => clamp_menu_index_value(140, *kind, 8),
-            RGBAMenu(kind) => clamp_menu_index_value(150, *kind, 8),
+            ColorSelection(kind) => clamp_menu_index_value(140, *kind, 16),
             ClassBodySelection((class, alt)) => { clamp_menu_index_value(if *alt { 210 } else { 170 }, *class, 40) },
+            ColorPresets(page, kind) => clamp_menu_index_value(300, *page*10 + *kind, 100),
         }
     }
     pub fn from_index(value: i32) -> Self {
@@ -96,8 +96,13 @@ impl CustomAssetMenuKind {
             120..125 => ShopMount(value as u8 - 120),
             130..135 => ShopAoc(value as u8 - 130),
             140..150 => ColorSelection(value as u8 - 140),
-            150..158 => RGBAMenu(value as u8 - 150),
             170..250 => ClassBodySelection(((value as u8 - 170) % 40, value >= 210)),
+            300..400 => {
+                let i = value - 300;
+                let k = (i % 10) as u8;
+                let p = (i / 10) as u8;
+                ColorPresets(p, k)
+            }
             _ => { unreachable!() },
         }
     }
@@ -107,7 +112,12 @@ impl CustomAssetMenuKind {
             match idx {
                 170|210 => 1027,
                 140..148 => { 1000 + idx }
+                148..156 => { 1148 }
                 171..210|211..250 => 1028,
+                300..400 => {
+                    let p = (idx - 300) / 10;
+                    if p < 8 { 1150 + p } else { 1158 }
+                }
                 _ => { 1020 + ((idx - 100 ) / 10) }
             }
         }
@@ -129,7 +139,7 @@ impl CustomAssetMenuKind {
             }
             ProfileSelection|ScaleMenu|ColorKindSelection|Head|Hair|VoiceSelection => { Some(MainShop) }
             ColorSelection(_) => { Some(ColorKindSelection) }
-            RGBAMenu(k) => { Some(ColorSelection(*k)) }
+            ColorPresets(_, kind) => { Some(ColorSelection(*kind)) }
             LoadData|FaceSelection => Some(ProfileSettings),
             MainShop => None,
             PresetAppearanceMenu(alt) => {
@@ -168,8 +178,10 @@ impl CustomAssetMenuKind {
             ShopMount(kind) => { Some(ShopMount((*kind + 5 + 1) % 5)) }
             ShopAoc(kind) => { Some(ShopAoc((*kind + 4 + 1) % 4)) }
             ShopAcc(kind) => { Some(ShopAcc((*kind + 5 + 1) % 5)) }
-            ColorKindSelection => { Some(ColorSelection(0)) }
-            ColorSelection(k) => { if *k < 7 { Some(ColorSelection(*k + 1)) } else { Some(ColorKindSelection) } }
+            ColorPresets(page, kind) => {
+                let new_page = if *page < 8 { *page + 1 } else { 0 };
+                Some(ColorPresets(new_page, *kind))
+            }
             PresetAppearanceMenu(alt) => {
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 { Some(PresetAppearanceMenu(!(*alt))) }
                 else { None }
@@ -203,8 +215,10 @@ impl CustomAssetMenuKind {
             ShopMount(kind) => { Some(ShopMount((*kind + 5 - 1) % 5)) }
             ShopAoc(kind) => { Some(ShopAoc((*kind + 4 - 1) % 4)) }
             ShopAcc(kind) => { Some(ShopAcc((*kind + 5 - 1) % 5)) }
-            ColorKindSelection => { Some(ColorSelection(7)) }
-            ColorSelection(k) => { if *k == 0 { Some(ColorKindSelection) } else { Some(ColorSelection(*k - 1)) } }
+            ColorPresets(page, kind) => {
+                let new_page = if *page > 0 { *page - 1 } else { 8 };
+                Some(ColorPresets(new_page, *kind))
+            }
             _ => { None }
         }
     }
@@ -222,6 +236,7 @@ impl CustomAssetMenuKind {
             VoiceSelection => { Some(MenuTextCommand::Voice.get()) }
             Personal => { Some(MenuTextCommand::Personal.get()) }
             ItemList => { Some(MenuTextCommand::Weapons.get()) }
+            ColorPresets(page, _) => { Some(format!("{} Presets", MenuText::get_command(1140 + *page as i32)).into()) }
             _ => { Some(MenuText::get_command(idx)) }
         }
     }
@@ -241,6 +256,7 @@ impl CustomAssetMenuKind {
             ShopMount(kind) => { Some(24 + *kind as usize) }
             ColorKindSelection => { Some(29) }
             ColorSelection(color_kind) => { Some(30 + *color_kind as usize) }
+            ColorPresets(page, _) => { Some(40+*page as usize) }
             Rig => { Some(48) }
             Personal => { Some(49) }
             PauseList => { Some(15) }
@@ -358,7 +374,7 @@ impl CustomAssetMenuKind {
                 if this.full_menu_item_list.is_empty() { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
             }
             ProfileSettings => {
-                [FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EnableColor), FlagMenuItem(AssetFlag::EnableScaling),
+                [FlagMenuItem(AssetFlag::RandomAppearance),
                     FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), FlagMenuItem(AssetFlag::EngagedAnimation),
                     FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export),
                     Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
@@ -446,62 +462,78 @@ impl CustomAssetMenuKind {
                 db.list.add_menu_items(AssetType::Mount(*mount), false, true, true, &db.labels, this.full_menu_item_list);
             }
             ScaleMenu => {
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::EnableScaling)));
                 let preview = UnitAssetMenuData::get_preview();
                 for x in 0..16 {
+                    let v = preview.preview_data.scale[x] & 1023;
+                    let enable = preview.preview_data.scale[x] & 1024 != 0;
                     if preview.scale_preview[x] == 0 {
-                        let v = preview.preview_data.scale[x];
                         if v > 0 && v < 1000 { preview.scale_preview[x] = v; }
                         else { preview.scale_preview[x] = preview.original_scaling[x]; }
                     }
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ScaleMenuItem(x as u8)));
+                    let item = CustomAssetMenuItem::new_type(ScaleMenuItem(x as u8));
+                    item.decided = enable;
+                    item.hash = preview.original_scaling[x] as i32;
+                    item.padding = preview.scale_preview[x] as i32;
+                    this.full_menu_item_list.add(item);
                 }
             }
             ColorKindSelection => {
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::EnableColor)));
-                for x in 0..9 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
+                for x in 0..14 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
             }
             ColorSelection(page) => {
-                if *page < 8 {
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page)));
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(RGBAMenu(*page)));
-                    let kind = *page;
-                    let preview = UnitAssetMenuData::get_preview();
+                let enable_item = CustomAssetMenuItem::new_type(EnableColor(*page));
+                enable_item.decided = preview.preview_data.colors[*page as usize].values[3] != 0;
+                this.full_menu_item_list.add(enable_item);
+                if *page < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page))); }
+                UnitAssetMenuData::get_preview().color_preview[4*(*page) as usize+3] = 1;
+                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA(*page)));
+                for x in 0..9 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorPresets(x, *page))); }
+                if preview.preview_data.colors[*page as usize].has_color() {
+                    for x in 0..3 { preview.color_preview[4*(*page as usize) + x] = preview.preview_data.colors[*page as usize].values[x]; }
+                }
+                else if *page < 8 {
+                    for x in 0..3 { preview.color_preview[4*(*page as usize) + x] = preview.original_color[4*(*page as usize) + x]; }
+                }
+                EquipmentBoxMode::set_open(*page < 8);
+
+            }
+            ColorPresets(preset_kind, color_kind) => {
+                let kind = *preset_kind;
+                let kind2 = *color_kind;
+                let preview = UnitAssetMenuData::get_preview();
+                if kind2 < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*color_kind))); }
+                if kind < 8 {
                     db.list.color_presets.iter()
                         .filter(|x| x.colors[kind as usize ] != 0)
                         .for_each(|x| {
                             let hash = x.colors[kind as usize];
                             let mut selected = true;
-                            let mut original = true;
+                            let mut original = kind2 < 8;
                             for x in 0..3 {
                                 let r = ((hash >> 8*x) & 255) as u8;
-                                if preview.preview_data.colors[kind as usize].values[x] != r { selected = false; }
-                                if preview.original_color[4*kind as usize + x] != r { original = false; }
+                                if preview.preview_data.colors[kind2 as usize].values[x] != r { selected = false; }
+                                if kind2 < 8 {
+                                    if preview.original_color[4*kind2 as usize + x] != r { original = false; }
+                                }
                             }
                             let name = x.get_name();
-                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind), x.colors[kind as usize], name, selected, original);
+                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind2), x.colors[kind as usize], name, selected, original);
+                            item.padding = kind2 as i32;
                             this.full_menu_item_list.add(item);
                         });
                 }
                 else {
-                    for x in 0..18 {
-                        this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA { kind: *page, color: x }));
-                    }
+                    db.list.eye_colors.iter().for_each(|x|{
+                        let name = x.get_name();
+                        let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind2), x.color, name, false, false);
+                        item.padding = kind2 as i32;
+                        this.full_menu_item_list.add(item);
+                    });
                 }
+
             }
             VoiceSelection => {
                 db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list);
-            }
-            RGBAMenu(page) => {
-                let k = *page;
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page)));
-                for x in 0..4 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA {kind: k, color: x})); }
-                let preview = UnitAssetMenuData::get_preview();
-                if preview.preview_data.colors[k as usize].has_color() {
-                    for x in 0..3 {
-                        preview.color_preview[4*k as usize + x] = preview.preview_data.colors[k as usize].values[x];
-                    }
-                }
             }
             _ => { this.full_menu_item_list.add(CustomAssetMenuItem::new(-1, -1)); }
         }
@@ -534,7 +566,12 @@ impl CustomAssetMenuKind {
                     return;
                 }
                 ShopMount(_) => { ReloadType::ForcedUpdate }
-                ColorKindSelection|ColorSelection(_)|RGBAMenu(_) => { ReloadType::ForcedUpdate }
+                ColorSelection(kind) => {
+                    EquipmentBoxMode::set_open(true);
+                    UnitAssetMenuData::get_preview().color_preview[4*(*kind) as usize+3] = 0;
+                    ReloadType::ForcedUpdate
+                }
+                ColorKindSelection => { ReloadType::ForcedUpdate }
                 ShopAoc(_)|ShopAcc(_) => { ReloadType::All }
                 PresetAppearanceMenu(_)|LoadData => {
                     UnitAssetMenuData::get().loaded_data.selected_index = None;
@@ -588,7 +625,8 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ShopAoc(_) => CustomMenuIcon::SolaTail,
             ShopMount(_) => CustomMenuIcon::Horse,
             ScaleMenu => CustomMenuIcon::StarBlank,
-            ColorKindSelection|ColorSelection(_)|RGBAMenu(_) => CustomMenuIcon::Star,
+            ColorSelection(_) => CustomMenuIcon::Color,
+            ColorKindSelection|ColorPresets(_, _) => CustomMenuIcon::Star,
             Head => { CustomMenuIcon::Head }
             Hair => { CustomMenuIcon::Hair }
             LoadData => { CustomMenuIcon::Satchel }
@@ -605,7 +643,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ShopAoc(_)|VoiceSelection => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
             ShopMount(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
             ScaleMenu => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(0)),
-            ColorSelection(kind)|RGBAMenu(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
+            ColorSelection(kind)| ColorPresets(_, kind)  => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
             ColorKindSelection => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(0)),
             _ => EquipmentBoxMode::CurrentProfile,
         }
@@ -695,8 +733,8 @@ impl CustomMenuItem for CustomAssetMenuKind {
                     else { MenuTextCommand::Units.get() }
                 }
             }
-            RGBAMenu(kind) => MenuText::get_command(1140 + *kind as i32),
-            ColorSelection(kind) => left_right_enclose(&format!("{} [{}/8]", MenuText::get_command(1140 + *kind as i32), *kind+1)),
+            ColorPresets(page, _) => left_right_enclose(&format!("{} Preset [{}/9]", MenuText::get_command(1140 + *page as i32), *page+1)),
+            ColorSelection(kind) => format!("{} [{}/14]", MenuText::get_command(1140 + *kind as i32), *kind+1).into(),
             MainShop => "".into(),
             _ => { self.get_name(menu_item) }
         }

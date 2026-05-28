@@ -1,12 +1,8 @@
 use std::sync::OnceLock;
 use super::*;
 use engage::{
-    unit::Unit,
-    gamesound::GameSound,
-    titlebar::TitleBar,
-    keyhelp::*,
-    pad::Pad,
-    unitinfo::*,
+    unit::Unit, gamesound::GameSound, titlebar::TitleBar,
+    keyhelp::*, pad::Pad, unitinfo::*,
     manager::BackgroundManager,
     proc::{Bindable, ProcInst, ProcInstFields},
     gamedata::{assettable::AssetTableResult, WeaponMask},
@@ -15,13 +11,9 @@ use engage::{
         content::{BasicMenuContent, AccessoryShopChangeMenuContent, AccessoryEquipmentInfo, AccessoryDetailInfoWindow},
         BasicMenuResult, BasicMenuSelect, menus::accessory::change::*
     },
-    unityengine::GameObject,
-    sortie::{SortieUtil, SortieSequenceUnitSelect},
-    pad::NpadButton,
-    combat::Kaneko,
-    tmpro::TextMeshProUGUI,
+    unityengine::GameObject, sortie::{SortieUtil, SortieSequenceUnitSelect},
+    pad::NpadButton, combat::Kaneko, tmpro::TextMeshProUGUI,
 };
-use engage::gamedata::accessory::AccessoryDataKinds::Back;
 use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
 use crate::is_up_down_press;
 use crate::menu::items::{CustomAssetMenuKind, MainShop};
@@ -285,6 +277,7 @@ impl CustomAssetMenu {
         let menu = UnitAssetMenuData::get();
         TitleBar::close_header();
         menu.control.reset_all();
+
         match menu.mode {
             MenuMode::UnitInfo => {
                 menu.is_preview = false;
@@ -327,6 +320,7 @@ impl CustomAssetMenu {
                     UnitInfo::set_unit(UnitInfoSide::Left, Some(unit), false, false, false, None);
                 }
                 BackgroundManager::unbind();
+
             }
             MenuMode::PhotoGraph => {
                 let parent_proc = this.proc.parent.as_ref();
@@ -453,7 +447,9 @@ impl CustomAssetMenu {
             }
         }
         if !this.is_shop {
-            let stick = model_camera_control();
+            let idx = this.full_menu_item_list[this.select_index as usize].menu_kind.to_index();
+            let color = idx >= 100 && idx < 116;
+            let stick = model_camera_control(color);
             let trigger = Pad::is_trigger(NpadButton::new().with_plus(true).with_b(true));
             if this.disable {
                 if Pad::is_trigger(NpadButton::new().with_minus(true)) && unit_info {
@@ -501,7 +497,7 @@ impl CustomAssetMenu {
         this.tick_input_base()
     }
 }
-fn model_camera_control() -> bool {
+fn model_camera_control(ignore_zrl_lr: bool) -> bool {
     let menu_data = UnitAssetMenuData::get();
     let pad = get_instance::<Pad>();
     let fast = pad.npad_state.buttons.y();
@@ -533,16 +529,13 @@ fn model_camera_control() -> bool {
     match menu_data.mode {
         MenuMode::UnitInfo => { menu_data.control.translate_character(translation_change); }
         MenuMode::PhotoGraph => {
-            let mut rot_x = 0.0;
-            let mut rot_z = 0.0;
-            if pad.npad_state.buttons.zl() { rot_x = -1.25; }
-            else if pad.npad_state.buttons.zr() { rot_x = 1.25; }
-
-            if pad.npad_state.buttons.l() { rot_z = -1.25; }
-            else if pad.npad_state.buttons.r() { rot_z = 1.25; }
-
-            if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
-
+            if !ignore_zrl_lr {
+                let mut rot_x = 0.0;
+                let mut rot_z = 0.0;
+                if pad.npad_state.buttons.zl() { rot_x = -1.25; } else if pad.npad_state.buttons.zr() { rot_x = 1.25; }
+                if pad.npad_state.buttons.l() { rot_z = -1.25; } else if pad.npad_state.buttons.r() { rot_z = 1.25; }
+                if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
+            }
             if r_stick {
                 menu_data.control.reset_camera_rotation();
                 menu_data.control.reset_camera_position();
@@ -587,6 +580,18 @@ fn adjust_menu_size(content: &AccessoryShopChangeRoot) {
                 });
             }
         }
+    }
+    // 1200
+    if let Some(t) = Kaneko::find_in_children(transform, "AccName".into()) {
+        let rect = t.to_rect_transform();
+        rect.change_size(150.0, 0.0);
+    }
+    if let Some(t) = Kaneko::find_in_children(transform, "BodyParts".into()) {
+        let rect = t.to_rect_transform();
+        let mut anc_pos = Vector2::new(0.0, 0.0);
+        rect.get_anchored_position_injected(&mut anc_pos);
+        anc_pos.x += 150.0;
+        rect.set_anchored_position_injected(&anc_pos);
     }
 }
 

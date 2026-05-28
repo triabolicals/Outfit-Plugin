@@ -41,6 +41,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                             if !UnitAssetMenuData::get().init {
                                 outfit_core::install_outfit_plugin(false);
                                 skyline::install_hooks!(
+                                    assets::dress::modify_colors,
                                     assets::asset_table_setup_person_outfit,
                                     assets::asset_table_result_setup_hook_outfit,
                                     assets::transform::change_dragon2,

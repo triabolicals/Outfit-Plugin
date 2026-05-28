@@ -43,7 +43,7 @@ pub struct UnitAssetData {
 }
 
 impl UnitAssetData {
-    pub fn version() -> i32 { 8 }
+    pub fn version() -> i32 { 10 }
     pub fn new_hash(hash: i32, random_app: bool) -> Self {
         let (profile, flag) =
         if GodData::try_get_hash(hash).is_some() { (vec![PlayerOutfitData::new_with_flag(0); 3], 1) }
@@ -94,7 +94,7 @@ pub struct PlayerOutfitData {
     pub uhead: i32,
     pub uhair: i32,
     pub aoc: [i32; 4],  //  Info, Talk, Demo, Hub  Male
-    pub colors: [AssetColor; 8],
+    pub colors: [AssetColor; 16],
     pub scale: [u16; 18],
     pub break_body: i32,
     pub acc: [i32; 5],
@@ -108,7 +108,7 @@ impl PlayerOutfitData {
         Self {
             flag: 0, uhair: 0, uhead: 0, aoc: [0; 4], scale: [0; 18], acc: [0; 5], voice: 0, mount: [0; 5],
             break_body: 0,
-            ubody: 0, colors: [AssetColor::new(); 8], rig: 0, aoc_alt: [0; 4],
+            ubody: 0, colors: [AssetColor::new(); 16], rig: 0, aoc_alt: [0; 4],
         }
     }
     pub fn from_appearance(appearance: &PersonalDressData) -> Self {
@@ -137,7 +137,7 @@ impl PlayerOutfitData {
             break_body: 0,
             uhair: 0,
             mount: [0; 5],
-            colors: [AssetColor::new(); 8], acc: [0; 5],
+            colors: [AssetColor::new(); 16], acc: [0; 5],
             voice: 0, rig: 0, aoc_alt: [0; 4],
         }
     }
@@ -180,16 +180,17 @@ impl PlayerOutfitData {
         !not_empty
     }
     pub fn deserialize(stream: &mut Stream, version: i32) -> Self {
-        let flag = stream.read_int().unwrap_or(0);
+        let mut flag = stream.read_int().unwrap_or(0);
         let ubody = stream.read_int().unwrap_or(0);
         let uhead = stream.read_int().unwrap_or(0);
         let uhair = stream.read_int().unwrap_or(0);
         let rig = if version >= 7 { stream.read_int().unwrap_or(0) } else { 0 };
         let mut aoc = [0; 4];
         aoc.iter_mut().for_each(|x| *x = stream.read_int().unwrap_or(0));
-        let mut colors = [AssetColor::new(); 8];
+        let mut colors = [AssetColor::new(); 16];
         let mut mount = [0; 5];
         for x in 0..8 { colors[x] = AssetColor::from_stream(stream); }
+        if version >= 9 { for x in 0..8 { colors[x+8] = AssetColor::from_stream(stream); } }
         let mut scale: [u16; 18] = [0; 18];
         for x in 0..18 {
             let mut v = stream.read_u16().unwrap_or(0);
@@ -214,6 +215,24 @@ impl PlayerOutfitData {
                 }
             }
         }
+        if version < 10 {
+            if flag & 1 != 0 {
+                for x in 0..8 {
+                    if colors[x].has_color() { colors[x].values[3] = 1; }
+                }
+            }
+            if flag & 512 != 0 {
+                for x in 0..8 {
+                    if colors[x+8].has_color() { colors[x+8].values[3] = 1; }
+                }
+            }
+            if flag & 64 != 0 {
+                for x in 0..16 {
+                    if scale[x] > 0 { scale[x] |= 1024; }
+                }
+            }
+            flag &= !513;
+        }
         Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt }
     }
     pub fn serialize(&self, stream: &mut Stream) -> usize {
@@ -234,7 +253,9 @@ impl PlayerOutfitData {
         bytes
     }
     pub fn set_color(&self, result: &mut AssetTableResult) {
-        if self.flag & 1 != 0 { for i in 0..8 { self.colors[i].set_result_color(result, i); } }
+        for i in 0..8 {
+            if self.colors[i].values[3] != 0 { self.colors[i].set_result_color(result, i); }
+        }
     }
     pub fn set_result(&self, result: &mut AssetTableResult, mode: i32, engaged: bool, stun: bool) {
         let sequence = GameUserData::get_sequence();
@@ -250,6 +271,7 @@ impl PlayerOutfitData {
             if !self.colors[2].has_color() || self.flag & 1 == 0 {
                 let head_hash = result.head_model.get_hash_code();
                 if let Some(color) = db.list.skin.get(&head_hash) {
+                    println!("Head: {} Hash: {}", result.head_model, head_hash);
                     color.set_result_color(result, 2);
                 }
             }
@@ -275,7 +297,10 @@ impl PlayerOutfitData {
             }
             if self.flag & 64 != 0 {
                 for x in 0..16 {
-                    if self.scale[x] > 0 && self.scale[x] <= 1000 { result.scale_stuff[x] = (self.scale[x] as f32) / 100.0; }
+                    if self.scale[x] & 1024 != 0 {
+                        let v = self.scale[x] & 1023;
+                        if v > 0 && v <= 1000 { result.scale_stuff[x] = (v as f32) / 100.0; }
+                    }
                 }
             }
             if let Some(ride_dress_model) = result.ride_dress_model {

@@ -72,6 +72,11 @@ impl EquipmentBoxPage {
 }
 
 impl EquipmentBoxMode {
+    pub fn set_open(open: bool) {
+        if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) { 
+            if open { equip.open(); } else { equip.close(); }
+        }
+    }
     pub fn set_profile(equipment: &mut AccessoryEquipmentInfo, profile: Option<Profile>) {
         let (name, flag) =
             profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| { (v.get_name(), d.profile[v.to_index()].flag) }))
@@ -86,9 +91,9 @@ impl EquipmentBoxMode {
             else { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::on_off(true)) }.into();
 
         set_content_data_slot(equipment, 1, CustomMenuIcon::EngageCommon.get_icon(), Some(engage));
-        set_content_data_slot(equipment, 2, CustomMenuIcon::Star.get_icon(), Some(format!("{}: {}", MenuText::get_command(20), MenuTextCommand::on_off(flag & 1 != 0)).into()));
-        set_content_data_slot(equipment, 3, CustomMenuIcon::StarBlank.get_icon(), Some(format!("{}: {}", MenuText::get_command(22), MenuTextCommand::on_off(flag & 64 != 0)).into()));
-        set_content_data_slot(equipment, 4,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(flag & 32 != 0)).into()));
+        set_content_data_slot(equipment, 2, CustomMenuIcon::Body.get_icon(), Some(format!("{}: {}", MenuText::get_command(25), MenuTextCommand::on_off(flag & 8 != 0)).into()));
+        set_content_data_slot(equipment, 3, CustomMenuIcon::SilverCard.get_icon(), Some(format!("{}: {}", MenuText::get_command(28), MenuTextCommand::on_off(flag & 64 != 0)).into()));
+        set_content_data_slot(equipment, 4,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
         let (kind, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
         set_content_data_slot(equipment, 5, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind)).into()));
     }
@@ -97,6 +102,7 @@ impl EquipmentBoxMode {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
         let no_data = data.is_none();
+        let (kind2, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
         if let Some(data) = data.or(Some(&preview.preview_data)) {
             match page {
                 EquipmentBoxPage::Flags => { Self::set_profile_flags(equipment, data.flag); }
@@ -178,13 +184,12 @@ impl EquipmentBoxMode {
                     set_content_data_slot(equipment, 5, GameIcon::try_get_system("TalkRelianceOutline"), voice);
                 }
                 EquipmentBoxPage::Color(kind) => {
+                    set_content_data_slot(equipment, 1, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind2)).into()));
                     let offset = if kind >= 4 { 4 } else { 0 } as usize;
-                    let enable = data.flag & 1 != 0;
-                    set_content_data_slot(equipment, 1, CustomMenuIcon::Star.get_icon(), Some(format!("{}: {}", MenuText::get_command(20), MenuTextCommand::on_off(enable)).into()));
                     for x in 0..4 {
                         let color = x + offset;
                         let color_str =
-                            if data.colors[color].has_color() && (!no_data || enable) {
+                            if data.colors[color].has_color() && (!no_data || data.colors[color].values[3] != 0) {
                                 format!("{}: {}", MenuText::get_command(1140 + color as i32), data.colors[color])
                             }
                             else if no_data {
@@ -200,13 +205,7 @@ impl EquipmentBoxMode {
                     }
                 }
                 EquipmentBoxPage::Scaling(set) => {
-                    let enable = data.flag & 64 != 0;
-                    set_content_data_slot(
-                        equipment,
-                        1,
-                        CustomMenuIcon::StarBlank.get_icon(),
-                        Some(format!("{}: {}", MenuText::get_command(22),MenuTextCommand::on_off(enable)).into())
-                    );
+                    set_content_data_slot(equipment, 1, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind2)).into()));
                     for x in 0..4 {
                         let scale_index = set as usize * 4 + x;
                         let value = if data.scale[scale_index] > 0 && data.scale[scale_index] < 1000 { (data.scale[scale_index] as f32 / 100.0).to_string() }

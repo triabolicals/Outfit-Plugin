@@ -10,9 +10,7 @@ use super::*;
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum AssetFlag {
-    EnableColor,
     EngageOutfit,
-    EnableScaling,
     EnableBattleAccessories,
     EnableCrossDressing,
     RandomAppearance,
@@ -23,9 +21,7 @@ pub enum AssetFlag {
 impl AssetFlag {
     pub fn get_rel_index(&self) -> i32 {
         match self {
-            AssetFlag::EnableColor => 0,
             AssetFlag::EngageOutfit => 1,
-            AssetFlag::EnableScaling => 2,
             AssetFlag::EnableBattleAccessories => 3,
             AssetFlag::EnableCrossDressing => 4,
             AssetFlag::RandomAppearance => 5,
@@ -38,9 +34,7 @@ impl AssetFlag {
         if idx < 8 {
             Some(
                 match idx {
-                    0 => AssetFlag::EnableColor,
                     1 => AssetFlag::EngageOutfit,
-                    2 => AssetFlag::EnableScaling,
                     3 => AssetFlag::EnableBattleAccessories,
                     4 => AssetFlag::EnableCrossDressing,
                     5 => AssetFlag::RandomAppearance,
@@ -56,10 +50,8 @@ impl AssetFlag {
     pub fn is_decided(&self) -> bool {
         let mode = UnitAssetMenuData::get_flag();
         match self {
-            Self::EnableColor => { mode & 1 != 0 }
             Self::RandomAppearance => { mode & 8 != 0 }
             Self::EnableBattleAccessories => { mode & 32 != 0 }
-            Self::EnableScaling => { mode & 64 != 0 }
             Self::EnableCrossDressing => { mode & 128 != 0 }
             Self::EngagedAnimation => { mode & 256 != 0 }
             Self::UseFaceThumbnail => { UnitAssetMenuData::get_person_flag() & 8 != 0 }
@@ -71,8 +63,6 @@ impl CustomMenuItem for AssetFlag {
     fn get_icon(&self, _menu_item: &CustomAssetMenuItem) -> CustomMenuIcon {
         match self {
             Self::EngageOutfit|Self::EngagedAnimation => { CustomMenuIcon::EngageCommon }
-            Self::EnableScaling => { CustomMenuIcon::StarBlank }
-            Self::EnableColor => { CustomMenuIcon::Star }
             Self::RandomAppearance => { CustomMenuIcon::Rare }
             Self::EnableCrossDressing => { CustomMenuIcon::Body }
             Self::EnableBattleAccessories => { CustomMenuIcon::Gift }
@@ -80,13 +70,7 @@ impl CustomMenuItem for AssetFlag {
             Self::UseFaceThumbnail => { CustomMenuIcon::SilverCard }
         }
     }
-    fn get_equipment_box_type(&self, menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
-        match self {
-            Self::EnableScaling => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(0)),
-            Self::EnableColor => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(if menu_item.index < 5 { 0 } else { 4 })),
-            _ => EquipmentBoxMode::CurrentProfile,
-        }
-    }
+    fn get_equipment_box_type(&self, _: &CustomAssetMenuItem) -> EquipmentBoxMode { EquipmentBoxMode::CurrentProfile }
     fn get_name(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
         let mode = UnitAssetMenuData::get_flag();
         let rel = self.get_rel_index() + 20;
@@ -155,17 +139,9 @@ impl CustomMenuItem for AssetFlag {
     fn a_call(&self, menu_item: &mut CustomAssetMenuItem) -> BasicMenuResult {
         let change_unit;
         match self {
-            Self::EnableColor => {
-                change_unit = true;
-                UnitAssetMenuData::toggle_profile_flag(1);
-            }
             Self::RandomAppearance => {
                 change_unit = true;
                 UnitAssetMenuData::toggle_profile_flag(8);
-            }
-            Self::EnableScaling => {
-                change_unit = true;
-                UnitAssetMenuData::toggle_profile_flag(64);
             }
             Self::EnableBattleAccessories => {
                 change_unit = false;

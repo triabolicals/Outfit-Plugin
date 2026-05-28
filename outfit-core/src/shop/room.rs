@@ -19,8 +19,6 @@ use engage::{
     ut::Ut
 };
 use engage::gamedata::PersonData;
-use engage::hub::util::HubUtil;
-use engage::hub::variable::HubVariable;
 use unity::{prelude::*, system::action::{SystemDelegate, Action}, system::List};
 use crate::{get_outfit_data, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
 
@@ -308,7 +306,7 @@ pub fn break_effect(this: &mut CharacterEffect){
 fn change_scaling(builder: &CharacterBuilder, result: Option<&mut AssetTableResult>) {
     let mut scale_values = [0.0; 16];
     if let Some(result) = result {
-        for x in 0..16 { scale_values[x] = result.scale_stuff[x]; }
+        for x in 0..16 { scale_values[x] = result.scale_stuff[x] + 0.001; }
     }
     else {
         let preview = UnitAssetMenuData::get_preview();

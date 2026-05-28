@@ -37,6 +37,7 @@ pub enum CustomMenuIcon {
     Day,
     SilverCard,
     NoIcon,
+    Color,
 
 }
 impl CustomMenuIcon {

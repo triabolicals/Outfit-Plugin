@@ -85,6 +85,8 @@ pub enum MenuTextCommand {
     Left = 212,
     Right = 213,
     LeftRight = 214,
+    LR = 215,
+    ZRZL = 216,
 }
 impl Display for MenuTextCommand {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
@@ -111,18 +113,30 @@ impl MenuTextCommand {
     }
     pub fn get(&self) -> &'static Il2CppString {
         let index = *self as usize;
-        if index < MIDS.len() { Mess::get(MIDS[index]) }
-        else if index >= 50 && index < 50 + ADDED.len() { ADDED[index - 50].into() }
-        else if index >= 200 && index < 214 {
-            Mess::create_sprite_tag_str(2, KEY[index-200])
+        match index {
+            0..38 => { Mess::get(MIDS[index]) }
+            50..60 => { ADDED[index - 50].into() }
+            200..214 => { Mess::create_sprite_tag_str(2, KEY[index-200]) }
+            214 => {
+                format!("{}{}",
+                        Mess::create_sprite_tag_str(2, "Left"),
+                        Mess::create_sprite_tag_str(2, "Right")
+                ).into()
+            }
+            215 => {
+                format!("{}{}",
+                        Mess::create_sprite_tag_str(2, "L"),
+                        Mess::create_sprite_tag_str(2, "R")
+                ).into()
+            }
+            216 => {
+                format!("{}{}",
+                        Mess::create_sprite_tag_str(2, "ZL"),
+                        Mess::create_sprite_tag_str(2, "ZR")
+                ).into()
+            }
+            _ => { format!("C{}", index).into() }
         }
-        else if index  == 214 {
-            format!("{}{}",
-                    Mess::create_sprite_tag_str(2, "Left"),
-                    Mess::create_sprite_tag_str(2, "Right")
-            ).into()
-        }
-        else { format!("C{}", index).into() }
     }
     pub fn get_from_index(index: i32) -> &'static mut Il2CppString {
         if index < MIDS.len() as i32 { Mess::get(MIDS[index as usize]) }

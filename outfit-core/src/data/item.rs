@@ -101,6 +101,7 @@ impl OtherAssetItem {
         }
     }
 }
+#[derive(Clone)]
 pub struct AssetLabel {
     pub label: String,
     pub flag: AssetItemFlags,

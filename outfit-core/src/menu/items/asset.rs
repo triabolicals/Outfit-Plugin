@@ -212,18 +212,25 @@ impl AssetType {
             }
             AssetType::Voice => { return; }
             AssetType::ColorPreset(kind) => {
-                let menu_data = UnitAssetMenuData::get_preview();
-                let mut current_color = [0; 3];
-                let color_kind = *kind as usize;
-                for x in 0..3 { current_color[x] = menu_data.original_color[4*color_kind+x]; }
                 let selected_color: [u8; 3] = [
                     (menu_item.hash & 255) as u8,
                     ((menu_item.hash >> 8) & 255) as u8,
                     ((menu_item.hash >> 16) & 255) as u8
                 ];
-                result.unity_colors[color_kind].r = selected_color[0] as f32 / 255.0;
-                result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
-                result.unity_colors[color_kind].b = selected_color[2] as f32 / 255.0;
+                let menu_data = UnitAssetMenuData::get_preview();
+                if *kind < 8 {
+                    let mut current_color = [0; 3];
+                    let color_kind = *kind as usize;
+                    for x in 0..3 { current_color[x] = menu_data.original_color[4*color_kind+x]; }
+                    result.unity_colors[color_kind].r = selected_color[0] as f32 / 255.0;
+                    result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
+                    result.unity_colors[color_kind].b = selected_color[2] as f32 / 255.0;
+                }
+                else {
+                    for x in 0..3 {
+                        menu_data.color_preview[4*(*kind as usize) + x] =  selected_color[x];
+                    }
+                }
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 return;
             }
@@ -273,7 +280,7 @@ impl CustomMenuItem for AssetType {
                 }
             }
             Self::Mount(kind) => { CustomMenuIcon::Mount(*kind) }
-            Self::ColorPreset(_) => { CustomMenuIcon::Star }
+            Self::ColorPreset(_) => { CustomMenuIcon::Color }
         }
     }
     fn get_equipment_box_type(&self, _menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
@@ -331,19 +338,14 @@ impl CustomMenuItem for AssetType {
         }
         else {
             match self {
-                Self::ColorPreset(kind) => {
-                    let menu_data = UnitAssetMenuData::get_preview();
-                    let mut current_color = [0; 3];
-                    let color_kind = *kind as usize;
-                    for x in 0..3 { current_color[x] = menu_data.original_color[4 * color_kind + x]; }
+                Self::ColorPreset(_) => {
                     let selected_color: [u8; 3] = [(menu_item.hash & 255) as u8, ((menu_item.hash >> 8) & 255) as u8, ((menu_item.hash >> 16) & 255) as u8];
-                    let mut changed = false;
-                    for x in 0..3 { changed |= selected_color[x] != current_color[x]; }
-                    let color_enabled = if UnitAssetMenuData::get_flag() & 1 == 0 {  " <color=\"yellow\">[Not Active].</color>" } else { " "};
                     let preset_color_str = format!("{}/{}/{}", selected_color[0], selected_color[1], selected_color[2]);
-                    if changed { format!("{}: {}{}", MenuTextCommand::Confirm.get_with_sys_sprite("A"), preset_color_str, color_enabled).into() }
-                    else if menu_item.decided { format!("{}: {}{}",MenuTextCommand::A.to_right(MenuTextCommand::Reset), preset_color_str, color_enabled).into() }
-                    else { format!("{}{}", MenuTextCommand::Select.get_with_value(preset_color_str), color_enabled).into() }
+                    format!("Replacing color: {}\n{}: {}",
+                        MenuText::get_command(1140 + menu_item.padding),
+                        MenuTextCommand::Confirm.get_with_sys_sprite("A"),
+                        preset_color_str
+                    ).into()
                 }
                 _ => { Mess::get_item_none() }
             }
@@ -380,8 +382,6 @@ impl CustomMenuItem for AssetType {
         match self {
             AssetType::ColorPreset(kind) => {
                 for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
-                let index = menu_item.index;
-                menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{ x.set_decided(x.index == index && hash != 0); });
             }
             AssetType::Body => {
                 let idx = menu_item.menu.menu_kind.to_index();
@@ -418,8 +418,13 @@ impl CustomMenuItem for AssetType {
                 }
             }
         }
+        let index = menu_item.index;
         menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{
             match x.menu_kind {
+                Asset(AssetType::ColorPreset(_)) => {
+                    x.set_decided(x.index == index);
+                    x.rebuild_text();
+                }
                 Asset(_) => {
                     x.set_decided(hash == x.hash);
                     x.rebuild_text();
