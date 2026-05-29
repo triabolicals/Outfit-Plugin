@@ -1,7 +1,6 @@
 use engage::mess::Mess;
 use unity::prelude::Il2CppString;
-use crate::menu::icons::CustomMenuIcon;
-use crate::{MenuText, MenuTextCommand, UnitAssetMenuData};
+use crate::{menu::icons::CustomMenuIcon, MenuText, MenuTextCommand, UnitAssetMenuData};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Profile {

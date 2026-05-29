@@ -17,6 +17,13 @@ unity = { version = "0.3.0", git = "https://github.com/triabolicals/unity", bran
 engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 cobapi = { git = "https://github.com/triabolicals/cobapi", branch = "test" }
 
+
+[patch."https://github.com/triabolicals/engage"]
+engage = {path = "/Users/trile/Project/lib/engage"}
+
+[patch."https://github.com/triabolicals/unity"]
+unity = {path = "/Users/trile/Project/lib2/unity"}
+
 [profile.dev]
 panic = "abort"
 

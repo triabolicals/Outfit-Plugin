@@ -98,7 +98,7 @@ impl OutfitLists {
         }
     }
     pub fn final_add(&mut self, hashes: &mut OutfitHashes) {
-        let sola_hash = hashes.add_acc("uBody_Msc0AT_c000", Some(3));
+        let sola_hash = hashes.add_acc("uBody_Msc0AT_c000");
         self.other.push(
             OtherAssetItem{
                 label: "MPID_Sola".to_string(), is_mess: true,female: false,
@@ -192,25 +192,28 @@ impl OutfitLists {
         }
     }
     pub fn add_eye_presets(&mut self, labels: &AssetLabelTable) {
-        let mut c = include_bytes!("../../data/eyes.bin");
+        let c = include_bytes!("../../data/eyes.bin");
         let count = c.len() / 8;
         let mut asset_data = [0u8; 4];
         let mut data = Cursor::new(c);
+        let mut dat2a = vec![];
         for _ in 0..count {
             data.read_exact(&mut asset_data).unwrap();
-            let id = i32::from_be_bytes(asset_data);
+            let id_ = i32::from_be_bytes(asset_data);
             data.read_exact(&mut asset_data).unwrap();
             let color = i32::from_be_bytes(asset_data);
-            let count = id % 10;
-            let id = id/10;
+            let count = id_ % 10;
+            let id = id_/10;
             let id_str =
                 if id < 10 { format!("c00{}", id) }
                 else if id < 100 { format!("c0{}", id) }
                 else { format!("c{}", id) };
             if let Some(label) = labels.suffix.get(&id_str).cloned() {
-                self.eye_colors.push(EyePreset{ color, label, count });
+                dat2a.push((id_, EyePreset{ color, label, count }));
             }
         }
+        dat2a.sort_by(|a, b| a.0.cmp(&b.0));
+        self.eye_colors = dat2a.into_iter().map(|(_,e)| e).collect();
     }
 }
 
@@ -227,12 +230,12 @@ impl AssetLabelTable {
                 let mut line = line.split_whitespace();
                 if let Some((name, value)) = line.next().zip(line.next()) {
                     let (label, flag) = parse_label(value);
-                    suffix.insert(label, AssetLabel::new(name, flag));
+                    if value.starts_with("c") { suffix.insert(label, AssetLabel::new(name, flag)); }
+                    else { body.insert(label, AssetLabel::new(name, flag)); }
                     while let Some(s) = line.next() {
-                        if s.starts_with("c") {
-                            let (label, flag) = parse_label(s);
-                            suffix.insert(label, AssetLabel::new(name, flag));
-                        }
+                        let (label, flag) = parse_label(s);
+                        if s.starts_with("c") { suffix.insert(label, AssetLabel::new(name, flag)); }
+                        else { body.insert(label, AssetLabel::new(name, flag)); }
                     }
                 }
             });

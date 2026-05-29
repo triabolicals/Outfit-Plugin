@@ -2,9 +2,7 @@ use std::fs;
 use engage::{
     dialog::BasicDialog2, gamevariable::GameVariableManager,
     mess::Mess, pad::{NpadButton, Pad}, random::Random,
-    sequence::{
-        hubaccessory::{HubAccessoryShopSequence, room::HubAccessoryRoom}, photograph::*
-    },
+    sequence::{hubaccessory::{HubAccessoryShopSequence, room::HubAccessoryRoom}, photograph::*},
     spriteatlasmanager::FaceThumbnail, tmpro::TextMeshProUGUI
 };
 use unity::{prelude::Il2CppString, system::action::{Action, Action1}};

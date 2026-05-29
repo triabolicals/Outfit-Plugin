@@ -7,9 +7,7 @@ use engage::{
     gamedata::{Gamedata, GodData, assettable::AssetTableResult}, unit::{UnitPool, Unit},
     gameuserdata::GameUserData,
     map::terrain::MapTerrainInfo,
-    sequence::{
-        gmap_sequence::GmapSequence, hub::HubSequence, hubaccessory::{HubAccessoryShopSequence, room::*},
-    },
+    sequence::{gmap_sequence::GmapSequence, hub::HubSequence, hubaccessory::{HubAccessoryShopSequence, room::*}},
     sortie::SortieSequenceUnitSelect,
     titlebar::TitleBar,
     unityengine::*,

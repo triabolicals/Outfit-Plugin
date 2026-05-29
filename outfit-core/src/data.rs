@@ -1,4 +1,4 @@
-use std::{collections::HashSet, io::{Cursor, Read, Seek}};
+use std::{collections::HashSet, io::{Cursor, Read}};
 pub use engage::{
     gamedata::{
         accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData,
@@ -166,11 +166,11 @@ impl OutfitData {
         assets.retain(|(i, _)| !remove_hashes.contains(&i));
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
         assets.iter().enumerate()
-            .filter(|(_, (hash, s))|{
+            .filter(|(_, (_, s))|{
                 let lower = s.to_lowercase();
                 !s.contains("null") && kinds.iter().any(|k| lower.contains(*k))
             })
-            .for_each(|(i, (hash, asset))| {
+            .for_each(|(_, (hash, asset))| {
                 if let Some(item) = AssetItem::new(asset, 0) {
                     match item.kind {
                         AssetType::Body => {
@@ -223,7 +223,7 @@ impl OutfitData {
                         AssetType::Acc(_) => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
                                 let name = get_asset_name(&condition, gender);
-                                hashes.add_acc(asset.as_str(), None);
+                                hashes.add_acc(asset.as_str());
                                 new_list.add(asset.as_str(), false, name, 1 << 28);
                             }
                         }

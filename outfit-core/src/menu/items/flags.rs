@@ -3,7 +3,7 @@ use unity::prelude::Il2CppString;
 use crate::{
     menu::icons::CustomMenuIcon,
     r_l_press, set_detail_box,
-    CustomAssetMenu, EquipmentBoxPage, LoadResult, MenuTextCommand, ReloadPreview,
+    CustomAssetMenu, LoadResult, MenuTextCommand, ReloadPreview,
     UnitAssetMenuData, THUMB_DIR, localize::MenuText
 };
 use super::*;

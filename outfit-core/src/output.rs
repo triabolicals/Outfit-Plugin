@@ -45,6 +45,19 @@ pub fn output_unit_result(preview: bool) -> (String, String, bool) {
 	}
 	(filename, filename1, false)
 }
+/*
+pub fn output_eyes() {
+	if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open("sd:/Outfits/eyes.bin") {
+		UnitAssetMenuData::get().eyes.iter().for_each(|e| {
+			let first = e.0.to_be_bytes();
+			let second = e.1.to_be_bytes();
+			file.write(&first).unwrap();
+			file.write(&second).unwrap();
+		});
+	}
+}
+
+ */
 pub fn result_to_string(result: &AssetTableResult, mode: i32) -> String {
 	let bits = &AssetTableStaticFields::get().condition_flags;
 	let bit_size = bits.bits.bits.len() * 8;

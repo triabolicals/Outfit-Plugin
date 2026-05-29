@@ -1,5 +1,4 @@
-use engage::combat::CharacterAppearance;
-use engage::ut::Ut;
+use engage::{combat::CharacterAppearance, ut::Ut};
 use outfit_core::anim::AnimData;
 use transform::has_enemy_tiki;
 use crate::assets::transform::is_dragonstone;

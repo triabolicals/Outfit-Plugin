@@ -1,8 +1,6 @@
 use engage::menu::BasicMenuResult;
 use unity::prelude::Il2CppString;
-use crate::{CustomAssetMenuItem, EquipmentBoxMode};
-use crate::menu::icons::CustomMenuIcon;
-
+use crate::{CustomAssetMenuItem, EquipmentBoxMode, menu::icons::CustomMenuIcon};
 mod flags;
 mod asset;
 mod profile;

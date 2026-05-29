@@ -105,7 +105,7 @@ impl AnimData {
         let list = AnimSetDB::get_list_mut().unwrap();
         let mut count = AnimSetDB::get_count();
         let mut job_anims = Vec::with_capacity(JobData::get_count() as usize);
-        let uas = files.extract_if(.., |(i, x)| x.contains("UAS_")).map(|(_, x)| x).collect::<Vec<_>>();
+        let uas = files.extract_if(.., |(_, x)| x.contains("UAS_")).map(|(_, x)| x).collect::<Vec<_>>();
         let anim_str_list: Vec<String> = list.iter().map(|v| v.name.to_string()).collect();
         if let Some(klass) = get_generic_class!(StructTemplate<AnimSetDB>).ok() {
             let sf = klass.get_static_fields_mut::<StructTemplateStaticFields>();

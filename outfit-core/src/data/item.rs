@@ -1,4 +1,4 @@
-use bitflags::{bitflags, Flags};
+use bitflags::{bitflags};
 use engage::{gamedata::assettable::*, gamedata::Gamedata, gamedata::item::ItemData, mess::Mess};
 use unity::prelude::Il2CppString;
 use crate::{capitalize_first, AssetLabelTable, AssetType};

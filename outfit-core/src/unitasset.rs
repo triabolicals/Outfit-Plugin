@@ -1,22 +1,23 @@
-use std::cmp::PartialEq;
-use std::collections::HashMap;
-use std::fs::{read_dir, read_to_string};
+use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
     unit::*,
     gamedata::{Gamedata, GodData, PersonData, assettable::*},
-    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager, 
+    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
     util::try_get_instance,
 };
 pub use crate::playerdata::*;
-use crate::assets::unit_dress_gender;
-use crate::{get_outfit_data, hash_string, AssetConditions, AssetType, Mount, PhotoCameraControl};
-use crate::data::room::hub_room_set_by_result;
+use crate::{
+    assets::unit_dress_gender, get_outfit_data,
+    AssetConditions, AssetType, Mount, PhotoCameraControl,
+    data::{
+        room::hub_room_set_by_result,
+        unitselect::{UnitSelect, UnitSelectList}
+    },
+    anim::AnimData, room::ReloadType
+};
 
 mod load;
 pub use load::*;
-use crate::anim::AnimData;
-use crate::data::unitselect::{UnitSelect, UnitSelectList};
-use crate::room::ReloadType;
 
 pub static mut UNIT_ASSET: UnitAssetMenuData = UnitAssetMenuData::default();
 
@@ -316,7 +317,10 @@ impl UnitAssetMenuData {
             menu.preview.color_preview[x * 4] = if result.unity_colors[x].r >= 1.0 { 255 } else { (result.unity_colors[x].r * 255.5) as u8 };
             menu.preview.color_preview[x * 4 + 1] = if result.unity_colors[x].g >= 1.0 { 255 } else { (result.unity_colors[x].g * 255.5) as u8 };
             menu.preview.color_preview[x * 4 + 2] = if result.unity_colors[x].b >= 1.0 { 255 } else { (result.unity_colors[x].b * 255.5) as u8 };
-            menu.preview.color_preview[x * 4 + 3] = if result.unity_colors[x].a >= 1.0 { 255 } else { (result.unity_colors[x].a * 255.5) as u8 };
+            // menu.preview.color_preview[x * 4 + 3] = if result.unity_colors[x].a >= 1.0 { 255 } else { (result.unity_colors[x].a * 255.5) as u8 };
+        }
+        for x in 8..16 {
+            for y in 0..3 { menu.preview.color_preview[x*4+y] = menu.preview.preview_data.colors[x].values[y] }
         }
         for x in 0..16 { menu.preview.scale_preview[x] = (result.scale_stuff[x] * 100.0) as u16; }
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }

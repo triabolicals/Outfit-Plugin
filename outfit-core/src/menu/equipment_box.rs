@@ -3,13 +3,14 @@ use engage::{
     gameicon::GameIcon,
     menu::content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo},
     menu::menu_item::accessory::AccessoryMenuItemContent,
-    mess::Mess,
-    unityengine::GameObject
+    mess::Mess, unityengine::GameObject
 };
 use unity::{engine::Sprite, engine::ui::IsImage, system::Il2CppString};
-use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData};
-use crate::items::Profile;
-use crate::menu::icons::CustomMenuIcon;
+use crate::{
+    get_current_profile_name, get_outfit_data,
+    AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData,
+    items::Profile, menu::icons::CustomMenuIcon
+};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum EquipmentBoxMode {

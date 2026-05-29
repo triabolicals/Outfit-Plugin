@@ -15,8 +15,7 @@ use engage::{
     pad::NpadButton, combat::Kaneko, tmpro::TextMeshProUGUI,
 };
 use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
-use crate::is_up_down_press;
-use crate::menu::items::{CustomAssetMenuKind, MainShop};
+use crate::{is_up_down_press, menu::items::{CustomAssetMenuKind, MainShop}};
 
 pub static CUSTOM_ASSET_MENU: OnceLock<&'static mut Il2CppClass> = OnceLock::new();
 

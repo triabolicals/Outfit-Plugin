@@ -4,8 +4,11 @@ use engage::{
     combat::CharacterAppearance, gamedata::item::ItemData,
     unit::{Gender, Unit}, mess::Mess
 };
-use crate::{apply_hair, new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC};
-use crate::data::util::{parse_arg_from_name, AssetTableIndexes};
+use crate::{
+    apply_hair, new_asset_table_accessory,
+    ColorPreset, Mount, OutfitHashes, ACC_LOC,
+    data::util::{parse_arg_from_name, AssetTableIndexes}
+};
 
 pub struct DressData {
     pub job: Vec<JobDressData>,

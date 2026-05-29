@@ -8,15 +8,12 @@ pub use engage::{
 	unityengine::*,
 	util::{get_instance, try_get_instance},
 };
-use engage::combat::CharacterAppearance;
-use engage::gamedata::assettable::AssetTableResult;
-use engage::gamedata::{Gamedata, PersonData};
-use engage::proc::ProcInst;
+use engage::{
+	combat::CharacterAppearance,
+	gamedata::{assettable::AssetTableResult, Gamedata, PersonData}, proc::ProcInst
+};
 use unity::prelude::*;
-pub use crate::unitasset::*;
-pub use crate::localize::{MenuText, MenuTextCommand};
-
-pub use crate::get_outfit_data;
+pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
 mod menuitem;
 mod assetmenu;
@@ -34,7 +31,6 @@ pub use keyhelp::*;
 pub use control::*;
 use crate::data::room::hub_room_set_by_result;
 use crate::room::ReloadType;
-pub use crate::UnitAssetMenuData;
 
 
 #[unity::class("App", "UnitSelectRoot")]

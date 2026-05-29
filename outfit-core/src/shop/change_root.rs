@@ -3,9 +3,8 @@ use engage::{
     menu::menus::accessory::change::{AccessoryShopChangeRoot, AccessoryShopChangeRootProc}
 };
 use unity::prelude::*;
-use crate::data::room::hub_room_set_by_result;
+use crate::{data::room::hub_room_set_by_result, room::ReloadType};
 pub use crate::menu::*;
-use crate::room::ReloadType;
 
 pub fn edit_accessory_root_change_unit(change_root: &mut AccessoryShopChangeRootProc) {
     if let Some(change_next) = change_root.change_unit_next.as_mut() {

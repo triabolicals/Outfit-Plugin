@@ -48,7 +48,7 @@ impl CustomAssetMenuItem {
 		let vtable = accessory_klass.get_vtable_mut();
 		vtable[4].method_ptr = Self::get_name as _;
 		vtable[8].method_ptr = Self::build_attribute as _;
-		vtable[10].method_ptr = Self::on_build as _;
+		// 10 OnBuild
 		vtable[11].method_ptr = Self::on_build_menu_item_content as _;
 		vtable[12].method_ptr = Self::on_select as _;
 		vtable[13].method_ptr = Self::on_deselect as _;
@@ -250,7 +250,9 @@ impl CustomAssetMenuItem {
 		if let Some(content) = self.menu_item_content.as_ref(){
 			let icon = menu_kind.get_icon(self);
 			if icon == CustomMenuIcon::Color {
+				let mut rgb: Option<(u8, u8, u8)> = None;
 				let preview = UnitAssetMenuData::get_preview();
+				content.kind_icon_image.set_no_sprite();
 				if idx >= 1140 && idx < 1156 {
 					let kind = idx - 1140;
 					if preview.preview_data.colors[kind as usize].has_color() { idx = 100 + kind; }
@@ -258,32 +260,22 @@ impl CustomAssetMenuItem {
 				}
 				if idx >= 30 && idx < 46 {	// Default Color
 					let k = (idx - 30) as usize;
-					content.kind_icon_image.set_no_sprite();
-					let (r, g, b) =
-					if k < 8 {
-						(preview.original_color[4 * k] as f32 / 255.0,
-						preview.original_color[4 * k + 1] as f32 / 255.0,
-						preview.original_color[4 * k + 2] as f32 / 255.0)
-					}
-					else { (0.0, 0.0, 0.0) };
-					content.kind_icon_image.set_color2(r, g, b,1.0);
+					rgb =
+						if k < 8 { Some((preview.original_color[4 * k] , preview.original_color[4 * k + 1], preview.original_color[4 * k + 2])) }
+						else { None };
 				}
 				else if idx >= 100 && idx < 116 {	// Preview Color / Set Color
 					let k = (idx - 100) as usize;
-					content.kind_icon_image.set_no_sprite();
-					let preview = UnitAssetMenuData::get_preview();
-					let r = preview.color_preview[4 * k] as f32 / 255.0;
-					let g = preview.color_preview[4 * k + 1] as f32 / 255.0;
-					let b = preview.color_preview[4 * k + 2] as f32 / 255.0;
-					content.kind_icon_image.set_color2(r, g, b,1.0);
+					rgb = Some((preview.color_preview[4 * k], preview.color_preview[4 * k + 1], preview.color_preview[4 * k + 2]));
 				}
 				else if idx >= 80 && idx < 96 {	// Color Preset
-					content.kind_icon_image.set_no_sprite();
-					let r = (self.hash & 255) as f32 / 255.0;
-					let g = ((self.hash >> 8) & 255) as f32 / 255.0;
-					let b = ((self.hash >> 16) & 255)  as f32 / 255.0;
-					content.kind_icon_image.set_color2(r, g, b,1.0);
+					rgb = Some(((self.hash & 255) as u8, ((self.hash >> 8) & 255) as u8, ((self.hash >> 16) & 255) as u8));
 				}
+				if let Some((r, g, b)) = rgb.filter(|(r, g, b)| *r > 0 || *g > 0 || *b > 0) {
+					content.kind_icon.set_active(true);
+					content.kind_icon_image.set_color2(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0,1.0);
+				}
+				else { content.kind_icon.set_active(false); }
 			}
 			else {
 				content.kind_icon_image.set_color2(1.0, 1.0, 1.0,1.0);
@@ -298,9 +290,6 @@ impl CustomAssetMenuItem {
 	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
-	}
-	pub fn on_build(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
-		// if this.menu_kind == UnitInventorySubMenuItem { this.set_color(); }
 	}
 	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
 		let idx = this.hash;

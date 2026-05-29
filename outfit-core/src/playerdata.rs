@@ -4,9 +4,11 @@ use engage::{
     unit::Gender, gameuserdata::GameUserData, mess::Mess, stream::Stream
 };
 use unity::prelude::*;
-use crate::assets::new_asset_table_accessory;
-use crate::{apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA};
-use crate::AssetType::Acc;
+use crate::{
+    assets::new_asset_table_accessory, apply_hair, get_outfit_data,
+    AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData,
+    OUTFIT_DATA, AssetType::Acc
+};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,

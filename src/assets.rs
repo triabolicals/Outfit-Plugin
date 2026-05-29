@@ -1,11 +1,10 @@
 use unity::prelude::*;
-use engage::{unit::*, gamedata::{assettable::*, item::ItemData, skill::*, *}, };
+use engage::{unit::*, gamedata::{assettable::*, item::ItemData, skill::*, *}};
 pub mod transform;
 pub mod dress;
 
 use outfit_core::*;
 use outfit_core::room::CharacterEffect;
-// use crate::assets::transform::is_dragonstone;
 use crate::enums::PIDS;
 
 #[skyline::hook(offset=0x1bb4180)]

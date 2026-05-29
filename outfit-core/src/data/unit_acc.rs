@@ -1,7 +1,5 @@
 use engage::{
-    gamedata::accessory::AccessoryData,
-    gamedata::assettable::{AssetTable, AssetTableResult, AssetTableStaticFields},
-    gamedata::{Gamedata, PersonData},
+    gamedata::{accessory::AccessoryData, assettable::*, Gamedata, PersonData},
     unit::{Unit, UnitAccessoryList}
 };
 

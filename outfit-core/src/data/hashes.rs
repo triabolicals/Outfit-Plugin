@@ -31,8 +31,8 @@ pub struct OutfitHashes {
 impl OutfitHashes {
     pub fn new() -> Self {
         let mut new: OutfitHashes = Default::default();
-        new.add_acc("uAcc_head_null", Some(1));
-        for i in 1..4 { new.add_acc("null", Some(i)); }
+        new.add_acc("uAcc_head_null");
+        new.add_acc("null");
         new.add_hair("uHair_null");
         new.add_head("uHead_null");
         new.add_body("uBody_null", false);
@@ -91,7 +91,7 @@ impl OutfitHashes {
             .map(|x| x.into())
     }
     pub fn get_oacc(&self, uacc_hash: i32) -> Option<&'static Il2CppString> { self.oacc_pair.get(&uacc_hash).and_then(|x| self.o_acc.get(x)).map(|x| x.into()) }
-    pub fn add_acc(&mut self, asset: impl Into<&'static Il2CppString>, acc_kind: Option<i32>) -> i32 {
+    pub fn add_acc(&mut self, asset: impl Into<&'static Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
@@ -160,7 +160,7 @@ impl OutfitHashes {
     }
     pub fn get_info_anim(&mut self) {
         self.aoc.iter().filter(|x| x.1.contains("Info"))
-            .for_each(|(h, n)|{
+            .for_each(|(h, _)|{
                 if self.aoc_f.contains(h) { self.info_f.push(*h); }
                 else if self.aoc_m.contains(h) { self.info_m.push(*h); }
             });

@@ -1,6 +1,5 @@
 use engage::{unit::Gender, gamemessage::GameMessage, mess::Mess};
-use crate::{LoadResult, UnitAssetMenuData};
-use crate::localize::MenuText;
+use crate::{LoadResult, UnitAssetMenuData, localize::MenuText};
 use super::*;
 #[derive(PartialEq, Copy, Clone)]
 pub enum AssetDataMode {
