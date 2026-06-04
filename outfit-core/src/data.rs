@@ -190,14 +190,14 @@ impl OutfitData {
                                 else if gender != Gender::None {
                                     let female = gender == Gender::Female;
                                     hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
-                                    new_list.add(asset, female, name.clone(), 1 << 28);
+                                    new_list.add(asset, female, name.clone(), 0, true);
                                     added = true;
                                 }
                             }
                             if !added {
                                 let female = asset.contains("F_c") || asset.contains("f_c");
                                 hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
-                                new_list.add(asset.as_str(), female, name.clone(), 1 << 28);
+                                new_list.add(asset.as_str(), female, name.clone(), 1 << 2, true);
                             }
                         }
                         AssetType::Head => {
@@ -208,7 +208,7 @@ impl OutfitData {
                                     hashes.head_hair.insert(*hash, o_hair);
                                 }
                                 hashes.add_head(asset.as_str());
-                                new_list.add(asset.as_str(), false, name, 1 << 28);
+                                new_list.add(asset.as_str(), false, name, 1 << 28, false);
                             }
                         }
                         AssetType::Hair => {
@@ -217,21 +217,21 @@ impl OutfitData {
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
                                 let name = get_asset_name(&condition, gender);
-                                new_list.add(asset.as_str(), false, name, 1 << 28);
+                                new_list.add(asset.as_str(), false, name, 1 << 28, false);
                             }
                         }
                         AssetType::Acc(_) => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
                                 let name = get_asset_name(&condition, gender);
                                 hashes.add_acc(asset.as_str());
-                                new_list.add(asset.as_str(), false, name, 1 << 28);
+                                new_list.add(asset.as_str(), false, name, 1 << 28, false);
                             }
                         }
                         AssetType::Mount(_) => {
                             if let Some((condition, _)) = find_condition(2, asset, false, item.kind) {
                                 let name = get_condition_label(&condition);
                                 hashes.add_ride_model(asset);
-                                new_list.add(asset, false, name, 1 << 28);
+                                new_list.add(asset, false, name, 1 << 28, false);
                             }
                         }
                         _ => {}

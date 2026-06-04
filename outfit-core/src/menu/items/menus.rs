@@ -442,7 +442,15 @@ impl CustomAssetMenuKind {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.add_menu_items(AssetType::Body, female, false, true, &db.labels, this.full_menu_item_list);
             }
-            Head => { db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, this.full_menu_item_list); }
+            ShopBody((4, alt)) => {
+                let female = UnitAssetMenuData::get_gender(*alt) == 2;
+                db.list.added.iter()
+                    .filter(|x| x.female == female && x.asset.kind == AssetType::Body)
+                    .for_each(|a|{this.full_menu_item_list.add(CustomAssetMenuItem::new_asset3(&a, &db.labels, false)); });
+            }
+            Head => {
+                db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, this.full_menu_item_list);
+            }
             Hair => { db.list.add_menu_items(AssetType::Hair, female,true, true, &db.labels, this.full_menu_item_list); }
             Rig => {
                 let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Rig);

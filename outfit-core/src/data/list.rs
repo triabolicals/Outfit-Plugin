@@ -6,6 +6,7 @@ use crate::{Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, Outf
 pub struct OutfitLists {
     pub null: AssetGroup,   // 1st
     pub other: Vec<OtherAssetItem>, // 3rd
+    pub added: Vec<OtherAssetItem>,
     pub engaged: Vec<OtherAssetItem>,
     pub job_m: Vec<AssetGroup>,
     pub job_f: Vec<AssetGroup>,
@@ -55,7 +56,7 @@ impl OutfitLists {
             }
         }
         Self {
-            null, color_presets,
+            null, color_presets, added: vec![],
             job_count: (0, 0),
             other: vec![], engaged: vec![], job_m: vec![], job_f: vec![], char_m: vec![], char_f: vec![], aids: vec![],
             skin: HashMap::new(),
@@ -74,14 +75,15 @@ impl OutfitLists {
             self.engaged.push(body);
         }
     }
-    pub fn add_other_to_list(&mut self, mut asset: OtherAssetItem) {
-    let str = asset.label.as_ref();
-        asset.asset.count = self.other.iter()
+    pub fn add_other_to_list(&mut self, mut asset: OtherAssetItem, added: bool) {
+        let set = if added { &mut self.added } else { &mut self.other };
+        let str = asset.label.as_ref();
+        asset.asset.count = set.iter()
             .filter(|x| x.asset.flags == asset.asset.flags && x.label == str && x.asset.kind == asset.asset.kind)
             .count() as i32;
-        self.other.push(asset);
+        set.push(asset);
     }
-    pub fn add<C>(&mut self, asset: impl AsRef<str>, female: bool, mid: Option<C>, flag: i32)
+    pub fn add<C>(&mut self, asset: impl AsRef<str>, female: bool, mid: Option<C>, flag: i32, added: bool)
     where C: AsRef<str> + ToString
     {
         let is_mess = mid.is_some();
@@ -94,7 +96,7 @@ impl OutfitLists {
             a
         });
         if let Some(asset) = OtherAssetItem::new(name, asset, female, flag, is_mess) {
-            self.add_other_to_list(asset);
+            self.add_other_to_list(asset, added);
         }
     }
     pub fn final_add(&mut self, hashes: &mut OutfitHashes) {
