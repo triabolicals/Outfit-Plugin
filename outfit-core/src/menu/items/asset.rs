@@ -226,10 +226,8 @@ impl AssetType {
                     result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
                     result.unity_colors[color_kind].b = selected_color[2] as f32 / 255.0;
                 }
-                else {
-                    for x in 0..3 {
-                        menu_data.color_preview[4*(*kind as usize) + x] =  selected_color[x];
-                    }
+                for x in 0..3 {
+                    menu_data.color_preview[4*(k as usize) + x] =  selected_color[x];
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 return;

@@ -65,14 +65,16 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
     for x in 0..h {
         let start = x * w;
         let end = (x + 1) * w;
-        if let Some(pos) = pixels[start..end].iter().position(|w| (w.r + w.b + w.g) > 0.1) {
+        if let Some(pos) = pixels[start..end].iter().position(|w| w.r > 0.0 || w.b > 0.0 || w.g > 0.0) {
             x_pos.push(pos);
         }
-        else { x_pos.push(w); }
-        if let Some(pos) = pixels[start..end].iter().rposition(|w| (w.r + w.b + w.g) > 0.1) {
+        if let Some(pos) = pixels[start..end].iter().rposition(|w| w.r > 0.0 || w.b > 0.0 || w.g > 0.0) {
             x_maxs.push(pos);
         }
-        else { x_maxs.push(0); }
+    }
+    if x_pos.is_empty() || x_maxs.is_empty() {
+        GameMessage::create_key_wait(proc, "Unable to capture [No Image].\nSwitch to `Docked` mode?");
+        return;
     }
     let x_min = x_pos.iter().map(|v| *v).min().unwrap_or(0);
     let x_max = x_maxs.iter().map(|v| *v).max().unwrap_or(w);
@@ -84,7 +86,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
     let mut message = String::new();
     if !face {
         for y in 0..(y_max - y_min) {
-            for x in 0..(x_max - x_min) {
+            for x in 0..x_max - x_min{
                 let color = pixels[((y + y_min) * w ) + (x + x_min)].get_gamma();
                 texture_cropped.set_pixel(x as i32, y as i32, color);
             }

@@ -78,7 +78,7 @@ impl CustomAssetMenuKind {
                 clamp_menu_index_value(140, k, 16)
             },
             ClassBodySelection((class, alt)) => { clamp_menu_index_value(if *alt { 210 } else { 170 }, *class, 40) },
-            ColorPresets(page, kind) => clamp_menu_index_value(300, *page*11 + *kind, 110),
+            ColorPresets(page, _) => clamp_menu_index_value(300, *page, 11),
         }
     }
     pub fn from_index(value: i32) -> Self {
@@ -116,6 +116,7 @@ impl CustomAssetMenuKind {
     }
     pub fn get_help_index(&self, is_menu_item: bool) -> i32 {
         let idx = self.to_index();
+        println!("IDX: {}", idx);
         if is_menu_item && idx >= 100 {
             match idx {
                 170|210 => 1027,
@@ -124,8 +125,8 @@ impl CustomAssetMenuKind {
                 154 => { 1149 }
                 171..210|211..250 => 1028,
                 300..400 => {
-                    let p = (idx - 300) / 10;
-                    if p < 8 { 1150 + p } else { 1158 }
+                    let p = idx - 300;
+                    1150 + p
                 }
                 _ => { 1020 + ((idx - 100 ) / 10) }
             }

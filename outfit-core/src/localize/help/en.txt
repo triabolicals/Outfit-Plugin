@@ -85,5 +85,5 @@
 1156 Select a color from color palette 55 presets.
 1157 Select a color from color palette 25 presets.
 1158 Select a color from base eye presets.
-1160 Select from already assigned color.
+1159 Select from already assigned color.
 1170 Reassign facial animation for the '$$' state.
