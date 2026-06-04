@@ -39,11 +39,12 @@ pub enum CustomAssetMenuItemKind {
     Item,
     UnitInventorySubMenuItem,
     FaceThumb,
+    Expression(u8),
 }
 impl CustomAssetMenuItemKind {
     pub fn can_facial(&self) -> bool {
         match self {
-            OutfitDataFile|UnitName|CurrentProfile|ScaleMenuItem(_)|RGBA(_)|ProfileItem(_) => false,
+            OutfitDataFile|UnitName|CurrentProfile|ScaleMenuItem(_)|RGBA(_)|ProfileItem(_)|Expression(_) => false,
             _ => true,
         }
     }
@@ -214,6 +215,12 @@ impl CustomAssetMenuItemKind {
                     }
                 }
             }
+            Expression(kind) => {
+                let k = *kind as usize;
+                let v = UnitAssetMenuData::get_preview().preview_data.expression[k] as usize;
+                let v = if v == 0 { k } else { v - 1 };
+                hub_room_set_by_result(None, ReloadType::FacialPreview(v));
+            }
             _ => { EquipmentBoxMode::set_cursor(None); }
         }
     }
@@ -239,6 +246,7 @@ impl CustomAssetMenuItemKind {
 impl CustomMenuItem for CustomAssetMenuItemKind {
     fn get_icon(&self, menu_item: &CustomAssetMenuItem) -> CustomMenuIcon {
         match self {
+            Expression(_) => CustomMenuIcon::AccFace,
             RGBA(_)|ResetColor(_) => CustomMenuIcon::Color,
             ScaleMenuItem(_) => CustomMenuIcon::StarBlank,
             Asset(ty) => ty.get_icon(menu_item),
@@ -311,6 +319,12 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
             Data(data) => { data.get_name(menuitem) }
             NoItem => { Mess::get_item_none2() }
+            Expression(kind) => {
+                let k = *kind as usize;
+                let v = UnitAssetMenuData::get_preview().preview_data.expression[k] as usize;
+                if v == 0 || v > 13 { format!("{}: Default", FACIAL_STATES[k].0).into() }
+                else { format!("{}: {}", FACIAL_STATES[k].0, FACIAL_STATES[v - 1].0).into() }
+            }
             _ => { MenuText::get_command(idx) }
         }
     }
@@ -332,6 +346,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             UnitName => { Some("Unit Name".into()) }
             PresetAppearance => { Some(menuitem.name) }
             FaceThumb => { Some(menuitem.name.to_string().trim_end_matches(".png").into()) }
+            Expression(kind) => { Some(FACIAL_STATES[*kind as usize].0.into()) }
             _ => { Some(MenuText::get_command(idx)) }
         }
     }
@@ -385,6 +400,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { help }
             }
+            Expression(kind) => { MenuText::get_help_with_arg(1170, FACIAL_STATES[*kind as usize].0).unwrap() }
             CurrentProfile => { get_current_profile_assignment_text().into() }
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
@@ -783,6 +799,20 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     let box_state = menu.loaded_data.equipment_box_state.get_preset_appearance(right);
                     EquipmentBoxMode::LoadData(box_state).set_preset_appearance(menuitem.hash);
                     menu.loaded_data.equipment_box_state = box_state;
+                    BasicMenuResult::se_cursor()
+                }
+                else { BasicMenuResult::new() }
+            }
+            Expression(kind) => {
+                let preview = UnitAssetMenuData::get_preview();
+                let l = Pad::is_trigger(NpadButton::left_key());
+                let r = Pad::is_trigger(NpadButton::right_key());
+                if l || r && r != l {
+                    let mut v = (preview.preview_data.expression[*kind as usize] + if l { 13 } else { 1 } ) % 14;
+                    if v == (*kind + 1) { v = (v + if l { 13 } else { 1 } ) % 14; }
+                    preview.preview_data.expression[*kind as usize] = v;
+                    menuitem.rebuild_text();
+                    self.on_select(menuitem);
                     BasicMenuResult::se_cursor()
                 }
                 else { BasicMenuResult::new() }

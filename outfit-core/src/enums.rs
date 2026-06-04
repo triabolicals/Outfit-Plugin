@@ -9,9 +9,10 @@ pub const BODY_EXPRESS: [&str; 47] = [
     "ReactionGood","ReactionBad","Battle_Sword","Battle_Lance","Battle_Bow","Battle_Axe","Battle_Knife","Battle_Fist",
     "Battle_Magic",
 ];
-pub const FACIAL_STATES: [&str; 18] = [
-    "Normal", "Angry", "Surprise", "Relax", "Pain", "Die", "Smile", "Strike", "Serious", "Sad", "Shy", "StandBy", "Status",
-    "LipA", "LipI", "LipO", "LipE", "LipU"
+pub const FACIAL_STATES: [(&str, i32); 13] = [
+    ("Normal", 640249298), ("Status", 2091671594), ("StandBy", -1006552403), ("Pain", -1117131496),
+    ("Smile", -1018483701), ("Sad", -1484605860),  ("Angry", 16779677),   ("Relax", -335741653),
+    ("Surprise", 1687455), ("Serious", -895772493),  ("Shy", 356934092), ("Die", 20298039),   ("Strike", 174793462),
 ];
 pub const EMBLEM: [(&str, &str); 24] = [
     ("Marth", "Mar"), ("Siglud", "Sig"), ("Celica", "Cel"), ("Micaiah", "Mic"),

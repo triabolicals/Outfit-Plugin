@@ -91,7 +91,7 @@ fn set_up(this: &'static mut PhotographDisposInfo77, _optional_method: OptionalM
     this.this.setup_weapon();
     if let Some(char) = this.this.m_character_cmp.as_ref() {
         let menu_data = UnitAssetMenuData::get();
-        char.play_facial(crate::FACIAL_STATES[menu_data.facial].into());
+        char.play_facial(crate::FACIAL_STATES[menu_data.facial].0.into());
     }
 }
 
