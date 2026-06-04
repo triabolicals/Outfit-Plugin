@@ -37,11 +37,13 @@ pub struct UnitAssetPreview {
     pub original_scaling: [u16; 20],
     pub color_preview: [u8; 64],
     pub scale_preview: [u16; 20],
-    pub original_color: [u8; 32],
+    pub original_color: [u8; 64],
     pub eye_color: [u8; 18],
     pub original_assets: [i32; 20],
     pub update_dress_gender: bool,
-
+    pub update: u8,
+    pub has_head_acc: bool,
+    pub has_hair_acc: bool,
 }
 impl UnitAssetPreview {
     pub const fn new() -> Self {
@@ -50,13 +52,16 @@ impl UnitAssetPreview {
             preview_data:
             PlayerOutfitData::new(),
             selected_profile: 0,
-            original_color: [0; 32],
+            original_color: [0; 64],
             scale_preview: [0; 20],
             original_scaling: [0; 20],
             color_preview: [0; 64],
             eye_color: [0; 18],
             original_assets: [0; 20],
             update_dress_gender: false,
+            update: 0,
+            has_head_acc: false,
+            has_hair_acc: false,
         }
     }
 }
@@ -168,6 +173,10 @@ impl UnitAssetMenuData {
             }
             else { engage::map::mind::MapMind::get_unit() }
         }
+    }
+    pub fn get_current_profile(hash: i32) -> Option<&'static PlayerOutfitData> {
+        Self::get_by_person_data(hash, false)
+            .and_then(|p| p.profile.get(p.profile_index(false) as usize))
     }
     const fn default() -> Self {
         Self {
@@ -317,12 +326,16 @@ impl UnitAssetMenuData {
             menu.preview.color_preview[x * 4] = if result.unity_colors[x].r >= 1.0 { 255 } else { (result.unity_colors[x].r * 255.5) as u8 };
             menu.preview.color_preview[x * 4 + 1] = if result.unity_colors[x].g >= 1.0 { 255 } else { (result.unity_colors[x].g * 255.5) as u8 };
             menu.preview.color_preview[x * 4 + 2] = if result.unity_colors[x].b >= 1.0 { 255 } else { (result.unity_colors[x].b * 255.5) as u8 };
-            // menu.preview.color_preview[x * 4 + 3] = if result.unity_colors[x].a >= 1.0 { 255 } else { (result.unity_colors[x].a * 255.5) as u8 };
         }
         for x in 8..16 {
             for y in 0..3 { menu.preview.color_preview[x*4+y] = menu.preview.preview_data.colors[x].values[y] }
         }
-        for x in 0..16 { menu.preview.scale_preview[x] = (result.scale_stuff[x] * 100.0) as u16; }
+        for x in 0..16 {
+            let v = menu.preview.preview_data.scale[x] & 1023;
+            if v == 0 || v >= 1000 { menu.preview.scale_preview[x] = (result.scale_stuff[x] * 100.0) as u16; }
+            else { menu.preview.scale_preview[x] = v; }
+        }
+        menu.preview.update = 3;
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
         true
     }
@@ -357,7 +370,7 @@ impl UnitAssetMenuData {
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
             ReloadPreview::ResetColor(kind) => {
-                let k = kind as usize;
+                let k = (kind % 16) as usize;
                 result.unity_colors[k].r = data.preview.original_color[4*k] as f32 / 255.0;
                 result.unity_colors[k].g = data.preview.original_color[4*k+1] as f32 / 255.0;
                 result.unity_colors[k].b = data.preview.original_color[4*k+2] as f32 / 255.0;
@@ -557,23 +570,21 @@ impl UnitAssetMenuData {
         menu.scale_preview[index as usize] = value;
         menu.preview_data.scale[index as usize] = value;
     }
-    pub fn set_current_color(color_index: i32, rgb: i32, value: u8){
-        if color_index >= 8 || rgb >= 4 { return; }
-        let menu = Self::get_preview();
-        menu.preview_data.colors[color_index as usize].values[rgb as usize] = value;
-    }
     pub fn get_original_color_str(color_index: i32) -> String {
-        let i =  4*color_index as usize;
+        let k = color_index % 16;
+        let i =  4*k as usize;
         let menu = &Self::get_preview().original_color;
         format!("{}/{}/{}", menu[i], menu[i+1], menu[i+2])
     }
     pub fn get_preview_color_str(color_index: i32) -> String {
-        let i =  4*color_index as usize;
+        let k = color_index % 16;
+        let i =  4*k as usize;
         let menu = &Self::get_preview().color_preview;
         format!("{}/{}/{}", menu[i], menu[i+1], menu[i+2])
     }
     pub fn get_set_color_str(color_index: i32) -> String {
-        let menu = &Self::get_preview().preview_data.colors[color_index as usize];
+        let k = color_index % 16;
+        let menu = &Self::get_preview().preview_data.colors[k as usize];
         format!("{}/{}/{}", menu.values[0], menu.values[1], menu.values[2])
     }
     pub fn set_original_assets() -> (Vec<i32>, Vec<i32>){

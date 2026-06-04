@@ -24,6 +24,7 @@ impl AssetColor{
             self.values[x] = c;
         }
     }
+    pub fn get_f32(&self) -> [f32; 3] { [self.values[0] as f32 / 255.0, self.values[1] as f32/ 255.0, self.values[2] as f32/ 255.0] }
     pub fn has_color(&self) -> bool { self.values[0] > 0 || self.values[1] > 0 || self.values[2] > 0 }
     pub fn is_zero(&self) -> bool { self.values[0] == 0 && self.values[1] == 0 && self.values[2] == 0 }
     pub fn set_result_color(&self, result: &mut AssetTableResult, result_index: usize) {

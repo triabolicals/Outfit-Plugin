@@ -1,16 +1,12 @@
 use engage::{
-    unit::{Gender},
-    gameicon::GameIcon,
-    menu::content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo},
-    menu::menu_item::accessory::AccessoryMenuItemContent,
-    mess::Mess, unityengine::GameObject
+    unit::Gender, mess::Mess, unityengine::GameObject, gameicon::GameIcon,
+    menu::{
+        content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo},
+        menu_item::accessory::AccessoryMenuItemContent
+    },
 };
 use unity::{engine::Sprite, engine::ui::IsImage, system::Il2CppString};
-use crate::{
-    get_current_profile_name, get_outfit_data,
-    AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData,
-    items::Profile, menu::icons::CustomMenuIcon
-};
+use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData, items::Profile, menu::icons::CustomMenuIcon, FACIAL_STATES};
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum EquipmentBoxMode {
@@ -74,7 +70,7 @@ impl EquipmentBoxPage {
 
 impl EquipmentBoxMode {
     pub fn set_open(open: bool) {
-        if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) { 
+        if let Some(equip) = GameObject::find("EquipmentAcc").and_then(|go| go.get_component_by_type::<AccessoryEquipmentInfo>()) {
             if open { equip.open(); } else { equip.close(); }
         }
     }
@@ -93,8 +89,8 @@ impl EquipmentBoxMode {
 
         set_content_data_slot(equipment, 1, CustomMenuIcon::EngageCommon.get_icon(), Some(engage));
         set_content_data_slot(equipment, 2, CustomMenuIcon::Body.get_icon(), Some(format!("{}: {}", MenuText::get_command(25), MenuTextCommand::on_off(flag & 8 != 0)).into()));
-        set_content_data_slot(equipment, 3, CustomMenuIcon::SilverCard.get_icon(), Some(format!("{}: {}", MenuText::get_command(28), MenuTextCommand::on_off(flag & 64 != 0)).into()));
-        set_content_data_slot(equipment, 4,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
+        set_content_data_slot(equipment, 3,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
+        set_content_data_slot(equipment, 4, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
         let (kind, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
         set_content_data_slot(equipment, 5, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind)).into()));
     }
@@ -185,10 +181,14 @@ impl EquipmentBoxMode {
                     set_content_data_slot(equipment, 5, GameIcon::try_get_system("TalkRelianceOutline"), voice);
                 }
                 EquipmentBoxPage::Color(kind) => {
-                    set_content_data_slot(equipment, 1, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind2)).into()));
-                    let offset = if kind >= 4 { 4 } else { 0 } as usize;
-                    for x in 0..4 {
+                    let k = kind % 16;
+                    let asset_colors = k < 8;
+                    if asset_colors { set_content_data_slot(equipment, 1, icon.get_icon(), Some(format!("Viewing: {}", Mess::get(kind2)).into())); }
+                    let offset = if k >= 8 { 8 } else if k >= 4 { 4 } else { 0 } as usize;
+                    let len = if asset_colors { 4 } else { 6 };
+                    for x in 0..len  {
                         let color = x + offset;
+                        let slot = if asset_colors { x + 2 } else { x };
                         let color_str =
                             if data.colors[color].has_color() && (!no_data || data.colors[color].values[3] != 0) {
                                 format!("{}: {}", MenuText::get_command(1140 + color as i32), data.colors[color])
@@ -200,9 +200,11 @@ impl EquipmentBoxMode {
                                     preview.original_color[4 * color + 1],
                                     preview.original_color[4 * color + 2],
                                 )
-                            } else { format!("{}: --/--/--", MenuText::get_command(1140 + color as i32)) }.into();
+                            }
+                            else { format!("{}: --/--/--", MenuText::get_command(1140 + color as i32)) }.into();
 
-                        set_content_data_slot(equipment, 2 + x, CustomMenuIcon::Star.get_icon(), Some(color_str));
+                        set_content_data_slot(equipment, slot, CustomMenuIcon::Color.get_icon(), Some(color_str));
+                        set_content_icon_color(equipment, slot, color as i32);
                     }
                 }
                 EquipmentBoxPage::Scaling(set) => {
@@ -264,7 +266,6 @@ impl EquipmentBoxMode {
                 }
                 _ => {}
             }
-
         }
     }
     pub fn update(self) {
@@ -291,10 +292,44 @@ pub fn set_content_data_slot(equipment: &mut AccessoryEquipmentInfo, slot: usize
     }
 }
 pub fn set_icon_text_to_content(content: &mut AccessoryMenuItemContent, icon: Option<&'static mut Sprite>, name: Option<&'static Il2CppString>) {
-    if let Some(icon) = icon { content.kind_icon_image.set_sprite2(icon); }
+    if let Some(icon) = icon {
+        content.kind_icon_image.set_color2(1.0, 1.0, 1.0, 1.0);
+        content.kind_icon.set_active(true);
+        content.kind_icon_image.set_sprite2(icon);
+    }
+    else { content.kind_icon.set_active(false); }
     if let Some(name) = name.as_ref() { content.name_text.set_text(name, true); }
 }
+pub fn set_content_icon_color(equipment: &mut AccessoryEquipmentInfo, slot: usize, kind: i32) {
+    if let Some(con) = equipment.menu_list[slot].menu_item_content.as_mut() {
+        con.kind_icon.set_active(true);
+        set_icon_to_color(con, kind);
+    }
+}
+pub fn set_icon_to_color(content: &mut AccessoryMenuItemContent, kind: i32) {
+    let preview = UnitAssetMenuData::get_preview();
+    if preview.preview_data.colors[kind as usize].has_color() {
+        content.kind_icon.set_active2(true);
+        content.kind_icon_image.set_no_sprite();
+        let preview = UnitAssetMenuData::get_preview().preview_data.colors[kind as usize].get_f32();
+        content.kind_icon_image.set_color2(preview[0], preview[1], preview[2], 1.0);
+    }
+    else {
+        let i = 4*kind as usize;
+        if preview.original_color[i] > 0 || preview.original_color[i+1] > 0 || preview.original_color[i+2] > 0 {
+            content.kind_icon_image.set_no_sprite();
+            content.kind_icon.set_active2(true);
+            content.kind_icon_image.set_color2(
+                preview.original_color[i] as f32 / 255.0 ,
+                preview.original_color[i+1] as f32 / 255.0 ,
+                preview.original_color[i+2] as f32 / 255.0 ,
+                1.0
+            );
+        }
+        else { content.kind_icon.set_active2(false); }
+    }
 
+}
 pub fn set_detail_box(name: Option<&Il2CppString>, help: Option<&Il2CppString>, body: Option<&Il2CppString>, sprite: Option<&'static mut Sprite>) {
     if UnitAssetMenuData::is_photo_graph()  { return; }
     if let Some(detail_box) = GameObject::find("WdwAccHelp").and_then(|go| go.get_component_by_type::<AccessoryDetailInfoWindow>()) {

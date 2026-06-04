@@ -38,8 +38,11 @@ pub enum ReloadType {
     Head,
     Scale,
     Facial(bool),
+    FacialPreview(usize),
     NoUpdate,
     Mount,
+    HairAcc,
+    HeadAcc,
 }
 pub struct CustomHubAccessoryRoom;
 impl CustomHubAccessoryRoom {
@@ -221,6 +224,7 @@ impl MyCharacterBuilderObject {
     pub fn build_non_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: OptionalMethod) {
         this.builder.attach_head_hair_and_weapons();
         this.builder.attach_dress();
+        if let Some(go) = this.builder.get_game_object() { this.builder.appearance.modify_colors(go); }
         Self::set_unit_info_layer(this.builder);
     }
     pub fn replace_dress(builder: &'static mut CharacterBuilder, asset: &Il2CppString){
@@ -347,7 +351,6 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
         room.load_character(appearance, pid);
     }
     else if let Some((unit, info)) = UnitAssetMenuData::get_unit().zip(UnitInfo::get_instance()) {
-        // print_asset_table_result(result, 2);
         let char_model_window = &mut info.windows[0].unit_info_window_chara_model;
         let is_mount = reload_type == ReloadType::Mount;
         char_model_window.padding = if is_mount { 1 } else { 0 };
@@ -361,6 +364,7 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
         action.method_ptr = create_char_model as _;
         create_unit_action_object.call_back.as_ref().map(|c| c.call_on_setup_done(action));
     }
+
 }
 pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
     let character =
@@ -386,6 +390,7 @@ pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type
                 }
             }
             ReloadType::Head => {
+                UnitAssetMenuData::get_preview().update = 2;
                 let result = result.or_else(|| Some(UnitAssetMenuData::get_result())).unwrap();
                 if builder.appearance.assets[2].name.is_some_and(|v| v.to_string() != result.head_model.to_string()) {
                     MyCharacterBuilderObject::replace_head(builder, result.head_model);
@@ -407,13 +412,22 @@ pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type
                 let len = 13;
                 let v = UnitAssetMenuData::get().facial;
                 let new_v = if increase { v + 1 + len} else { v + len - 1 } % len;
-                char.play_facial(FACIAL_STATES[new_v].into());
+                char.play_facial(FACIAL_STATES[new_v].0.into());
                 UnitAssetMenuData::get().facial = new_v;
+                EquipmentBoxMode::CurrentProfile.update();
             }
+            ReloadType::HairAcc => {
+                if let Some(go) = builder.get_game_object(){ hair_acc(go, UnitAssetMenuData::get_flag() & 16 != 0); }
+            }
+            ReloadType::HeadAcc => {
+                if let Some(go) = builder.get_game_object(){ hair_acc(go, UnitAssetMenuData::get_flag() & 64 != 0); }
+            }
+            ReloadType::FacialPreview(index) => { char.play_facial(FACIAL_STATES[index].0.into()); }
             _ => { force_load(result, reload_type); }
         }
     }
     else { force_load(result, reload_type); }
+
 }
 
 pub fn create_char_model(this: &mut UnitInfoWindowCharaModelDisplayClass103, _optional_method: OptionalMethod) {
@@ -424,7 +438,7 @@ pub fn create_char_model(this: &mut UnitInfoWindowCharaModelDisplayClass103, _op
         this.this.updater.is_request_to_offset = true;
         this.this.updater.late_update();
         this.this.updater.try_update_offset(char);
-        char.play_facial(FACIAL_STATES[UnitAssetMenuData::get().facial].into());
+        char.play_facial(FACIAL_STATES[UnitAssetMenuData::get().facial].0.into());
         let menu_data = UnitAssetMenuData::get();
         let trans = char.get_transform();
         trans.set_position(menu_data.control.current_character.pos);
@@ -489,4 +503,27 @@ pub extern "C" fn hub_accessory_init(hub_room: &mut HubAccessoryRoom, _optional_
         hub_room.camera_pos = HubAccessoryRoomCamera::find_object(true);
         RenderManager::push_render_scale2(1.0);
     }
+}
+pub fn hair_acc(go: &GameObject, enable: bool){
+    if let Some(hair_go) = Kaneko::find_in_children(go.get_transform(), "meshHairGP".into())
+        .or_else(|| Kaneko::find_in_children(go.get_transform(), "c_spine1_jnt".into()))
+        .and_then(|m| m.get_game_object())
+    {
+        hair_go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|r| {
+            let name = r.get_name().to_string();
+            if (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc"){
+                r.set_enabled(!enable);
+            }
+        });
+    }
+}
+pub fn head_acc(go: &GameObject, enable: bool){
+    go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|r| {
+        if let Some(go) = r.get_game_object().filter(|g| g.get_transform().get_parent().is_some_and(|t| t.get_name().to_string().contains("Head"))) {
+            let name = go.get_name().to_string();
+            if name.starts_with("Make") || name.starts_with("Acc_") {
+                r.set_enabled(!enable);
+            }
+        }
+    });
 }

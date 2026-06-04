@@ -1,4 +1,4 @@
-use engage::{combat::CharacterAppearance, ut::Ut};
+use engage::{combat::CharacterAppearance, combat::Character};
 use outfit_core::anim::AnimData;
 use transform::has_enemy_tiki;
 use crate::assets::transform::is_dragonstone;
@@ -105,39 +105,23 @@ fn hair_adjustment(result: &mut AssetTableResult) {
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]
 pub fn modify_colors(this: &mut CharacterAppearance, go: &GameObject, _: OptionalMethod) {
+    get_head_hair_colors(go);
     call_original!(this, go, None);
-    let data = UnitAssetMenuData::get();
-    let mut rgb: Option<[u8; 3]> = None;
-    for x in 0..6 {
-        rgb = None;
-        let j = 8 + x;
-        let i = 4*j;
-        if data.is_preview {
-            if data.preview.color_preview[i+3] == 1 {
-                rgb = Some([data.preview.color_preview[i], data.preview.color_preview[i+1], data.preview.color_preview[i+2]]);
-            }
-            else if data.preview.preview_data.colors[j].values[3] != 0 {
-                rgb = Some([data.preview.preview_data.colors[j].values[0], data.preview.preview_data.colors[j].values[1], data.preview.preview_data.colors[j].values[2]]);
-            }
-        }
-        else if let Some(data) = UnitAssetMenuData::get_by_person_data(this.person_hash, false) {
-            if let Some(profile) = data.profile.get(data.profile_index(false) as usize) {
-                if profile.colors[j].values[3] != 0 {
-                    rgb = Some([profile.colors[j].values[0], profile.colors[j].values[1], profile.colors[j].values[2]]);
+    apply_preview_head_hair_color(this, go);
+}
+#[skyline::hook(offset=0x2b011f0)]
+fn combat_character_play_facial(this: &Character, state_hash: i32, transition: f32, optional_method: OptionalMethod) {
+    if !UnitAssetMenuData::get().is_preview {
+        if let Some(person) = UnitAssetMenuData::get_current_profile(this.get_builder().appearance.person_hash) {
+            if let Some(pos) = FACIAL_STATES.iter().enumerate().position(|(i, s)| s.1 == state_hash && i < 4){
+                let exp = person.expression[pos] as usize;
+                if exp > 0 && exp != (pos + 1) {
+                    call_original!(this, FACIAL_STATES[exp -1 ].1, transition, optional_method);
+                    return;
                 }
             }
         }
-        if let Some(rgb) = rgb {
-            let r = rgb[0] as f32 / 255.0;
-            let g = rgb[1] as f32 / 255.0;
-            let b = rgb[2] as f32 / 255.0;
-            if let Some(m) = get_mt_eye(go) { m.set_color(EYE_COLORS[x], Color::new(r, g, b, 1.0)); }
-        }
     }
+    call_original!(this, state_hash, transition, optional_method);
 }
-fn get_mt_eye(go: &GameObject) -> Option<&'static &'static Material2> {
-    go.get_component_in_children::<SkinnedMeshRenderer>(true).iter()
-        .flat_map(|smr| Ut::get_instance_materials2(smr).iter())
-        .find(|v| v.get_name().to_string().starts_with("MtEye"))
-}
-const EYE_COLORS: [&str; 6] = ["_BaseColor", "_BlackColor", "_DecalColor1", "_DecalColor2", "_DecalColor3", "_DecalColor4"];
+

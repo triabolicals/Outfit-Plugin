@@ -62,7 +62,6 @@ impl AssetType {
     pub fn update_model(&self, menu_item: &CustomAssetMenuItem) {
         let mut reload_type = ReloadType::ForcedUpdate;
         let menu_index =  menu_item.menu.menu_kind.to_index();
-        let is_personal = menu_index == 10;
         let is_engaged = menu_index == 16 || menu_index == 17;
         let result = if is_engaged {
             let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
@@ -72,7 +71,7 @@ impl AssetType {
         else { UnitAssetMenuData::get_result() };
 
         let photo = UnitAssetMenuData::is_photo_graph();
-        if photo && !is_personal {
+        if photo {
             let hash = menu_item.hash;
             let preview = UnitAssetMenuData::get_preview();
             match self {
@@ -82,7 +81,7 @@ impl AssetType {
                 }
                 AssetType::Body => {
                     preview.preview_data.ubody = hash;
-                    if !is_personal { reload_type = ReloadType::Dress; }
+                    reload_type = ReloadType::Dress;
                 }
                 AssetType::Hair => { preview.preview_data.uhair = hash; }
                 AssetType::Head => { preview.preview_data.uhead = hash; }
@@ -117,26 +116,26 @@ impl AssetType {
                         UnitAssetMenuData::get_preview().update_dress_gender = false;
                         reload_type = ReloadType::ForcedUpdate;
                     }
-                    else if !is_personal && !is_engaged { reload_type = ReloadType::Dress; }
+                    else if !is_engaged { reload_type = ReloadType::Dress; }
                 }
             }
             AssetType::Rig => {
                 if let Some(asset) = asset {
                     result.body_model = asset.as_str().into();
-                    if !is_personal { reload_type = ReloadType::Body; }
+                    reload_type = ReloadType::Body;
                 }
             }
             AssetType::Head => {
                 if let Some(asset) = asset {
                     result.head_model = asset.as_str().into();
-                    if !is_personal { reload_type = ReloadType::Head; }
+                    reload_type = ReloadType::Head;
                 }
             }
             AssetType::Hair => {
                 if let Some(asset) = asset {
                     crate::apply_hair(asset, result);
                     result.replace(2);
-                    if !is_personal { reload_type = ReloadType::Hair; }
+                    reload_type = ReloadType::Hair;
                 }
             }
             AssetType::Acc(kind) => {
@@ -147,7 +146,7 @@ impl AssetType {
                         result.commit_accessory(new_asset_table_accessory(asset.as_str(), acc_locator));
                         result.replace(2);
                         EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1));
-                        if !is_personal { reload_type = ReloadType::Accessories(*kind as usize); }
+                        reload_type = ReloadType::Accessories(*kind as usize);
                     }
                 }
             }
@@ -212,15 +211,16 @@ impl AssetType {
             }
             AssetType::Voice => { return; }
             AssetType::ColorPreset(kind) => {
+                let k = *kind % 16;
                 let selected_color: [u8; 3] = [
                     (menu_item.hash & 255) as u8,
                     ((menu_item.hash >> 8) & 255) as u8,
                     ((menu_item.hash >> 16) & 255) as u8
                 ];
                 let menu_data = UnitAssetMenuData::get_preview();
-                if *kind < 8 {
+                if k < 8 {
                     let mut current_color = [0; 3];
-                    let color_kind = *kind as usize;
+                    let color_kind = k as usize;
                     for x in 0..3 { current_color[x] = menu_data.original_color[4*color_kind+x]; }
                     result.unity_colors[color_kind].r = selected_color[0] as f32 / 255.0;
                     result.unity_colors[color_kind].g = selected_color[1] as f32 / 255.0;
@@ -311,13 +311,15 @@ impl CustomMenuItem for AssetType {
                     if UnitAssetMenuData::get().god_mode {
                         let idx = menu_item.menu.menu_kind.to_index();
                         if idx == 16 { format!("Male Engaged Outfit\nCombat: {} / Map: {}", mode2, mode1) }
-                        else if idx == 16 { format!("Female Engaged Outfit\nCombat: {} / Map: {}", mode2, mode1) }
-                        else { format!("Combat: {}\nMap: {}", mode2, mode1) }.into()
+                        else if idx == 17 { format!("Female Engaged Outfit\nCombat: {} / Map: {}", mode2, mode1) }
+                        else { format!("Combat/Map: {} / Map: {}\n{}", mode2, mode1, MenuTextCommand::LeftRight.insert_right("Change Page")) }.into()
                     }
                     else {
-                        format!("Combat: {} / Map: {}\n{}Set for break [Experimental: {}].",
-                            mode2, mode1, Mess::create_sprite_tag_str(2, "X"),
-                            MenuTextCommand::on_off( UnitAssetMenuData::get_flag() & 32 != 0 ) ).into()
+                        let mut help = format!("Combat/Map {} / {}\n{} ", mode2, mode1, MenuTextCommand::LeftRight.insert_right("Change Page"));
+                        if UnitAssetMenuData::get_flag() & 32 != 0 {
+                            help.push_str(MenuTextCommand::X.insert_right("Set for Break").to_string().as_str());
+                        }
+                        help.into()
                     }
                 }
                 Self::Rig => format!("Combat Rig: {}", mode2).into(),
@@ -352,25 +354,21 @@ impl CustomMenuItem for AssetType {
         }
     }
     fn get_body(&self, menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
-        let personal = menu_item.menu.menu_kind == Personal;
         let idx = self.to_index() + 50;
         match self {
             AssetType::ColorPreset(kind) => { format!("{} (Preset)", MenuText::get_command(1140+*kind as i32)).into() }
             AssetType::AOC(kind) => {
                 let db = get_outfit_data();
                 let mut body = format!("{} ({})", MenuText::get_command(idx), if db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(Gender::Male) { "Male" } else { "Female" });
-                if !personal {
-                    body.push_str(&format!(" [{}/4]", *kind +1).as_str());
-                    left_right_enclose(&body)
-                }
-                else { body.into() }
+                body.push_str(&format!(" [{}/5]", *kind +1).as_str());
+                left_right_enclose(&body)
             },
-            AssetType::Acc(kind) => make_body_asset_body_label(MenuText::get_command(idx), if personal { 0 } else { 5 }, *kind as i32),
+            AssetType::Acc(kind) => make_body_asset_body_label(MenuText::get_command(idx), 5, *kind as i32),
             AssetType::Mount(kind) => {
                 if GameUserData::get_sequence() == 3 { MenuText::get_command(idx) }
-                else { make_body_asset_body_label(MenuText::get_command(idx), if personal { 0 } else { 5 }, *kind as i32) }
+                else { make_body_asset_body_label(MenuText::get_command(idx), 5, *kind as i32) }
             },
-            AssetType::Head => Head.get_name(menu_item),
+            AssetType::Head => make_body_asset_body_label(Head.get_name(menu_item), 2, 0),
             AssetType::Hair => Hair.get_name(menu_item),
             AssetType::Rig => "Model Rig".into(),
             _ => { MenuTextCommand::Personal.get() }
@@ -389,8 +387,14 @@ impl CustomMenuItem for AssetType {
                 else if idx == 17 { preview.preview_data.mount[1] = hash; }
                 else { preview.preview_data.ubody = hash; }
             }
-            AssetType::Hair => { preview.preview_data.uhair = hash; }
-            AssetType::Head => { preview.preview_data.uhead = hash; }
+            AssetType::Hair => {
+                preview.update = 1;
+                preview.preview_data.uhair = hash;
+            }
+            AssetType::Head => {
+                preview.update = 2;
+                preview.preview_data.uhead = hash;
+            }
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
             AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
             AssetType::AOC(kind) => {
@@ -437,6 +441,6 @@ impl CustomMenuItem for AssetType {
         BasicMenuResult::se_decide()
     }
 }
-fn make_body_asset_body_label(label: &'static Il2CppString, page_count: i32, page: i32) -> &'static Il2CppString {
+pub fn make_body_asset_body_label(label: &'static Il2CppString, page_count: i32, page: i32) -> &'static Il2CppString {
     if page_count == 0 { label } else { left_right_enclose(&format!("{} [{}/{}]", label, page+1, page_count)) }
 }

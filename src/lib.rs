@@ -48,6 +48,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                     assets::asset_table_result_god_setup_outfit,
                                     assets::transform::transformation_chain_atk,
                                     assets::create_break_effect_hook,
+                                    assets::dress::combat_character_play_facial,
                                 );
                             } else { outfit_core::reset_faces(true); }
                         }

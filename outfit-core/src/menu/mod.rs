@@ -84,8 +84,6 @@ pub fn change_selected_profile() -> bool {
 #[skyline::hook(offset= 0x2b0ed80)]
 pub fn appearance_create_from_result(this: &mut AssetTableResult, map_distance: i32, optional_method: OptionalMethod) -> &'static mut CharacterAppearance {
 	let appearance: &'static mut CharacterAppearance = call_original!(this, map_distance, optional_method);
-	if let Some(pid) = this.pid.and_then(|pid| PersonData::get(pid) ) {
-		appearance.person_hash = pid.parent.hash;
-	}
+	if let Some(pid) = this.pid.and_then(|pid| PersonData::get(pid) ) { appearance.person_hash = pid.parent.hash; }
 	appearance
 }

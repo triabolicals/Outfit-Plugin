@@ -165,12 +165,27 @@ impl MenuText {
                 str.into()
             })
     }
+    pub fn get_help_with_arg<T: Display>(id: i32, arg: T) -> Option<&'static Il2CppString> {
+        let texts = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok()?;
+        texts.help.get(&id)
+            .map(|s| {
+                let mut str = s.replace("\\n", "\n");
+                KEY.iter().for_each(|&k| {
+                    if str.contains(format!("$({})", k).as_str()) {
+                        str = str.replace(format!("$({})", k).as_str(), Mess::create_sprite_tag_str(2, k).to_string().as_str());
+                    }
+                });
+                if str.contains("$$") { str = str.replace("$$", arg.to_string().as_str()); }
+                str.into()
+            })
+    }
     pub fn init() -> Self {
         let help = Self::parse_to_map(Self::get_help_text());
         let command = Self::parse_to_map(Self::get_command_text());
         Self { help, command }
     }
     pub fn get_command(id: i32) -> &'static Il2CppString {
+        let id = if id >= 1140 { 1140 + ((id - 1140) % 16) } else { id };
         if let Some(texts) = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok(){
             let alt = (id / 10) * 10;
             if let Some(c) = texts.command.get(&id){

@@ -6,11 +6,14 @@ use crate::{
     CustomAssetMenu, LoadResult, MenuTextCommand, ReloadPreview,
     UnitAssetMenuData, THUMB_DIR, localize::MenuText
 };
+use crate::room::{hub_room_set_by_result, ReloadType};
 use super::*;
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
 pub enum AssetFlag {
+    DisableHairAcc,
     EngageOutfit,
+    DisableHeadAcc,
     EnableBattleAccessories,
     EnableCrossDressing,
     RandomAppearance,
@@ -21,7 +24,9 @@ pub enum AssetFlag {
 impl AssetFlag {
     pub fn get_rel_index(&self) -> i32 {
         match self {
+            AssetFlag::DisableHairAcc => 0,
             AssetFlag::EngageOutfit => 1,
+            AssetFlag::DisableHeadAcc => 2,
             AssetFlag::EnableBattleAccessories => 3,
             AssetFlag::EnableCrossDressing => 4,
             AssetFlag::RandomAppearance => 5,
@@ -34,7 +39,9 @@ impl AssetFlag {
         if idx < 8 {
             Some(
                 match idx {
+                    0 => AssetFlag::DisableHairAcc,
                     1 => AssetFlag::EngageOutfit,
+                    2 => AssetFlag::DisableHeadAcc,
                     3 => AssetFlag::EnableBattleAccessories,
                     4 => AssetFlag::EnableCrossDressing,
                     5 => AssetFlag::RandomAppearance,
@@ -55,6 +62,8 @@ impl AssetFlag {
             Self::EnableCrossDressing => { mode & 128 != 0 }
             Self::EngagedAnimation => { mode & 256 != 0 }
             Self::UseFaceThumbnail => { UnitAssetMenuData::get_person_flag() & 8 != 0 }
+            Self::DisableHeadAcc => { mode & 64 != 0 }
+            Self::DisableHairAcc => { mode & 16 != 0 }
             _ => { false }
         }
     }
@@ -65,6 +74,8 @@ impl CustomMenuItem for AssetFlag {
             Self::EngageOutfit|Self::EngagedAnimation => { CustomMenuIcon::EngageCommon }
             Self::RandomAppearance => { CustomMenuIcon::Rare }
             Self::EnableCrossDressing => { CustomMenuIcon::Body }
+            Self::DisableHairAcc => { CustomMenuIcon::Hair }
+            Self::DisableHeadAcc => { CustomMenuIcon::Head }
             Self::EnableBattleAccessories => { CustomMenuIcon::Gift }
             Self::ViewMode => { if UnitAssetMenuData::get().is_shop_combat { CustomMenuIcon::Weapon } else { CustomMenuIcon::Day } }
             Self::UseFaceThumbnail => { CustomMenuIcon::SilverCard }
@@ -75,6 +86,7 @@ impl CustomMenuItem for AssetFlag {
         let mode = UnitAssetMenuData::get_flag();
         let rel = self.get_rel_index() + 20;
         match self {
+            Self::DisableHairAcc => { "Disable Elements".into() }
             Self::EngageOutfit => {
                 if mode  & 6 == 2 { format!("{}: {}", MenuTextCommand::Engage.get(), MenuTextCommand::on_off(false)) }
                 else if mode  & 6 == 4 { format!("{}: {}", MenuTextCommand::Engage.get(), MenuTextCommand::Emblem.get()) }
@@ -101,6 +113,7 @@ impl CustomMenuItem for AssetFlag {
         let rel = self.get_rel_index() + 20;
         let is_engaged = UnitAssetMenuData::get_current_asset_data().map(|v|{ v.set_profile[1] == UnitAssetMenuData::get_preview().selected_profile }).unwrap_or(false);
         match self {
+            Self::DisableHairAcc => { Some("Disable extra hair elements from the hair model.\nThis feature is experimental and may disable other elements.".into()) }
             Self::EnableBattleAccessories => { Some("Enable some untested features.\nTurn this off if you have issues.".into()) }
             Self::EngageOutfit => {
                 let mode = UnitAssetMenuData::get_flag();
@@ -154,6 +167,20 @@ impl CustomMenuItem for AssetFlag {
             Self::EngagedAnimation => {
                 change_unit = false;
                 UnitAssetMenuData::toggle_profile_flag(256);
+            }
+            Self::DisableHeadAcc => {
+                UnitAssetMenuData::toggle_profile_flag(64);
+                menu_item.decided = self.is_decided();
+                menu_item.rebuild_text();
+                hub_room_set_by_result(None, ReloadType::HeadAcc);
+                return BasicMenuResult::se_cursor();
+            }
+            Self::DisableHairAcc => {
+                UnitAssetMenuData::toggle_profile_flag(16);
+                menu_item.decided = self.is_decided();
+                menu_item.rebuild_text();
+                hub_room_set_by_result(None, ReloadType::HairAcc);
+                return BasicMenuResult::se_cursor();
             }
             Self::UseFaceThumbnail => {
                 return
@@ -221,6 +248,7 @@ impl CustomMenuItem for AssetFlag {
                     menu_item.decided = UnitAssetMenuData::get_person_flag() & 8 != 0;
                     menu_item.rebuild_text();
                 }
+                Self::DisableHeadAcc|Self::DisableHairAcc => { return BasicMenuResult::new() }
                 _ => { return self.a_call(menu_item); }
             }
             menu_item.rebuild_text();

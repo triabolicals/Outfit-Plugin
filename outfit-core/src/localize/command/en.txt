@@ -1,7 +1,7 @@
 1 Profile
 7 Current Data
 20 Custom Colors
-22 Custom Scaling
+22 Disable Head Elements
 23 Break Outfit
 24 Cross Gender
 25 Random Appearance
@@ -66,3 +66,4 @@
 1151 Eye Decal 2
 1152 Eye Decal 3
 1153 Eye Decal 4
+1154 Hair 2

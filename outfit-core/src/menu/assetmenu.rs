@@ -107,10 +107,9 @@ impl CustomAssetMenu {
                 let list = List::<CustomAssetMenuItem>::with_capacity(0).unwrap();
                 let menu = CUSTOM_ASSET_MENU.get_or_init(|| Self::create_class()).instantiate_as::<CustomAssetMenu>().unwrap();
                 menu.base_ctor(list, content, None, None, None, None, None);
-                let count = 50;
                 let klass = Il2CppClass::from_name("App", "BasicMenuSelect").unwrap();
-                menu.selects = Il2CppArray::new_from_element_class(klass, count).unwrap();
-                for i in 0..count {
+                menu.selects = Il2CppArray::new_from_element_class(klass, CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
+                for i in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT {
                     menu.selects[i] = BasicMenuSelect::instantiate().unwrap();
                     menu.selects[i].index = 0;
                     menu.selects[i].scroll = 0;
@@ -144,10 +143,9 @@ impl CustomAssetMenu {
                 let list = List::<CustomAssetMenuItem>::with_capacity(0).unwrap();
                 let menu = CUSTOM_ASSET_MENU.get_or_init(|| Self::create_class()).instantiate_as::<CustomAssetMenu>().unwrap();
                 menu.base_ctor(list, content, Some(unit), None, None, None, None);
-                let count = 50;
                 let klass = Il2CppClass::from_name("App", "BasicMenuSelect").expect("Unable to find BasicMenuSelect Class");
-                menu.selects = Il2CppArray::new_from_element_class(klass, count).expect("Failed to create BasicMenuSelect[]");
-                for i in 0..count {
+                menu.selects = Il2CppArray::new_from_element_class(klass, CustomAssetMenuKind::SAVE_SELECT_COUNT).expect("Failed to create BasicMenuSelect[]");
+                for i in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT {
                     menu.selects[i] = BasicMenuSelect::instantiate().unwrap();
                     menu.selects[i].index = 0;
                     menu.selects[i].scroll = 0;
@@ -209,18 +207,12 @@ impl CustomAssetMenu {
     }
     pub fn init1(this: &mut AccessoryShopChangeMenu, first: bool) {
         let custom_menu = unsafe { std::mem::transmute::<&mut AccessoryShopChangeMenu, &mut CustomAssetMenu>(this) };
-        let count = 50;
-        if first || custom_menu.selects.len() < 50 {
+        if first || custom_menu.selects.len() < CustomAssetMenuKind::SAVE_SELECT_COUNT {
             custom_menu.klass = *CUSTOM_ASSET_MENU.get_or_init(|| Self::create_class());
-            custom_menu.selects = Il2CppArray::new_from_element_class(BasicMenuSelect::class(), count).unwrap();
-            for i in 0..count {
-                custom_menu.selects[i] = BasicMenuSelect::instantiate().unwrap();
-                custom_menu.selects[i].index = 0;
-                custom_menu.selects[i].scroll = 0;
-            }
+            custom_menu.selects = Il2CppArray::new_from_element_class(BasicMenuSelect::class(), CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
         }
         else { custom_menu.save_current_select(); }
-        for x in 1..count {
+        for x in 1..CustomAssetMenuKind::SAVE_SELECT_COUNT {
             custom_menu.selects[x] = BasicMenuSelect::instantiate().unwrap();
             custom_menu.selects[x].index = 0;
             custom_menu.selects[x].scroll = 0;
@@ -347,6 +339,7 @@ impl CustomAssetMenu {
         self.after_build();
         self.restore_select(select);
         if self.menu_kind == MainShop { self.kind = 0; } else { self.kind = 1; }
+        if self.menu_kind == HeadEdit || self.menu_kind == HairEdit { hub_room_set_by_result(None, ReloadType::ForcedUpdate); }
         self.menu_kind.key_help_update(false);
     }
     pub fn b_call(this: &mut CustomAssetMenu, _method_info: OptionalMethod) -> BasicMenuResult {
@@ -363,9 +356,7 @@ impl CustomAssetMenu {
         else {
             UnitAssetMenuData::commit();
             if !UnitAssetMenuData::is_unit_info() {
-                if let Some(request_close) = this.request_close.as_ref() {
-                    request_close.invoke();
-                }
+                if let Some(request_close) = this.request_close.as_ref() { request_close.invoke(); }
             }
             BasicMenuResult::new().with_close_this(true).with_se_cancel(true)
         }

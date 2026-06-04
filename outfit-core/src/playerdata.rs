@@ -100,7 +100,8 @@ pub struct PlayerOutfitData {
     pub uhair: i32,
     pub aoc: [i32; 4],  //  Info, Talk, Demo, Hub  Male
     pub colors: [AssetColor; 16],
-    pub scale: [u16; 18],
+    pub scale: [u16; 16],
+    pub expression: [u8; 4],
     pub break_body: i32,
     pub acc: [i32; 5],
     pub mount: [i32; 5],
@@ -111,7 +112,9 @@ pub struct PlayerOutfitData {
 impl PlayerOutfitData {
     pub const fn new() -> Self {
         Self {
-            flag: 0, uhair: 0, uhead: 0, aoc: [0; 4], scale: [0; 18], acc: [0; 5], voice: 0, mount: [0; 5],
+            flag: 0, uhair: 0, uhead: 0, aoc: [0; 4], scale: [0; 16],
+            expression: [0; 4],
+            acc: [0; 5], voice: 0, mount: [0; 5],
             break_body: 0,
             ubody: 0, colors: [AssetColor::new(); 16], rig: 0, aoc_alt: [0; 4],
         }
@@ -138,7 +141,8 @@ impl PlayerOutfitData {
     }
     pub fn new_with_flag(flag: i32) -> Self {
         Self {
-            flag, ubody: 0, uhead: 0, aoc: [0; 4], scale: [0; 18],
+            flag, ubody: 0, uhead: 0, aoc: [0; 4], scale: [0; 16],
+            expression: [0; 4],
             break_body: 0,
             uhair: 0,
             mount: [0; 5],
@@ -196,12 +200,19 @@ impl PlayerOutfitData {
         let mut mount = [0; 5];
         for x in 0..8 { colors[x] = AssetColor::from_stream(stream); }
         if version >= 9 { for x in 0..8 { colors[x+8] = AssetColor::from_stream(stream); } }
-        let mut scale: [u16; 18] = [0; 18];
-        for x in 0..18 {
+        let mut scale = [0u16; 16];
+        for x in 0..16 {
             let mut v = stream.read_u16().unwrap_or(0);
-            if v > 1000 { v = 0;}
+            if version < 10 { if v > 1000 { v = 0; } }
+            else {
+                let on = v & 1024;
+                v &= 1023;
+                if v > 1000 { v = 0; } else { v |= on; }
+            }
             scale[x] = v;
         }
+        let mut expression = [0u8; 4];
+        for x in 0..4 { expression[x] = stream.read_u8().unwrap_or(0); }
         let break_body = stream.read_int().unwrap_or(0);
         let mut acc: [i32; 5] = [0; 5];
         for x in 0..5 { acc[x] = stream.read_int().unwrap_or(0); }
@@ -232,13 +243,12 @@ impl PlayerOutfitData {
                 }
             }
             if flag & 64 != 0 {
-                for x in 0..16 {
-                    if scale[x] > 0 { scale[x] |= 1024; }
-                }
+                for x in 0..16 { if scale[x] > 0 { scale[x] |= 1024; } }
+                flag &= !64;
             }
             flag &= !513;
         }
-        Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt }
+        Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt, expression }
     }
     pub fn serialize(&self, stream: &mut Stream) -> usize {
         let mut bytes = 0;
@@ -250,6 +260,7 @@ impl PlayerOutfitData {
         self.aoc.iter().for_each(|a|{bytes += stream.write_int(*a).unwrap(); });
         self.colors.iter().for_each(|c|{ bytes += c.serialize(stream); });
         self.scale.iter().for_each(|s|{ bytes += stream.write_u16(*s).unwrap(); });
+        self.expression.iter().for_each(|c|{ bytes += stream.write_u8(*c).unwrap(); });
         stream.write_int(self.break_body).unwrap_or(0);
         self.acc.iter().for_each(|a| { bytes += stream.write_int(*a).unwrap(); });
         self.mount.iter().for_each(|m|{ bytes += stream.write_int(*m).unwrap(); });
@@ -289,7 +300,7 @@ impl PlayerOutfitData {
                     else if allow_cross_dress { result.dress_model = body.into(); }
                 }
                 for x in 0..5 {
-                    if let Some(head) = db.try_get_asset(AssetType::Acc(x as u8), self.acc[x]) {
+                    if let Some(head) = db.try_get_asset(Acc(x as u8), self.acc[x]) {
                         if head.contains("Msc0AT") { result.left_hand = head.into(); } else {
                             let accessory = new_asset_table_accessory(head.to_string().as_str(), ACC_LOC[x]);
                             result.commit_accessory(&accessory);
