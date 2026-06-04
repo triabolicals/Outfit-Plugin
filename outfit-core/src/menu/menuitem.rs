@@ -185,7 +185,7 @@ impl CustomAssetMenuItem {
 		match this.menu_kind {
 			UnitInventorySubMenuItem => { return; }
 			RGBA(kind) => {
-				let k = kind as usize;
+				let k = (kind % 16) as usize;
 				let preview = UnitAssetMenuData::get_preview();
 				rgb = Some((preview.color_preview[4 * k], preview.color_preview[4 * k + 1], preview.color_preview[4 * k + 2]));
 			}
@@ -193,7 +193,7 @@ impl CustomAssetMenuItem {
 				rgb = Some(((this.hash & 255) as u8, (this.hash >> 8) as u8 & 255, (this.hash >> 16) as u8 & 255));
 			}
 			ResetColor(kind) => {
-				let k = kind as usize;
+				let k = (kind % 16) as usize;
 				let preview = UnitAssetMenuData::get_preview();
 				rgb = Some((preview.original_color[4 * k], preview.original_color[4 * k + 1], preview.original_color[4 * k + 2]));
 			}
@@ -253,16 +253,14 @@ impl CustomAssetMenuItem {
 				let mut rgb: Option<(u8, u8, u8)> = None;
 				let preview = UnitAssetMenuData::get_preview();
 				content.kind_icon_image.set_no_sprite();
-				if idx >= 1140 && idx < 1156 {
-					let kind = idx - 1140;
+				if idx >= 1140 {
+					let kind = (idx - 1140) % 16;
 					if preview.preview_data.colors[kind as usize].has_color() { idx = 100 + kind; }
 					else { idx = 30 + kind; }
 				}
 				if idx >= 30 && idx < 46 {	// Default Color
 					let k = (idx - 30) as usize;
-					rgb =
-						if k < 8 { Some((preview.original_color[4 * k] , preview.original_color[4 * k + 1], preview.original_color[4 * k + 2])) }
-						else { None };
+					rgb = Some((preview.original_color[4 * k] , preview.original_color[4 * k + 1], preview.original_color[4 * k + 2]));
 				}
 				else if idx >= 100 && idx < 116 {	// Preview Color / Set Color
 					let k = (idx - 100) as usize;

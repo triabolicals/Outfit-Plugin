@@ -1,6 +1,5 @@
 use engage::{
-    gamedata::{Gamedata, GodData, PersonData},
-    unit::{Gender},
+    unit::Gender,
     menu::BasicMenuItemAttribute, mess::Mess,
     sequence::photograph::*, titlebar::KeyHelpButton
 };
@@ -10,7 +9,9 @@ use crate::{
     AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
     data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result},
     menu::icons::CustomMenuIcon,
-    localize::{MenuText, MenuTextCommand}, room::ReloadType, left_right_enclose};
+    localize::{MenuText, MenuTextCommand},
+    room::ReloadType, left_right_enclose
+};
 use super::*;
 
 #[repr(C)]
@@ -33,14 +34,16 @@ pub enum CustomAssetMenuKind {
     ColorPresets(u8, u8),
     PresetAppearanceMenu(bool),
     Rig,
-    Personal,
     LoadData,
     PauseList,
     ItemList,
     FaceSelection,
     EngagedBody(bool),
+    HeadEdit,
+    HairEdit,
 }
 impl CustomAssetMenuKind {
+    pub const SAVE_SELECT_COUNT: usize = 65;
     pub fn can_facial(&self) -> bool {
         match self {
             ScaleMenu | ProfileSelection|ProfileSettings => { false }
@@ -58,20 +61,24 @@ impl CustomAssetMenuKind {
             ColorKindSelection => 6,
             ScaleMenu => 7,
             Rig => 9,
-            Personal => 10,
+            HeadEdit => 10,
             LoadData => 11,
             PresetAppearanceMenu(_) => 12,
             PauseList => 13,
             ItemList => 14,
             FaceSelection => 15,
             EngagedBody(female) => 16 + *female as i32,
-            ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 104 } else { 100 }, *kind, 4) },    //1020
+            HairEdit => 18,
+            ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 105 } else { 100 }, *kind, 5) },    //1020
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
             ShopAoc(kind) => clamp_menu_index_value(130, *kind, 4),
-            ColorSelection(kind) => clamp_menu_index_value(140, *kind, 16),
+            ColorSelection(kind) => {
+                let k = *kind % 16;
+                clamp_menu_index_value(140, k, 16)
+            },
             ClassBodySelection((class, alt)) => { clamp_menu_index_value(if *alt { 210 } else { 170 }, *class, 40) },
-            ColorPresets(page, kind) => clamp_menu_index_value(300, *page*10 + *kind, 100),
+            ColorPresets(page, kind) => clamp_menu_index_value(300, *page*11 + *kind, 110),
         }
     }
     pub fn from_index(value: i32) -> Self {
@@ -85,13 +92,14 @@ impl CustomAssetMenuKind {
             6 => ColorKindSelection,
             7 => ScaleMenu,
             9 => Rig,
-            10 => Personal,
+            10 => HeadEdit,
             11 => LoadData,
             13 => PauseList,
             14 => ItemList,
             15 => FaceSelection,
             16|17 => EngagedBody(value == 17),
-            100..108 => ShopBody(((value as u8 - 100) % 4, value >= 104)),
+            18 => HeadEdit,
+            100..110 => ShopBody(((value as u8 - 100) % 5, value >= 105)),
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
             130..135 => ShopAoc(value as u8 - 130),
@@ -112,7 +120,8 @@ impl CustomAssetMenuKind {
             match idx {
                 170|210 => 1027,
                 140..148 => { 1000 + idx }
-                148..156 => { 1148 }
+                148..154 => { 1148 }
+                154 => { 1149 }
                 171..210|211..250 => 1028,
                 300..400 => {
                     let p = (idx - 300) / 10;
@@ -138,7 +147,12 @@ impl CustomAssetMenuKind {
                 Some(ShopBody((1, *alt)))
             }
             ProfileSelection|ScaleMenu|ColorKindSelection|Head|Hair|VoiceSelection => { Some(MainShop) }
-            ColorSelection(_) => { Some(ColorKindSelection) }
+            ColorSelection(kind) => {
+                let k = *kind % 16;
+                if k == 14 || *kind >= 16 { Some(HairEdit) }
+                else if k < 8 { Some(ColorKindSelection) }
+                else { Some(HeadEdit) }
+            }
             ColorPresets(_, kind) => { Some(ColorSelection(*kind)) }
             LoadData|FaceSelection => Some(ProfileSettings),
             MainShop => None,
@@ -171,21 +185,25 @@ impl CustomAssetMenuKind {
                         UnitAssetMenuData::get_preview().update_dress_gender = true;
                         Some(ShopBody((0, !alt)))
                     }
-                    else { Some(ShopBody(((*kind + 4 + 1) % 4, alt))) }
+                    else { Some(ShopBody(((*kind + 5 + 1) % 5, alt))) }
                 }
-                else { Some(ShopBody(((*kind + 4 + 1) % 4, false))) }
+                else { Some(ShopBody(((*kind + 5 + 1) % 5, false))) }
             }
             ShopMount(kind) => { Some(ShopMount((*kind + 5 + 1) % 5)) }
             ShopAoc(kind) => { Some(ShopAoc((*kind + 4 + 1) % 4)) }
             ShopAcc(kind) => { Some(ShopAcc((*kind + 5 + 1) % 5)) }
             ColorPresets(page, kind) => {
-                let new_page = if *page < 8 { *page + 1 } else { 0 };
+                let new_page = if *page < 9 { *page + 1 } else { 0 };
                 Some(ColorPresets(new_page, *kind))
             }
             PresetAppearanceMenu(alt) => {
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 { Some(PresetAppearanceMenu(!(*alt))) }
                 else { None }
             }
+            Head => { Some(HeadEdit) }
+            HeadEdit => { Some(Head) }
+            Hair => { Some(HairEdit) }
+            HairEdit => { Some(Hair) }
             _ => { None }
         }
     }
@@ -208,17 +226,21 @@ impl CustomAssetMenuKind {
                         UnitAssetMenuData::get_preview().update_dress_gender = true;
                         Some(ShopBody((3, !alt)))
                     }
-                    else { Some(ShopBody(((*kind + 4 - 1) % 4, alt))) }
+                    else { Some(ShopBody(((*kind + 5 - 1) % 5, alt))) }
                 }
-                else { Some(ShopBody(((*kind + 4 - 1) % 4, alt))) }
+                else { Some(ShopBody(((*kind + 5 - 1) % 5, alt))) }
             }
             ShopMount(kind) => { Some(ShopMount((*kind + 5 - 1) % 5)) }
             ShopAoc(kind) => { Some(ShopAoc((*kind + 4 - 1) % 4)) }
             ShopAcc(kind) => { Some(ShopAcc((*kind + 5 - 1) % 5)) }
             ColorPresets(page, kind) => {
-                let new_page = if *page > 0 { *page - 1 } else { 8 };
+                let new_page = if *page > 0 { *page - 1 } else { 9 };
                 Some(ColorPresets(new_page, *kind))
             }
+            Head => { Some(HeadEdit) }
+            HeadEdit => { Some(Head) }
+            Hair => { Some(HairEdit) }
+            HairEdit => { Some(Hair) }
             _ => { None }
         }
     }
@@ -231,12 +253,15 @@ impl CustomAssetMenuKind {
             EngagedBody(_) => { Some(MenuTextCommand::Engage.get()) }
             ShopBody((2, _)) => { Some(MenuTextCommand::Engage.get())}
             ShopBody((3, _)) => { Some(Mess::get("MID_ProfileCard_Stamp_Others")) }
-            Head => { Some(Mess::get("MID_Hub_Mascot_Accessories_Head")) }
+            ShopBody((4, _)) => Some("Added/Unsorted".into()),
+            Head|HeadEdit => { Some(Mess::get("MID_Hub_Mascot_Accessories_Head")) }
             ShopAcc(0) => { Some(Mess::get("MID_Hub_Mascot_Accessories_Parts")) }
             VoiceSelection => { Some(MenuTextCommand::Voice.get()) }
-            Personal => { Some(MenuTextCommand::Personal.get()) }
             ItemList => { Some(MenuTextCommand::Weapons.get()) }
-            ColorPresets(page, _) => { Some(format!("{} Presets", MenuText::get_command(1140 + *page as i32)).into()) }
+            ColorPresets(page, _) => {
+                if *page < 9 { Some(format!("{} Presets", MenuText::get_command(1140 + *page as i32)).into()) }
+                else { Some("Assigned".into()) }
+            }
             _ => { Some(MenuText::get_command(idx)) }
         }
     }
@@ -246,21 +271,22 @@ impl CustomAssetMenuKind {
             ProfileSelection => { Some(1) }
             ProfileSettings => { Some(2) }
             ShopBody((kind, false)) => { Some(3+*kind as usize) }
-            ShopBody((kind, true)) => { Some(7+*kind as usize) }
-            Head => { Some(11) }
-            Hair => { Some(12) }
-            VoiceSelection => { Some(13) }
-            ScaleMenu => { Some(14) }
-            ShopAoc(kind) => { Some(15 + *kind as usize) }
-            ShopAcc(kind) => { Some(19 + *kind as usize) }
-            ShopMount(kind) => { Some(24 + *kind as usize) }
-            ColorKindSelection => { Some(29) }
-            ColorSelection(color_kind) => { Some(30 + *color_kind as usize) }
-            ColorPresets(page, _) => { Some(40+*page as usize) }
-            Rig => { Some(48) }
-            Personal => { Some(49) }
-            PauseList => { Some(15) }
-            ItemList => { Some(16) }
+            ShopBody((kind, true)) => { Some(8+*kind as usize) }
+            Head => { Some(13) }
+            Hair => { Some(14) }
+            VoiceSelection => { Some(15) }
+            ScaleMenu => { Some(16) }
+            ShopAoc(kind) => { Some(17 + *kind as usize) }
+            ShopAcc(kind) => { Some(21 + *kind as usize) }
+            ShopMount(kind) => { Some(26 + *kind as usize) }
+            ColorPresets(page, _) => { Some(31+*page as usize) }    //46 -> 55
+            ColorSelection(color_kind) => { Some(40 + *color_kind as usize) }   // 40 -> 56
+            ColorKindSelection => { Some(56) }
+            Rig => { Some(57) }
+            HeadEdit => { Some(58) }
+            HairEdit => { Some(59) }
+            PauseList => { Some(60) }
+            ItemList => { Some(61) }
             _ => { None }
         }
     }
@@ -289,7 +315,7 @@ impl CustomAssetMenuKind {
             }
             MainShop => {
                 if UnitAssetMenuData::is_photo_graph() {
-                    for x in [ShopBody((0, false)), Head, Hair, Rig, ShopAcc(0), ColorKindSelection, ScaleMenu, Personal, PresetAppearanceMenu(false)]{
+                    for x in [ShopBody((0, false)), Head, Hair, Rig, ShopAcc(0), ColorKindSelection, ScaleMenu, PresetAppearanceMenu(false)]{
                         this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(x));
                     }
                     if let Some(p) = PhotographTopSequence::get_photograph_sequence() {
@@ -305,7 +331,7 @@ impl CustomAssetMenuKind {
                     this.full_menu_item_list.add(CustomAssetMenuItem::new_type(CurrentProfile));
                     for x in [
                         ProfileSelection, ProfileSettings, ShopBody((0, false)), EngagedBody(false), Head, Hair, Rig,
-                        ShopAcc(0), VoiceSelection, ShopAoc(0), ShopMount(0), ColorKindSelection, ScaleMenu, Personal, PresetAppearanceMenu(false)]
+                        ShopAcc(0), VoiceSelection, ShopAoc(0), ShopMount(0), ColorKindSelection, ScaleMenu, PresetAppearanceMenu(false)]
                     {
                         this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(x));
                     }
@@ -357,24 +383,8 @@ impl CustomAssetMenuKind {
                         }
                     });
             }
-            Personal => {
-                let female = UnitAssetMenuData::get_current_dress_gender() == 2;
-                if let Some(name) =
-                    PersonData::try_get_hash(preview.person).and_then(|person| { person.name.map(|v| v.to_string()) })
-                        .or_else(||{ GodData::try_get_hash(preview.person).map(|god|{ god.mid.to_string() }) })
-                {
-                    let set = if female { &db.list.char_f } else { &db.list.char_m };
-                    let alt = name.replace("MGID_", "MPID_");
-                    if let Some(group) = set.iter().find(|c| c.label == name || c.label == alt) {
-                        group.list.iter().for_each(|c| {
-                            this.full_menu_item_list.add(CustomAssetMenuItem::new_asset2(c, group.label));
-                        });
-                    }
-                }
-                if this.full_menu_item_list.is_empty() { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
-            }
             ProfileSettings => {
-                [FlagMenuItem(AssetFlag::RandomAppearance),
+                [FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::DisableHeadAcc),
                     FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), FlagMenuItem(AssetFlag::EngagedAnimation),
                     FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export),
                     Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
@@ -475,9 +485,10 @@ impl CustomAssetMenuKind {
                     let v = preview.preview_data.scale[x] & 1023;
                     let enable = preview.preview_data.scale[x] & 1024 != 0;
                     if preview.scale_preview[x] == 0 {
-                        if v > 0 && v < 1000 { preview.scale_preview[x] = v; }
-                        else { preview.scale_preview[x] = preview.original_scaling[x]; }
+                        if v <= 0 || v > 1000 { preview.scale_preview[x] = preview.original_scaling[x]; }
+                        else { preview.scale_preview[x] = v; }
                     }
+                    preview.scale_preview[x] &= 1023;
                     let item = CustomAssetMenuItem::new_type(ScaleMenuItem(x as u8));
                     item.decided = enable;
                     item.hash = preview.original_scaling[x] as i32;
@@ -486,30 +497,39 @@ impl CustomAssetMenuKind {
                 }
             }
             ColorKindSelection => {
-                for x in 0..14 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
+                for x in 0..8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
             }
             ColorSelection(page) => {
-                let enable_item = CustomAssetMenuItem::new_type(EnableColor(*page));
-                enable_item.decided = preview.preview_data.colors[*page as usize].values[3] != 0;
+                let k = (*page % 16) as usize;
+                let enable_item = CustomAssetMenuItem::new_type(EnableColor(k as u8));
+                enable_item.decided = preview.preview_data.colors[k].values[3] != 0;
                 this.full_menu_item_list.add(enable_item);
-                if *page < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*page))); }
-                UnitAssetMenuData::get_preview().color_preview[4*(*page) as usize+3] = 1;
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA(*page)));
-                for x in 0..9 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorPresets(x, *page))); }
-                if preview.preview_data.colors[*page as usize].has_color() {
-                    for x in 0..3 { preview.color_preview[4*(*page as usize) + x] = preview.preview_data.colors[*page as usize].values[x]; }
+                if k < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(k as u8))); }
+                UnitAssetMenuData::get_preview().color_preview[4*k+3] = 1;
+                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA(k as u8)));
+                for x in 0..10 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorPresets(x, *page))); }
+                if preview.preview_data.colors[k].has_color() {
+                    for x in 0..3 { preview.color_preview[4*k+ x] = preview.preview_data.colors[k].values[x]; }
                 }
-                else if *page < 8 {
-                    for x in 0..3 { preview.color_preview[4*(*page as usize) + x] = preview.original_color[4*(*page as usize) + x]; }
-                }
-                EquipmentBoxMode::set_open(*page < 8);
-
+                else { for x in 0..3 { preview.color_preview[4*k+ x] = preview.original_color[4*k+x]; } }
+            }
+            HairEdit => {
+                if preview.original_color[3] != 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::DisableHairAcc))); }
+                this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(16)));
+                this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(17)));
+                if preview.original_color[59] != 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(14))); }
+            }
+            HeadEdit => {
+                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::DisableHeadAcc)));
+                for x in 0..6 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x+8))); }
+                for x in 0..4 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(Expression(x as u8))); }
             }
             ColorPresets(preset_kind, color_kind) => {
                 let kind = *preset_kind;
                 let kind2 = *color_kind;
                 let preview = UnitAssetMenuData::get_preview();
-                if kind2 < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(*color_kind))); }
+                let k2 = kind2 % 16;
+                if k2 < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(k2))); }
                 if kind < 8 {
                     db.list.color_presets.iter()
                         .filter(|x| x.colors[kind as usize ] != 0)
@@ -519,26 +539,51 @@ impl CustomAssetMenuKind {
                             let mut original = kind2 < 8;
                             for x in 0..3 {
                                 let r = ((hash >> 8*x) & 255) as u8;
-                                if preview.preview_data.colors[kind2 as usize].values[x] != r { selected = false; }
+                                if preview.preview_data.colors[k2 as usize].values[x] != r { selected = false; }
                                 if kind2 < 8 {
-                                    if preview.original_color[4*kind2 as usize + x] != r { original = false; }
+                                    if preview.original_color[4*k2 as usize + x] != r { original = false; }
                                 }
                             }
                             let name = x.get_name();
-                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind2), x.colors[kind as usize], name, selected, original);
-                            item.padding = kind2 as i32;
+                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), x.colors[kind as usize], name, selected, original);
+                            item.padding = k2 as i32;
                             this.full_menu_item_list.add(item);
                         });
                 }
-                else {
+                else if kind == 8 {
                     db.list.eye_colors.iter().for_each(|x|{
                         let name = x.get_name();
-                        let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(kind2), x.color, name, false, false);
+                        let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), x.color, name, false, false);
                         item.padding = kind2 as i32;
                         this.full_menu_item_list.add(item);
                     });
                 }
-
+                else {
+                    let mut used_colors = vec![];
+                    let mut color: i32  = 0;
+                    for x in 0..15 {
+                        color = 0;
+                        for i in 0..3 { color |= (preview.color_preview[4*x as usize+i] as i32)  << (i*8); }
+                        if k2 != x && color != 0 && !used_colors.contains(&color) {
+                            let name = format!("{} [Current]", MenuText::get_command(1140+x as i32));
+                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            item.padding = kind2 as i32;
+                            this.full_menu_item_list.add(item);
+                            used_colors.push(color);
+                        }
+                    }
+                    for x in 0..15 {
+                        color = 0;
+                        for i in 0..3 { color |= (preview.original_color[4*x as usize+i] as i32)  << (i*8); }
+                        if k2 != x && color != 0 && !used_colors.contains(&color) {
+                            let name = format!("{} [Original]", MenuText::get_command(1140+x as i32));
+                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            item.padding = kind2 as i32;
+                            this.full_menu_item_list.add(item);
+                            used_colors.push(color);
+                        }
+                    }
+                }
             }
             VoiceSelection => {
                 db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list);
@@ -575,8 +620,8 @@ impl CustomAssetMenuKind {
                 }
                 ShopMount(_) => { ReloadType::ForcedUpdate }
                 ColorSelection(kind) => {
-                    EquipmentBoxMode::set_open(true);
-                    UnitAssetMenuData::get_preview().color_preview[4*(*kind) as usize+3] = 0;
+                    let kind = (*kind % 16) as usize;
+                    UnitAssetMenuData::get_preview().color_preview[4*kind + 3] = 0;
                     ReloadType::ForcedUpdate
                 }
                 ColorKindSelection => { ReloadType::ForcedUpdate }
@@ -600,6 +645,8 @@ impl CustomAssetMenuKind {
     pub fn key_help_update(&self, ui_hide: bool) {
         if UnitAssetMenuData::is_shop() { return; }
         let idx = self.to_index();
+        if self.get_right().is_some() && self.get_left().is_some() { add_key_help(KeyHelpButton::LeftRight, "Change Page"); }
+        else { disable_key_help(KeyHelpButton::LeftRight); }
         if !ui_hide { add_key_help(KeyHelpButton::Plus, Mess::get("MID_ProfileCard_ShowStamp_Hide").to_string().as_str()); }
         else { add_key_help(KeyHelpButton::Plus, Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str()); }
 
@@ -626,7 +673,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
         match self{
             MainShop|ProfileSelection => CustomMenuIcon::KeyItem,
             ProfileSettings => CustomMenuIcon::TimeCrystal,
-            PresetAppearanceMenu(_)|ShopBody(_)|ClassBodySelection(_)|Personal => CustomMenuIcon::Clothes,
+            PresetAppearanceMenu(_)|ShopBody(_)|ClassBodySelection(_) => CustomMenuIcon::Clothes,
             Rig => CustomMenuIcon::Body,
             VoiceSelection => CustomMenuIcon::Talk,
             ShopAcc(_) => CustomMenuIcon::AccFace,
@@ -635,8 +682,8 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ScaleMenu => CustomMenuIcon::StarBlank,
             ColorSelection(_) => CustomMenuIcon::Color,
             ColorKindSelection|ColorPresets(_, _) => CustomMenuIcon::Star,
-            Head => { CustomMenuIcon::Head }
-            Hair => { CustomMenuIcon::Hair }
+            Head|HeadEdit => { CustomMenuIcon::Head }
+            Hair|HairEdit => { CustomMenuIcon::Hair }
             LoadData => { CustomMenuIcon::Satchel }
             ItemList => { CustomMenuIcon::Weapon }
             PauseList => { CustomMenuIcon::SolaTail }
@@ -665,7 +712,6 @@ impl CustomMenuItem for CustomAssetMenuKind {
             ShopAcc(_) => { Mess::get("MID_Hub_Mascot_Accessories_Parts") }
             VoiceSelection => { MenuTextCommand::Voice.get() }
             Head => { Mess::get("MID_Hub_Mascot_Accessories_Head") }
-            Personal => { MenuTextCommand::Personal.get() }
             _ => { self.get_menu_item_name().unwrap() }
         }
     }
@@ -681,7 +727,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
     }
     fn get_body(&self, menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
         match self {
-            Personal|LoadData => { menu_item.menu_kind.get_body(menu_item) }
+            LoadData => { menu_item.menu_kind.get_body(menu_item) }
             ClassBodySelection((_, alt)) => {
                 let page = if *alt { 6 } else { 2 };
                 let count = if UnitAssetMenuData::get_flag() & 128 != 0 { 8 } else { 4 };
@@ -701,19 +747,18 @@ impl CustomMenuItem for CustomAssetMenuKind {
                 left_right_enclose(&format!("{} [{}/5]", MenuText::get_command(70 + *kind as i32), *kind + 1))
             }
             ShopBody((kind, alt)) => {
-                let page_count = if UnitAssetMenuData::get_flag() & 128 != 0 { 8 } else { 4 };
-                let page = format!(" [{}/{}]", if *alt { *kind as i32 + 4 } else { *kind as i32 } + 1, page_count);
+                let page_count = if UnitAssetMenuData::get_flag() & 128 != 0 { 10 } else { 5 };
+                let page = format!(" [{}/{}]", if *alt { *kind as i32 + 5 } else { *kind as i32 } + 1, page_count);
                 let mut name =
                     match kind {
                         1 => { MenuTextCommand::Class.get() }
                         2 => { MenuTextCommand::Engage.get() }
                         3 => { Mess::get("MID_ProfileCard_Stamp_Others") }
+                        4 => { "Added".into() }
                         _ => { Mess::get("MID_ProfileCard_Stamp_Unit") }
                     }.to_string();
                 if UnitAssetMenuData::get_flag() & 128 != 0 {
-                    if UnitAssetMenuData::get_gender(*alt) == 2 {
-                        name.push_str(" (Female)");
-                    }
+                    if UnitAssetMenuData::get_gender(*alt) == 2 { name.push_str(" (Female)"); }
                     else { name.push_str(" (Male)") }
                 }
                 left_right_enclose(&format!("{}{}", name, page))
@@ -729,20 +774,27 @@ impl CustomMenuItem for CustomAssetMenuKind {
             },
             PresetAppearanceMenu(alt) => {
                 if *alt {
-                    left_right_enclose(
-                        &format!("{} ({})",
-                                 MenuTextCommand::Data,
-                                 MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2)
-                        )
-                    )
+                    left_right_enclose(&format!("{} ({})", MenuTextCommand::Data, MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2)))
                 }
                 else {
                     if menu_item.padding & 1 != 0 { MenuTextCommand::Emblem.get() }
                     else { MenuTextCommand::Units.get() }
                 }
             }
-            ColorPresets(page, _) => left_right_enclose(&format!("{} Preset [{}/9]", MenuText::get_command(1140 + *page as i32), *page+1)),
-            ColorSelection(kind) => format!("{} [{}/14]", MenuText::get_command(1140 + *kind as i32), *kind+1).into(),
+            ColorPresets(page, _) => {
+                if *page < 9 { left_right_enclose(&format!("{} Preset [{}/10]", MenuText::get_command(1140 + *page as i32), *page + 1)) }
+                else { left_right_enclose(&"Assigned [10/10]".to_string()) }
+            }
+            ColorSelection(kind) => {
+                let k = *kind % 16;
+                format!("{} [{}/15]", MenuText::get_command(1140 + k as i32), k+1).into()
+            },
+            Head => { make_body_asset_body_label(Head.get_name(menu_item), 2, 0) }
+            Hair => { make_body_asset_body_label(Hair.get_name(menu_item), 2, 0) }
+            HeadEdit|HairEdit => {
+                if menu_item.index < 7 { make_body_asset_body_label("Parameters".into(), 2, 1) }
+                else { "Parameters [2/2]".into() }
+            }
             MainShop => "".into(),
             _ => { self.get_name(menu_item) }
         }
