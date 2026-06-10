@@ -73,7 +73,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
         }
     }
     if x_pos.is_empty() || x_maxs.is_empty() {
-        GameMessage::create_key_wait(proc, "Unable to capture [No Image].\nSwitch to `Docked` mode?");
+        GameMessage::create_key_wait(proc, "Capture is empty.\nSwitch to `Docked` mode?");
         return;
     }
     let x_min = x_pos.iter().map(|v| *v).min().unwrap_or(0);
