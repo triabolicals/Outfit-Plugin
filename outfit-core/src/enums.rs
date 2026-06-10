@@ -19,8 +19,8 @@ pub const EMBLEM: [(&str, &str); 24] = [
     ("Roy",  "Roy"), ("Leaf", "Lei"), ("Lucina", "Luc"), ("Lin", "Lyn"),
     ("Ike", "Ike"), ("Byleth", "Byl"), ("Kamui", "Cor"), ("Eirik", "Eir"),
     ("Edelgard", "Thr"), ("Tiki", "Tik"), ("Hector",   "Hec"),
-    ("Veronica",  "Ver"), ("Senerio",   "Sor"), ("Camilla",  "Cmi"), ("Chrom",    "Chr"),
-    ("Lueur",    "Ler"), ("Dimitri",  "Dim"), ("Claude",   "Cla"), ("Reflet", "Rbi"), ("Ephraim", "Eph")
+    ("Veronica", "Ver"), ("Senerio", "Sor"), ("Camilla",  "Cmi"), ("Chrom", "Chr"),
+    ("Lueur", "Ler"), ("Dimitri",  "Dim"), ("Claude",   "Cla"), ("Reflet", "Rbi"), ("Ephraim", "Eph")
 ];
 pub const SCALE: [&str; 19] = [
     "ScaleAll", "ScaleHead", "ScaleNeck", "ScaleTorso", "ScaleShoulders", "ScaleArms", "ScaleHands",
@@ -159,5 +159,4 @@ impl Mount {
                     .map(|x| (Mount::from_i32(x as i32), Gender::Female))
             )
     }
-
 }

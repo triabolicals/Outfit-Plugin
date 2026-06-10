@@ -409,7 +409,7 @@ pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type
                 if let Some(go) = builder.get_game_object().filter(|o| !o.is_null() ) { builder.appearance.modify_colors(go); }
             }
             ReloadType::Facial(increase) => {
-                let len = 13;
+                let len = FACIAL_STATES.len();
                 let v = UnitAssetMenuData::get().facial;
                 let new_v = if increase { v + 1 + len} else { v + len - 1 } % len;
                 char.play_facial(FACIAL_STATES[new_v].0.into());
@@ -420,7 +420,7 @@ pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type
                 if let Some(go) = builder.get_game_object(){ hair_acc(go, UnitAssetMenuData::get_flag() & 16 != 0); }
             }
             ReloadType::HeadAcc => {
-                if let Some(go) = builder.get_game_object(){ hair_acc(go, UnitAssetMenuData::get_flag() & 64 != 0); }
+                if let Some(go) = builder.get_game_object(){ head_acc(go, UnitAssetMenuData::get_flag() & 64 != 0); }
             }
             ReloadType::FacialPreview(index) => { char.play_facial(FACIAL_STATES[index].0.into()); }
             _ => { force_load(result, reload_type); }

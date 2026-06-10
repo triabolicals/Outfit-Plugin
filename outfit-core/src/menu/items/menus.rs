@@ -1,16 +1,15 @@
 use engage::{
     unit::Gender,
     menu::BasicMenuItemAttribute, mess::Mess,
-    sequence::photograph::*, titlebar::KeyHelpButton
+    sequence::photograph::*, titlebar::KeyHelpButton,
 };
 use unity::prelude::Il2CppString;
 use crate::{
-    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data,
+    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
     AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
     data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result},
-    menu::icons::CustomMenuIcon,
-    localize::{MenuText, MenuTextCommand},
-    room::ReloadType, left_right_enclose
+    menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand},
+    room::ReloadType,
 };
 use super::*;
 
@@ -41,6 +40,7 @@ pub enum CustomAssetMenuKind {
     EngagedBody(bool),
     HeadEdit,
     HairEdit,
+    //AnimPreview(u8),
 }
 impl CustomAssetMenuKind {
     pub const SAVE_SELECT_COUNT: usize = 65;
@@ -69,6 +69,7 @@ impl CustomAssetMenuKind {
             FaceSelection => 15,
             EngagedBody(female) => 16 + *female as i32,
             HairEdit => 18,
+            // AnimPreview(hub) => 19 + *hub as i32,
             ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 105 } else { 100 }, *kind, 5) },    //1020
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
@@ -116,7 +117,6 @@ impl CustomAssetMenuKind {
     }
     pub fn get_help_index(&self, is_menu_item: bool) -> i32 {
         let idx = self.to_index();
-        println!("IDX: {}", idx);
         if is_menu_item && idx >= 100 {
             match idx {
                 170|210 => 1027,
@@ -133,6 +133,7 @@ impl CustomAssetMenuKind {
         }
         else {
             match idx {
+                19|20 => 1008,
                 100..108 => { 1100 + (idx % 4) }
                 150..158 => { 1150 }
                 170 | 210 => 1027,
@@ -164,6 +165,7 @@ impl CustomAssetMenuKind {
                 }
                 else { Some(MainShop) }
             }
+            // AnimPreview(hub) => Some(ShopAoc(*hub)),
             _ => { Some(MainShop) }
         }
     }
@@ -385,10 +387,9 @@ impl CustomAssetMenuKind {
                     });
             }
             ProfileSettings => {
-                [FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::DisableHeadAcc),
-                    FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), FlagMenuItem(AssetFlag::EngagedAnimation),
-                    FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail), Data(AssetDataMode::Export),
-                    Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
+                [   FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), 
+                    FlagMenuItem(AssetFlag::EngagedAnimation), FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail),
+                    Data(AssetDataMode::Export), Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
                 ].into_iter().for_each(|v|{ this.full_menu_item_list.add(CustomAssetMenuItem::new_type(v)); });
             }
             ShopBody((0, alt)) => {    // Unit (Same Gender)
@@ -586,9 +587,30 @@ impl CustomAssetMenuKind {
                     }
                 }
             }
-            VoiceSelection => {
-                db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list);
+            VoiceSelection => { db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list); }
+            /*
+            AnimPreview(hub) => {
+                EquipmentBoxMode::set_open(false);
+                UnitAssetMenuData::get_preview().anim_pause = false;
+                hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(1.0));
+                if *hub > 1 {
+                    db.list.aoc_state[2].iter().for_each(|x|{
+                        let item = CustomAssetMenuItem::new_type(Anim(*hub));
+                        item.name = x.into();
+                        item.hash = Animator::string_to_hash(x);
+                        this.full_menu_item_list.add(item);
+                    });
+                }
+                let i = if *hub < 2 { *hub as usize } else { *hub as usize + 1 };
+                db.list.aoc_state[i].iter().for_each(|x|{
+                    let item = CustomAssetMenuItem::new_type(Anim(*hub));
+                    item.name = x.into();
+                    item.hash = Animator::string_to_hash(x);
+                    this.full_menu_item_list.add(item);
+                });
             }
+
+             */
             _ => { this.full_menu_item_list.add(CustomAssetMenuItem::new(-1, -1)); }
         }
         if this.full_menu_item_list.len() == 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
@@ -608,6 +630,14 @@ impl CustomAssetMenuKind {
     pub fn b_call(&self) {
         let reload_type =
             match self {
+                /*
+                AnimPreview(_) => {
+                    UnitAssetMenuData::get_preview().anim_pause = false;
+                    EquipmentBoxMode::set_open(true);
+                    ReloadType::BodyAnimSpeed(1.0)
+                }
+
+                 */
                 ScaleMenu => {
                     hub_room_set_by_result(None, ReloadType::All);
                     UnitAssetMenuData::get().control.setup(false, true);
@@ -728,6 +758,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
     }
     fn get_body(&self, menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
         match self {
+            // AnimPreview(_) => { "Anim Preview".into() }
             LoadData => { menu_item.menu_kind.get_body(menu_item) }
             ClassBodySelection((_, alt)) => {
                 let page = if *alt { 6 } else { 2 };

@@ -56,13 +56,13 @@ impl CustomAssetMenuItemKind {
             UnitName => 4,
             Data(AssetDataMode::Export) => 5,
             Data(AssetDataMode::Import) => 6,
-            Data(AssetDataMode::ExportPreview) => 9,
             CurrentData => 7,
             PresetAppearance => 8,
+            Data(AssetDataMode::ExportPreview) => 9,
             ProfileItem(profile) => 10 + profile.to_index() as i32,
             FlagMenuItem(ty) => { 20 + ty.get_rel_index() }
             ResetColor(color) =>  30 + *color as i32,
-            Asset(ty) => { 40 + ty.to_index() }
+            Asset(ty) => 40 + ty.to_index(),
             RGBA(kind) => 100 + (*kind as i32),
             EnableColor(kind) => 120 + (*kind as i32),
             ScaleMenuItem(ty) => 150 + *ty as i32,  // 300 -> 316
@@ -119,6 +119,7 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::Full, true);
                 set_detail_box(name, Some(help), Some(body), icon.get_icon());
             }
+            // Anim(_) => { hub_room_set_by_result(None, ReloadType::BodyAnim(menu_item.hash as u32)); }
             OutfitDataFile => {
                 let data = UnitAssetMenuData::get();
                 let current = if menu_item.index == 0 { None } else { Some(menu_item.index-1) };
@@ -200,7 +201,7 @@ impl CustomAssetMenuItemKind {
                     }
                     EquipmentBoxMode::LoadData(data.loaded_data.equipment_box_state).set_preset_appearance(menu_item.hash);
                 }
-                UnitAssetMenuData::set_reload(ReloadPreview::Full, true);
+                UnitAssetMenuData::set_reload(ReloadPreview::Preset(menu_item.hash as usize), true);
             }
             Pause => {
                 if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager) {
@@ -410,6 +411,17 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
             Expression(kind) => { MenuText::get_help_with_arg(1170, FACIAL_STATES[*kind as usize].0).unwrap() }
             CurrentProfile => { get_current_profile_assignment_text().into() }
+            /*
+            Anim(_) => {
+                let mut help = format!("{}\n", MenuText::get_help(-5).unwrap());
+                if UnitAssetMenuData::get_preview().anim_pause {
+                    help.push_str(format!("{} {}", MenuTextCommand::A.insert_right("Play"), MenuTextCommand::Y.insert_right("Slow (Hold)")).as_str());
+                }
+                else { help.push_str(MenuTextCommand::A.insert_right("Play").to_string().as_str()); }
+                help.push_str(MenuTextCommand::X.to_right(MenuTextCommand::Reset).to_string().as_str());
+                help.into()
+            }
+            */
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
     }
@@ -562,11 +574,34 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 menuitem.set_decided(!v);
                 BasicMenuResult::se_decide()
             }
+            /*
+            Anim(_) => {
+                let v = UnitAssetMenuData::get_preview().anim_pause;
+                UnitAssetMenuData::get_preview().anim_pause = !v;
+                let speed = if v { 1.0 } else { 0.0 };
+                let help = self.get_help(menuitem);
+                let menu = menuitem.menu.menu_kind.clone();
+                let body = menu.get_body(menuitem);
+                let icon = self.get_icon(menuitem);
+                let name = self.get_detail_box_name(menuitem);
+                hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(speed));
+                set_detail_box(name, Some(help), Some(body), icon.get_icon());
+                BasicMenuResult::se_cursor()
+            }
+
+             */
             _ => { BasicMenuResult::new() }
         }
     }
     fn x_call(&self, menuitem: &mut CustomAssetMenuItem) -> BasicMenuResult {
         match self {
+            /*
+            Anim(_) => {
+                hub_room_set_by_result(None, ReloadType::BodyAnim(menuitem.hash as u32));
+                BasicMenuResult::se_cursor()
+            }
+
+             */
             ScaleMenuItem(scale_index) => {
                 let i = *scale_index as usize;
                 let preview = UnitAssetMenuData::get_preview();
@@ -601,6 +636,20 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { BasicMenuResult::new() }
             }
+            /*
+            Asset(AssetType::AOC(kind)) => {
+                if UnitAssetMenuData::is_unit_info() {
+                    let new_menu = AnimPreview(*kind);
+                    menuitem.menu.save_current_select();
+                    menuitem.menu.full_menu_item_list.clear();
+                    new_menu.create_menu_items(menuitem.menu);
+                    menuitem.menu.menu_kind = new_menu;
+                    menuitem.menu.rebuild_menu();
+                    BasicMenuResult::se_cursor()
+                }
+                else { BasicMenuResult::new() }
+            }
+             */
             _ => { BasicMenuResult::new() }
         }
     }
@@ -663,6 +712,16 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
         let menu = UnitAssetMenuData::get();
         let pad = get_instance::<Pad>();
         match self {
+            /*
+            Anim(_) => {
+                if UnitAssetMenuData::get_preview().anim_pause {
+                    let speed = if Pad::is_button(NpadButton::y_key()) { 0.09 } else { 0.0 };
+                    hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(speed));
+                }
+                BasicMenuResult::new()
+            }
+
+             */
             Asset(ty) => {
                 if menu.reload_type.is_some() && !is_up_down_press() {
                     ty.update_model(menuitem);

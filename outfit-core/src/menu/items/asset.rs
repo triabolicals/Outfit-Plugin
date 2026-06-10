@@ -330,7 +330,7 @@ impl CustomMenuItem for AssetType {
                     let mode1 = db.hashes.get_mount_obody(menu_item.hash).unwrap_or(Mess::get_item_none());
                     format!("Combat: {}\nMap: {}", mode2, mode1).into()
                 }
-                Self::AOC(_) => { format!("{}\nAnimation Set: {}", help, mode2).into() },
+                Self::AOC(_) => format!("{}\nAnimation Set: {}", help, mode2).into(),
                 Self::Acc(_) => format!("{}\nAsset: {}", help, mode2).into(),
                 Self::Voice => format!("Voice Set: {}", mode2).into(),
                 _ => { "ColorPreset".into() }

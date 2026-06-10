@@ -32,7 +32,7 @@ pub use assets::*;
 pub use assets::new_result_get_hash_code;
 pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
-pub const VERSION: &'static str = "2.7.3";
+pub const VERSION: &'static str = "2.7.3b";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -233,7 +233,6 @@ pub fn apply_preview_head_hair_color(this: &mut CharacterAppearance, go: &GameOb
                     if let Some(m) = get_mt_eye(go) { m.set_color(colors[j-8], Color::new(r, g, b, 1.0)); }
                 }
                 else if j == 2 {
-                    println!("Skin Color: {}, {}, {}", r, g, b);
                     go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|re|{
                         Ut::get_instance_materials2(re).iter().for_each(|m|{
                             if m.get_name().str_contains("MtSkin") {

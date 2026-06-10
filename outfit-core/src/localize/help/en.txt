@@ -1,3 +1,4 @@
+-5 Preview different animation states for this set.
 -1 None
 1 $(Left)$(Right)Change the current asset profile.
 2 Replaces the selected profile with these settings/parameters.\n$(A) Confirm Selection.$(L)$(R)Change data page.
@@ -33,7 +34,6 @@
 1005 Select a voice-set.\nWill not replace voice-set in the Somniel.
 1006 Change/edit color parameters.\nModels must have colors adjustable for colors to apply.
 1007 Edit body scaling parameters.
-1008 Assign accessory shop accessories.
 1009 Select a rig for the dress model.
 1010 View assets that belongs to this character.
 1011 Select a file to load.

@@ -438,8 +438,7 @@ impl CustomAssetMenu {
         }
         if !this.is_shop {
             let idx = this.full_menu_item_list[this.select_index as usize].menu_kind.to_index();
-            let color = idx >= 100 && idx < 116;
-            let stick = model_camera_control(color);
+            let stick = model_camera_control(idx);
             let trigger = Pad::is_trigger(NpadButton::new().with_plus(true).with_b(true));
             if this.disable {
                 if Pad::is_trigger(NpadButton::new().with_minus(true)) && unit_info {
@@ -487,7 +486,7 @@ impl CustomAssetMenu {
         this.tick_input_base()
     }
 }
-fn model_camera_control(ignore_zrl_lr: bool) -> bool {
+fn model_camera_control(menu_item_idx: i32) -> bool {
     let menu_data = UnitAssetMenuData::get();
     let pad = get_instance::<Pad>();
     let fast = pad.npad_state.buttons.y();
@@ -509,23 +508,29 @@ fn model_camera_control(ignore_zrl_lr: bool) -> bool {
     else if pad.npad_state.buttons.stick_l_up() { translation_change[1] = 1; }
 
     if fast { for x in 0..3 { translation_change[x] *= 3; } }
-
     if r_stick {
         menu_data.control.reset_character_position();
         menu_data.control.reset_character_rotation();
     }
-    if rotation_y != 0.0 { menu_data.control.character_rotation(0.0, rotation_y, 0.0); }
     let rl_stick = translation_change.iter().any(|&x| x != 0) || rotation_y != 0.0;
+    let mut rot_x = 0.0;
+    let mut rot_z = 0.0;
     match menu_data.mode {
-        MenuMode::UnitInfo => { menu_data.control.translate_character(translation_change); }
-        MenuMode::PhotoGraph => {
-            if !ignore_zrl_lr {
-                let mut rot_x = 0.0;
-                let mut rot_z = 0.0;
+        MenuMode::UnitInfo => {
+            if menu_item_idx <= -5 {
                 if pad.npad_state.buttons.zl() { rot_x = -1.25; } else if pad.npad_state.buttons.zr() { rot_x = 1.25; }
                 if pad.npad_state.buttons.l() { rot_z = -1.25; } else if pad.npad_state.buttons.r() { rot_z = 1.25; }
-                if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
             }
+            menu_data.control.translate_character(translation_change);
+            menu_data.control.character_rotation(rot_x, rotation_y, rot_z);
+        }
+        MenuMode::PhotoGraph => {
+            if !(menu_item_idx >= 100 && menu_item_idx < 116) {
+                if pad.npad_state.buttons.zl() { rot_x = -1.25; } else if pad.npad_state.buttons.zr() { rot_x = 1.25; }
+                if pad.npad_state.buttons.l() { rot_z = -1.25; } else if pad.npad_state.buttons.r() { rot_z = 1.25; }
+            }
+            if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
+            if rotation_y != 0.0 { menu_data.control.character_rotation(0.0, rotation_y, 0.0); }
             if r_stick {
                 menu_data.control.reset_camera_rotation();
                 menu_data.control.reset_camera_position();
@@ -535,6 +540,7 @@ fn model_camera_control(ignore_zrl_lr: bool) -> bool {
         }
         _ => {}
     }
+
     rl_stick
 }
 fn adjust_menu_size(content: &AccessoryShopChangeRoot) {
