@@ -11,6 +11,11 @@ skyline = { git = "https://github.com/ultimate-research/skyline-rs", version="0.
 unity = { version = "0.3.0", git = "https://github.com/triabolicals/unity", branch = "macro" }
 engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 bitflags = "2.11.0"
+[patch."https://github.com/triabolicals/engage"]
+engage = {path = "/Users/trile/Project/lib/engage"}
+
+[patch."https://github.com/triabolicals/unity"]
+unity = {path = "/Users/trile/Project/lib2/unity"}
 
 [profile.dev]
 panic = "abort"
