@@ -1,5 +1,6 @@
 use std::fmt::Display;
 use engage::{gamedata::assettable::AssetTableResult, stream::Stream};
+use engage_il2cpp::app::{IStream_2Methods, Stream_2};
 use unity::engine::Color;
 use crate::localize::MenuTextCommand;
 pub use super::*;
@@ -35,15 +36,13 @@ impl AssetColor{
             result.unity_colors[result_index].a = 1.0;
         }
     }
-    pub fn from_stream(stream: &mut Stream) -> Self {
+    pub fn from_stream(stream: Stream_2) -> Self {
         let mut values = [0; 4];
-        for x in 0..4 { values[x] = stream.read_u8().unwrap_or(0); }
+        for x in 0..4 { values[x] = stream.read8(); }
         Self { values }
     }
-    pub fn serialize(&self, stream: &mut Stream) -> usize {
-        let mut bytes = 0;
-        self.values.iter().for_each(|v|{ bytes += stream.write_u8(*v).unwrap(); });
-        bytes
+    pub fn serialize(&self, stream: Stream_2) {
+        self.values.iter().for_each(|v|{ stream.write_ushort(*v); });
     }
 }
 

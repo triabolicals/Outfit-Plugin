@@ -1,14 +1,11 @@
 use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
 use engage::{
     gamedata::{assettable::AssetTableResult, Gamedata, GodData, PersonData},
-    unit::Gender, gameuserdata::GameUserData, mess::Mess, stream::Stream
+    unit::Gender, mess::Mess,
 };
+use engage_il2cpp::app::{AssetTable_Result, GameUserData, IGameUserDataMethods, ISingletonClass_1Methods, IStream_2Methods, Stream_2};
 use unity::prelude::*;
-use crate::{
-    assets::new_asset_table_accessory, apply_hair, get_outfit_data,
-    AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData,
-    OUTFIT_DATA, AssetType::Acc
-};
+use crate::{assets::new_asset_table_accessory, apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,
@@ -55,27 +52,27 @@ impl UnitAssetData {
         else { (vec![PlayerOutfitData::new_with_flag(0); 5], if random_app { 8 } else { 0 }) };
         Self { person: hash, profile, set_profile: [0, 1, 2, 0, 0], flag, }
     }
-    pub fn serialize(&self, stream: &mut Stream){
-        let _ = stream.write_int(self.person).unwrap();
-        let _ = stream.write_int(self.flag).unwrap();
-        let _ = stream.write_int(self.profile.len() as i32).unwrap();
-        self.set_profile.iter().for_each(|m|{ stream.write_int(*m).unwrap(); });
+    pub fn serialize(&self, stream: Stream_2){
+        let _ = stream.write_int(self.person);
+        let _ = stream.write_int(self.flag);
+        let _ = stream.write_int(self.profile.len() as i32);
+        self.set_profile.iter().for_each(|m|{ stream.write_int(*m); });
         self.profile.iter().for_each(|m|{ m.serialize(stream); });
     }
-    pub fn deserialize(stream: &mut Stream, version: i32) -> Self {
+    pub fn deserialize(stream: Stream_2, version: i32) -> Self {
         let mut set_profile: [i32; 5] = [0, 1, 2, 0, 0];
-        let person = stream.read_int().unwrap_or(0);
-        let flag = stream.read_int().unwrap_or(0);
+        let person = stream.read_int();
+        let flag = stream.read_int();
         let person_flag = flag;
-        let count = stream.read_int().unwrap_or(0);
-        for x in 0..5 { set_profile[x] = stream.read_int().unwrap_or(0); }
+        let count = stream.read_int();
+        for x in 0..5 { set_profile[x] = stream.read_int(); }
         let mut profile = vec![];
         for _ in 0..count { profile.push(PlayerOutfitData::deserialize(stream, version)); }
         Self { set_profile, person, profile, flag: person_flag }
     }
     pub fn profile_index(&self, engaged_dark: bool) -> i32 {
         let index =
-            if GameUserData::get_sequence() == 4 { 2 }
+            if GameUserData::get_instance().get_sequence().value == 4 { 2 }
             else if engaged_dark { 1 } else { 0 };
         self.set_profile[index as usize]
     }
@@ -188,21 +185,21 @@ impl PlayerOutfitData {
 
         !not_empty
     }
-    pub fn deserialize(stream: &mut Stream, version: i32) -> Self {
-        let mut flag = stream.read_int().unwrap_or(0);
-        let ubody = stream.read_int().unwrap_or(0);
-        let uhead = stream.read_int().unwrap_or(0);
-        let uhair = stream.read_int().unwrap_or(0);
-        let rig = if version >= 7 { stream.read_int().unwrap_or(0) } else { 0 };
+    pub fn deserialize(stream: Stream_2, version: i32) -> Self {
+        let mut flag = stream.read_int();
+        let ubody = stream.read_int();
+        let uhead = stream.read_int();
+        let uhair = stream.read_int();
+        let rig = if version >= 7 { stream.read_int() } else { 0 };
         let mut aoc = [0; 4];
-        aoc.iter_mut().for_each(|x| *x = stream.read_int().unwrap_or(0));
+        aoc.iter_mut().for_each(|x| *x = stream.read_int());
         let mut colors = [AssetColor::new(); 16];
         let mut mount = [0; 5];
         for x in 0..8 { colors[x] = AssetColor::from_stream(stream); }
         if version >= 9 { for x in 0..8 { colors[x+8] = AssetColor::from_stream(stream); } }
         let mut scale = [0u16; 16];
         for x in 0..16 {
-            let mut v = stream.read_u16().unwrap_or(0);
+            let mut v = stream.read_ushort();
             if version < 10 { if v > 1000 { v = 0; } }
             else {
                 let on = v & 1024;
@@ -212,15 +209,15 @@ impl PlayerOutfitData {
             scale[x] = v;
         }
         let mut expression = [0u8; 4];
-        for x in 0..4 { expression[x] = stream.read_u8().unwrap_or(0); }
-        let break_body = stream.read_int().unwrap_or(0);
+        for x in 0..4 { expression[x] = stream.read8() }
+        let break_body = stream.read_int();
         let mut acc: [i32; 5] = [0; 5];
-        for x in 0..5 { acc[x] = stream.read_int().unwrap_or(0); }
-        mount.iter_mut().for_each(|m|{ *m = stream.read_int().unwrap_or(0); });
-        let voice = stream.read_int().unwrap_or(0);
+        for x in 0..5 { acc[x] = stream.read_int(); }
+        mount.iter_mut().for_each(|m|{ *m = stream.read_int(); });
+        let voice = stream.read_int();
         let mut aoc_alt = [0; 4];
         if version >= 8 {
-            for x in 0..4 { aoc_alt[x] = stream.read_int().unwrap_or(0); }
+            for x in 0..4 { aoc_alt[x] = stream.read_int(); }
         }
         else {
             let db = get_outfit_data();
@@ -250,31 +247,29 @@ impl PlayerOutfitData {
         }
         Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt, expression }
     }
-    pub fn serialize(&self, stream: &mut Stream) -> usize {
-        let mut bytes = 0;
-        bytes += stream.write_int(self.flag).unwrap_or(0);
-        bytes += stream.write_int(self.ubody).unwrap_or(0);
-        bytes += stream.write_int(self.uhead).unwrap_or(0);
-        bytes += stream.write_int(self.uhair).unwrap_or(0);
-        bytes += stream.write_int(self.rig).unwrap_or(0);
-        self.aoc.iter().for_each(|a|{bytes += stream.write_int(*a).unwrap(); });
-        self.colors.iter().for_each(|c|{ bytes += c.serialize(stream); });
-        self.scale.iter().for_each(|s|{ bytes += stream.write_u16(*s).unwrap(); });
-        self.expression.iter().for_each(|c|{ bytes += stream.write_u8(*c).unwrap(); });
-        stream.write_int(self.break_body).unwrap_or(0);
-        self.acc.iter().for_each(|a| { bytes += stream.write_int(*a).unwrap(); });
-        self.mount.iter().for_each(|m|{ bytes += stream.write_int(*m).unwrap(); });
-        bytes += stream.write_int(self.voice).unwrap_or(0);
-        self.aoc_alt.iter().for_each(|a|{bytes += stream.write_int(*a).unwrap(); });
-        bytes
+    pub fn serialize(&self, stream: Stream_2) {
+        stream.write_int(self.flag);
+        stream.write_int(self.ubody);
+        stream.write_int(self.uhead);
+        stream.write_int(self.uhair);
+        stream.write_int(self.rig);
+        self.aoc.iter().for_each(|a|{ stream.write_int(*a); });
+        self.colors.iter().for_each(|c|{ c.serialize(stream); });
+        self.scale.iter().for_each(|s|{ stream.write_ushort(*s); });
+        self.expression.iter().for_each(|c|{ stream.write8(*c); });
+        stream.write_int(self.break_body);
+        self.acc.iter().for_each(|a| { stream.write_int(*a); });
+        self.mount.iter().for_each(|m|{ stream.write_int(*m); });
+        stream.write_int(self.voice);
+        self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); });
     }
-    pub fn set_color(&self, result: &mut AssetTableResult) {
+    pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
-            if self.colors[i].values[3] != 0 { self.colors[i].set_result_color(result, i); }
+            if self.colors[i].values[3] != 0 { set_color_by_u8_slice(result, i, self.colors[i].values); }
         }
     }
     pub fn set_result(&self, result: &mut AssetTableResult, mode: i32, engaged: bool, stun: bool) {
-        let sequence = GameUserData::get_sequence();
+        let sequence = GameUserData::get_instance().get_sequence().value;
         let db = get_outfit_data();
         self.set_color(result);
         if sequence != 4 {
@@ -525,17 +520,17 @@ impl PlayerOutfitData {
     }
 }
 
-pub fn game_user_data_on_serialize(this: &GameUserData, stream: &mut Stream, _method_info: OptionalMethod){
-    this.on_serialize(stream);
+pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method_info: OptionalMethod){
+    IGameUserDataMethods::on_serialize(this, stream);
     stream.write_begin(UnitAssetData::version());
     let menu_data = UnitAssetMenuData::get();
     PLAYABLE_HASH.iter().for_each(|p|{
         if menu_data.data.iter().find(|v| v.person == *p).is_none() {
-            menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
+            menu_data.data.push(UnitAssetData::new_hash(*p, false));
+        }
     });
     let mut hash_map: HashSet<i32> = menu_data.data.iter().map(|v| v.person).collect();
-    let _ = stream.write_int(hash_map.len() as i32).unwrap();
-    // println!("Serializing... {} Outfits Version: {}, ", menu_data.data.len(), UnitAssetData::version());
+    stream.write_int(hash_map.len() as i32);
     menu_data.data.iter().for_each(|outfit| {
         if hash_map.contains(&outfit.person) {
             outfit.serialize(stream);
@@ -544,14 +539,14 @@ pub fn game_user_data_on_serialize(this: &GameUserData, stream: &mut Stream, _me
     });
     stream.write_end();
 }
-pub fn game_user_data_version(_this: &GameUserData, _method_info: OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
-pub fn game_user_data_on_deserialize(this: &GameUserData, stream: &mut Stream, version: i32, _method_info: OptionalMethod){
-    this.on_deserialize(stream, version);
+pub fn game_user_data_version(_this: GameUserData, _method_info: OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
+pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: OptionalMethod){
+    IGameUserDataMethods::on_deserialize(this, stream, version);
     let menu_data = UnitAssetMenuData::get();
     if !menu_data.is_loaded && version >= 21 {
-        let version = stream.read_begin();
+        let version = stream.read_begin_2();
         if version < 6 { return; }
-        let count = stream.read_int().unwrap_or(0);
+        let count = stream.read_int();
         menu_data.data.clear();
         for _ in 0..count {
             let data = UnitAssetData::deserialize(stream, version);

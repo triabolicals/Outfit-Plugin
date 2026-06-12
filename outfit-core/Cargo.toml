@@ -11,6 +11,19 @@ skyline = { git = "https://github.com/ultimate-research/skyline-rs", version="0.
 unity = { version = "0.3.0", git = "https://github.com/triabolicals/unity", branch = "macro" }
 engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 bitflags = "2.11.0"
+
+engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", features = [
+    "app-assettable", "app-assettable-types",
+    "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon",
+    "app-unit", "app-unit-types", "app-random_2",
+    "app-persondata", "app-jobdata", "app-itemdata", "app-goddata", "app-godunit",
+    "app-gameuserdata", "app-singletonclass_1", "app-stream_2",
+    "app-resourcemanager_2",
+    "system-collections-generic-dictionary_2", "system-collections-generic-list_1",
+
+] }
+unity2 = { git = "https://github.com/DivineDragonFanClub/unity2" }
+
 [patch."https://github.com/triabolicals/engage"]
 engage = {path = "/Users/trile/Project/lib/engage"}
 

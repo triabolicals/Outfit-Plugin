@@ -1,4 +1,5 @@
 use std::{collections::HashSet, io::{Cursor, Read}};
+use std::collections::HashMap;
 pub use engage::{
     gamedata::{
         accessory::AccessoryData, assettable::AssetTable, Gamedata, GodData, JobData, PersonData,
@@ -8,6 +9,9 @@ pub use engage::{
     gamevariable::GameVariableManager,
     random::Random
 };
+use engage_il2cpp::app::ResourceManager_2;
+use engage_il2cpp::Dictionary_2Ext;
+use unity2::Cast;
 pub use super::*;
 
 mod color;
@@ -31,7 +35,7 @@ use crate::enums::Mount;
 
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
 pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
-
+const ASSET_FILENAME: [&str; 5] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig"];
 pub struct OutfitData {
     pub hashes: OutfitHashes,
     pub accessory_conditions: AccessoryConditions,
@@ -53,15 +57,10 @@ impl OutfitData {
                 let hash = v.get_hash_code();
                 if !hashes.voice.contains_key(&hash) { hashes.voice.insert(hash, v.to_string()); }
             });
-        let mut assets: Vec<(i32, String)> = ResourceManager::class().get_static_fields::<ResourceManagerStaticFields>()
-            .files
-            .entries.iter()
-            .filter(|x|
-                x.key.is_some_and(|x| !x.str_contains("null") && !x.str_contains("AT_c") &&
-                    (x.str_contains("UAS_") || x.str_contains("Item/Acc/") || x.str_contains("Unit/Model/") || x.str_contains("AOC_") || x.str_contains("uRig"))))
-            .map(|x| { x.key.unwrap().to_string() })
-            .flat_map(|x| x.split("/").last().map(|v| v.to_string()))
-            .map(|x| (hash_string(x.as_str()), x))
+        let mut assets: Vec<(i32, String)> = ResourceManager_2::get_s_files().iter()
+            .filter_map(|x| if x.0.is_null() { None } else { Some(x.0.to_rust_string()) })
+            .filter(|x| !x.contains("null") && !x.contains("AT_c") && ASSET_FILENAME.iter().any(|s| x.contains(*s)))
+            .filter_map(|x| x.split("/").last().map(|x| (hash_string(x), x.to_string())))
             .collect();
 
         let mut remove_hashes: HashSet<i32> = HashSet::new();
@@ -165,6 +164,12 @@ impl OutfitData {
         }
         assets.retain(|(i, _)| !remove_hashes.contains(&i));
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
+        let dic_map: HashMap<i32, String> = 
+            engage_il2cpp::app::AssetTable::s_condition_indexes()
+                .iter()
+                .filter(|(x, _)| !x.is_null())
+                .map(|(x, i)| (i, x.to_rust_string())).collect();
+        
         assets.iter().enumerate()
             .filter(|(_, (_, s))|{
                 let lower = s.to_lowercase();
@@ -177,7 +182,7 @@ impl OutfitData {
                             let mut o_hash = None;
                             let mut name = None;
                             let mut added = false;
-                            if let Some((condition, gender)) = find_condition(2, asset, true, item.kind) {
+                            if let Some((condition, gender)) = find_condition(2, asset, true, item.kind, &dic_map) {
                                 name = get_condition_label(&condition);
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 o_hash = find_mode_1_body(cond_idx, gender).map(|obody| { hash_string(obody) });
@@ -201,7 +206,7 @@ impl OutfitData {
                             }
                         }
                         AssetType::Head => {
-                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind, &dic_map) {
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 let name = get_asset_name(&condition, gender);
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|obody| { hash_string(obody) }) {
@@ -212,7 +217,7 @@ impl OutfitData {
                             }
                         }
                         AssetType::Hair => {
-                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind, &dic_map) {
                                 hashes.add_hair(asset.as_str());
                                 let cond_idx = AssetTableStaticFields::get_condition_index(condition.as_str());
                                 if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
@@ -221,14 +226,14 @@ impl OutfitData {
                             }
                         }
                         AssetType::Acc(_) => {
-                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind) {
+                            if let Some((condition, gender)) = find_condition(2, asset, false, item.kind, &dic_map) {
                                 let name = get_asset_name(&condition, gender);
                                 hashes.add_acc(asset.as_str());
                                 new_list.add(asset.as_str(), false, name, 1 << 28, false);
                             }
                         }
                         AssetType::Mount(_) => {
-                            if let Some((condition, _)) = find_condition(2, asset, false, item.kind) {
+                            if let Some((condition, _)) = find_condition(2, asset, false, item.kind, &dic_map) {
                                 let name = get_condition_label(&condition);
                                 hashes.add_ride_model(asset);
                                 new_list.add(asset, false, name, 1 << 28, false);
@@ -553,29 +558,29 @@ pub fn get_asset_name(condition: &String, gender: Gender) -> Option<String> {
         .or_else(|| JobData::get(condition.as_str()).map(|j| j.name.to_string()))
         .or_else(|| GodData::get(condition.as_str()).map(|g| g.mid.to_string()))
 }
-fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType) -> Option<(String, Gender)> {
+fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, map: &HashMap<i32, String>) -> Option<(String, Gender)> {
     match kind {
         AssetType::Body => {
             let filter = |e: &AssetTable, a: &str| e.dress_model.is_some_and(|s| s.to_string() == a);
-            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Head => {
             let filter = |e: &AssetTable, a: &str| e.head_model.is_some_and(|s| s.to_string() == a);
-            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Hair => {
             let filter =
                 if model.contains("uHair") { |e: &AssetTable, a: &str| e.hair_model.is_some_and(|s| s.str_contains(a)) }
                 else { |e: &AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a))) };
-            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Acc(_) => {
             let filter =  |e: &AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a)));
-            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Mount(_) => {
             let filter = |e: &AssetTable, a: &str| e.ride_dress_model.is_some_and(|s| s.str_contains(a));
-            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender)
+            get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         _ => { None }
     }
