@@ -147,7 +147,6 @@ impl Mount {
                 Mount::Griffin => if female { "FF" } else { "FM" },
             }
         }
-
     }
     pub fn determine_gender(str: impl AsRef<str>) -> Option<(Self, Gender)> {
         ["AM", "BM", "CM", "DM", "EM","FM"].iter()
@@ -158,5 +157,9 @@ impl Mount {
                     .position(|x| str.as_ref().contains(x))
                     .map(|x| (Mount::from_i32(x as i32), Gender::Female))
             )
+    }
+    pub fn determine_mount(str: impl AsRef<str>) -> Mount {
+        ["BR_c", "CR_c", "DR_c", "ER_c", "FR_c"].iter().position(|x| str.as_ref().contains(x))
+            .map(|x|Mount::from_i32(x as i32 + 1)).unwrap_or(Mount::None)
     }
 }

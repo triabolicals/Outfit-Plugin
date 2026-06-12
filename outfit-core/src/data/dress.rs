@@ -45,7 +45,6 @@ impl DressData {
             });
         let gender = Il2CppArray::new_from_element_class(Il2CppString::class(), 1).unwrap();
         let conditions = ["", "男性", "女装"];
-
         PersonData::get_list().unwrap().iter().filter(|x| x.gender != 0 && x.get_job().is_some() && x.name.is_some())
             .for_each(|v|{
                 let (a, b) = if v.is_hero() || v.flag.value & 128 != 0 { (1, 3) } else { (0, 1) };
@@ -117,7 +116,9 @@ impl DressData {
                     let mut mode_2f = None;
                     let mut mode_1r = None;
                     let mut mode_2r = None;
-                    sf.search_lists[2].iter().filter(|e| e.ride_dress_model.is_some() || e.dress_model.is_some_and(|e| e.str_contains("M_c") || e.str_contains("F_c")))
+                    sf.search_lists[2].iter().filter(|e|
+                        e.condition_indexes.has_condition_index(condition) &&
+                            (e.ride_dress_model.is_some() || e.dress_model.is_some_and(|e| e.str_contains("M_c") || e.str_contains("F_c"))))
                         .for_each(|e|{
                             if let Some(ride_dress) = e.ride_dress_model.as_ref() { mode_2r = Some(ride_dress.to_string()); }
                             if let Some(dress) = e.dress_model.as_ref() {
@@ -126,7 +127,9 @@ impl DressData {
                                 else if lower.contains("f_c") { mode_2f = Some(dress.to_string()); }
                             }
                         });
-                    sf.search_lists[1].iter().filter(|e| e.ride_model.is_some() || e.body_model.is_some_and(|e| e.str_contains("M_c") || e.str_contains("F_c")))
+                    sf.search_lists[1].iter().filter(|e|
+                        e.condition_indexes.has_condition_index(condition) &&
+                            (e.ride_model.is_some() || e.body_model.is_some_and(|e| e.str_contains("M_c") || e.str_contains("F_c"))))
                         .for_each(|e|{
                             if let Some(ride_body) = e.ride_model.as_ref() { mode_1r = Some(ride_body.to_string()); }
                             if let Some(body) = e.body_model.as_ref() {
@@ -135,7 +138,8 @@ impl DressData {
                                 else if lower.contains("f_c") { mode_1f = Some(body.to_string()); }
                             }
                         });
-                    if let Some((mount, gender)) = mode_2m.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
+                    let mount = mode_2r.as_ref().map(|s| Mount::determine_mount(s.as_str())).unwrap_or(Mount::None);
+                    if let Some((_, gender)) = mode_2m.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
                         job.push(
                             JobDressData {
                                 hash, mount, gender,
@@ -147,7 +151,7 @@ impl DressData {
                             }
                         );
                     }
-                    if let Some((mount, gender)) = mode_2f.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
+                    if let Some((_, gender)) = mode_2f.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
                         job.push(
                             JobDressData {
                                 hash, mount, gender,
@@ -454,7 +458,6 @@ impl JobTransformData {
         if let Some(item_asset) = self.item.and_then(|i| AssetTable::try_index_get(i)){
             result.commit_asset_table(item_asset);
         }
-        // result.commit_mode(mode);
         result.replace(mode);
         result
     }

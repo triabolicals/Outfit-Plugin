@@ -1,18 +1,21 @@
 use std::sync::OnceLock;
 use engage::{
-    combat::CharacterAppearance, gameuserdata::GameUserData,
-    god::GodPool, unityengine::Component,
+    combat::CharacterAppearance,
+    gameuserdata::GameUserData,
+    god::GodPool,
+    unityengine::Component,
     menu::{
         menus::shop::shopunitselect::*,
         menu_item::{MenuItem, MenuItemContent}, BasicMenu, BasicMenuResult
     },
     util::get_singleton_proc_instance,
     mess::Mess, unit::{Unit, UnitFor, UnitPool},
-    proc::Bindable, spriteatlasmanager::FaceThumbnail,
+    proc::Bindable,
+    spriteatlasmanager::FaceThumbnail,
     gamedata::{PersonData, Gamedata, GodData, assettable::AssetTableResult},
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
+    menu::BasicMenuMethods
 };
-use engage::menu::BasicMenuMethods;
 use unity::{prelude::*, engine::{ui::IsImage, Color}};
 use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu};
 static SHOP_UNIT_SELECT_CLASS: OnceLock<&'static Il2CppClass> = OnceLock::new();
@@ -292,9 +295,10 @@ pub extern "C" fn create_accessory_unit_select(this: &mut HubAccessoryShopSequen
     this.create_shop_unit_select_menu();
     if let Some(menu) = this.proc.child.as_mut().map(|v| v.cast_mut::<BasicMenu<ShopUnitSelectMenuItem2>>()) {
         menu.full_menu_item_list.clear();
-        UnitAssetMenuData::get().is_hub = GameUserData::get_sequence() == 4;
-        UnitAssetMenuData::get().unit_select.init();
-        UnitAssetMenuData::get().unit_select.list.iter().for_each(|v|{
+        let menu_data = UnitAssetMenuData::get();
+        menu_data .is_hub = GameUserData::get_sequence() == 4;
+        menu_data .unit_select.init();
+        menu_data .unit_select.list.iter().for_each(|v|{
             let item = SHOP_UNIT_SELECT_CLASS
                 .get_or_init(|| ShopUnitSelectMenuItem2::create_class())
                 .instantiate_as::<ShopUnitSelectMenuItem2>().unwrap();
@@ -304,7 +308,7 @@ pub extern "C" fn create_accessory_unit_select(this: &mut HubAccessoryShopSequen
             menu.add_item(item);
         });
         menu.proc.desc_index = 0;
-        menu.set_select_index(UnitAssetMenuData::get().unit_select_index);
+        menu.set_select_index(menu_data.unit_select_index);
         EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets)
             .change_equipment_box(this.unit_select_root.equipment);
     }

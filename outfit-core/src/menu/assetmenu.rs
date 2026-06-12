@@ -212,7 +212,7 @@ impl CustomAssetMenu {
             custom_menu.selects = Il2CppArray::new_from_element_class(BasicMenuSelect::class(), CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
         }
         else { custom_menu.save_current_select(); }
-        for x in 1..CustomAssetMenuKind::SAVE_SELECT_COUNT {
+        for x in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT {
             custom_menu.selects[x] = BasicMenuSelect::instantiate().unwrap();
             custom_menu.selects[x].index = 0;
             custom_menu.selects[x].scroll = 0;
@@ -224,6 +224,7 @@ impl CustomAssetMenu {
         custom_menu.disable = false;
         custom_menu.is_photo = false;
         MainShop.create_menu_items(custom_menu);
+        println!("Done with ITems");
         if !first { custom_menu.rebuild_menu(); }
     }
     pub fn init(this: &mut AccessoryShopChangeMenu, first: bool) {
