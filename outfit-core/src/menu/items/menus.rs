@@ -184,7 +184,7 @@ impl CustomAssetMenuKind {
             ShopBody((kind, alt)) => {
                 let alt = *alt;
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 {
-                    if *kind == 3 {
+                    if *kind == 4 {
                         UnitAssetMenuData::get_preview().update_dress_gender = true;
                         Some(ShopBody((0, !alt)))
                     }
@@ -227,7 +227,7 @@ impl CustomAssetMenuKind {
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 {
                     if *kind == 0 {
                         UnitAssetMenuData::get_preview().update_dress_gender = true;
-                        Some(ShopBody((3, !alt)))
+                        Some(ShopBody((4, !alt)))
                     }
                     else { Some(ShopBody(((*kind + 5 - 1) % 5, alt))) }
                 }
