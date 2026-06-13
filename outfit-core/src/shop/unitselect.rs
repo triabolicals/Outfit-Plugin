@@ -16,7 +16,9 @@ use engage::{
     sequence::hubaccessory::{room::HubAccessoryRoom, HubAccessoryShopSequence},
     menu::BasicMenuMethods
 };
+use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result};
 use unity::{prelude::*, engine::{ui::IsImage, Color}};
+use unity2::{IlInstance, IlNull};
 use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu};
 static SHOP_UNIT_SELECT_CLASS: OnceLock<&'static Il2CppClass> = OnceLock::new();
 
@@ -64,9 +66,9 @@ impl UnitSelectList {
         UnitAssetMenuData::get().unit_select_index = self.selected.unwrap_or(0);
     }
     pub fn get_selected(&self) -> Option<UnitSelect> { self.selected.and_then(|v| self.list.get(v as usize).cloned()) }
-    pub fn get_result(&self, hub: bool) -> &'static mut AssetTableResult {
+    pub fn get_result(&self, hub: bool) -> AssetTable_Result {
         if let Some(result) = self.get_selected().map(|v| v.get_result(hub)) { result }
-        else { AssetTableResult::get_from_pid(2, "PID_リュール", CharacterAppearance::get_constions(None)) }
+        else { AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), "PID_リュール", engage_il2cpp::combat::CharacterAppearance::get_constions(unity2::Array::<unity2::Il2CppString>::null())) }
     }
 
 }
@@ -118,20 +120,31 @@ impl UnitSelect {
             .or_else(|| self.try_get_god().map(|v| Mess::get(v.mid)))
             .or_else(|| self.try_get_person().map(|v| v.get_name() ))
     }
-    pub fn get_result(&self, hub: bool) -> &'static mut AssetTableResult {
+    pub fn get_result(&self, hub: bool) -> AssetTable_Result {
+        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(unity2::Array::<unity2::Il2CppString>::null());
+        if hub {
+            self.try_get_unit().map(|u| AssetTable_Result::get_for_accessory(u))
+                .or_else(|| self.try_get_person().map(|p| AssetTable_Result::get_for_kizuna(p.pid, default_conditions))
+
+        }
+
+
         if let Some(result) =  self.try_get_unit()
-            .map(|unit|{
-                if hub { AssetTableResult::get_for_accessory(unit) }
-                else { AssetTableResult::get_from_unit(2, unit, CharacterAppearance::get_constions(None)) }
-            }) {
+            .map(|unit|
+                if hub { AssetTable_Result::get_for_accessory(unit) }
+                else { AssetTable_Result::get_from_unit(AssetTable_Modes::combat(), unit, default_conditions) }
+            )
+        {
             result
         }
-        else if let Some(result) = self.try_get_person().map(|person| AssetTableResult::get_for_kizuna(person.pid, CharacterAppearance::get_constions(None)) ){
+        else if let Some(result) = self.try_get_person()
+            .map(|person| AssetTable_Result::get_for_kizuna(person.pid, default_conditions))
+        {
             result
         }
         else if let Some(result) =
-            self.try_get_god().and_then(|god|
-                if hub { Some(AssetTableResult::get_for_hub_god(god)) }
+            self.try_get_god().map(|god|
+                if hub { AssetTable_Result::get_for_hub_2(god) }
                 else {
                     GodPool::try_get(god, false)
                         .map(|g_unit| AssetTableResult::get_from_god_unit(2, g_unit, CharacterAppearance::get_constions(None)))

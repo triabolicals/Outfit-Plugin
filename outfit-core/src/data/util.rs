@@ -1,4 +1,7 @@
 use engage::{gamedata::{Gamedata, JobData}, gamedata::assettable::*,};
+use engage_il2cpp::app::{IAssetTable, IAssetTable_ConditionIndexesMethods, IAssetTable_ResultMethods, IStructData_1Methods};
+use unity2::Cast;
+
 #[derive(Default)]
 pub struct AssetTableIndexes {
     pub mode_1: Vec<i32>,
@@ -9,10 +12,11 @@ impl AssetTableIndexes {
         if entry.mode == 1 || entry.mode == 0 { self.mode_1.push(entry.parent.index); }
         if entry.mode == 2 || entry.mode == 0  { self.mode_2.push(entry.parent.index); }
     }
-    pub fn apply(&self, result: &mut AssetTableResult, mode: i32, condition_flags: Option<&AssetTableConditionFlags>) {
-        let flags = condition_flags.unwrap_or(AssetTableStaticFields::get().condition_flags);
-        if mode == 2 { &self.mode_2 } else { &self.mode_1 }.iter().flat_map(|&i| AssetTable::try_index_get(i))
-            .for_each(|entry| { if entry.condition_indexes.test(flags) { result.commit_asset_table(entry); } });
+    pub fn apply(&self, result: engage_il2cpp::app::AssetTable_Result, mode: i32, condition_flags: engage_il2cpp::app::AssetTable_ConditionFlags) {
+        if condition_flags.is_null() { return; }
+        if mode == 2 { &self.mode_2 } else { &self.mode_1 }.iter()
+            .map(|&i| engage_il2cpp::app::AssetTable::try_get_2(i))
+            .for_each(|entry| { if entry.m_condition_indexes().test(condition_flags) { result.commit_4(entry); } });
     }
     pub fn is_empty(&self) -> bool { self.mode_1.is_empty() || self.mode_2.is_empty() }
 }

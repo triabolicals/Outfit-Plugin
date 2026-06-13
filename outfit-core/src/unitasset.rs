@@ -5,6 +5,7 @@ use engage::{
     gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
     util::try_get_instance,
 };
+use engage_il2cpp::app::AssetTable_Result;
 pub use crate::playerdata::*;
 use crate::{
     assets::unit_dress_gender, get_outfit_data,
@@ -131,7 +132,7 @@ impl UnitAssetMenuData {
         });
         data.mode = MenuMode::PhotoGraph;
     }
-    pub fn get_result() -> &'static mut AssetTableResult {
+    pub fn get_result() -> AssetTable_Result {
         let data = Self::get();
         let hub = data.mode != MenuMode::UnitInfo;
         match data.mode {

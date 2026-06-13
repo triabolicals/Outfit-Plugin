@@ -28,13 +28,8 @@ impl AssetColor{
     pub fn get_f32(&self) -> [f32; 3] { [self.values[0] as f32 / 255.0, self.values[1] as f32/ 255.0, self.values[2] as f32/ 255.0] }
     pub fn has_color(&self) -> bool { self.values[0] > 0 || self.values[1] > 0 || self.values[2] > 0 }
     pub fn is_zero(&self) -> bool { self.values[0] == 0 && self.values[1] == 0 && self.values[2] == 0 }
-    pub fn set_result_color(&self, result: &mut AssetTableResult, result_index: usize) {
-        if self.has_color() {
-            result.unity_colors[result_index].r = (self.values[0] as f32) / 255.0;
-            result.unity_colors[result_index].g = (self.values[1] as f32) / 255.0;
-            result.unity_colors[result_index].b = (self.values[2] as f32) / 255.0;
-            result.unity_colors[result_index].a = 1.0;
-        }
+    pub fn set_result_color(&self, result: AssetTable_Result, result_index: usize) {
+        if self.has_color() { set_color_by_u8(result, result_index, self.values[0], self.values[1], self.values[2]); }
     }
     pub fn from_stream(stream: Stream_2) -> Self {
         let mut values = [0; 4];

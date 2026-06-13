@@ -1,5 +1,6 @@
 use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
 use unity::{il2cpp::class::VirtualInvoke, prelude::*};
+use unity2::system::string::IIl2CppStringMethods;
 use crate::assets::new_asset_table_accessory;
 pub trait Randomizer<T> {
     fn get_random_element(&self, rng: &Random) -> Option<&T>;
@@ -88,4 +89,10 @@ pub fn capitalize_first(s: &str) -> String {
 pub fn hash_string<'a>(str: impl Into<&'a Il2CppString>) -> i32 {
     let str = str.into();
     str.get_hash_code()
+}
+pub fn il2str(str: unity2::Il2CppString) -> Option<String> {
+    if str.is_null() { None } else { Some(str.to_rust_string()) }
+}
+pub fn try_get_il2cpp_hash(str: unity2::Il2CppString) -> Option<i32> {
+    if str.is_null() { None } else { Some(str.get_hash_code()) }
 }

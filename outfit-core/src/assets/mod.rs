@@ -72,6 +72,14 @@ pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool, map: 
     }
     None
 }
+pub fn get_condition_index(condition: impl Into<unity2::Il2CppString>) -> Option<i32> {
+    let (found, idx) =
+    AssetTable::s_condition_indexes().try_get_value(condition.into());
+    if found { Some(idx) } else { None }
+}
+pub fn has_condition_index(entry: AssetTable, condition_index: i32) -> bool {
+    entry.m_condition_indexes().m_list().iter().any(|i| i.iter().any(|i| *i == condition_index))
+}
 pub fn get_condition_label(label: &String) -> Option<String> {
     if let Some(pos) = ["EID_", "AID_", "GID_", "MPID_", "PID_", "JID_"].iter().position(|x| label.starts_with(x)){
         match pos {

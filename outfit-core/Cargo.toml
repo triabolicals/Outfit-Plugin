@@ -18,8 +18,9 @@ engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", 
     "app-unit", "app-unit-types", "app-random_2",
     "app-persondata", "app-jobdata", "app-itemdata", "app-goddata", "app-godunit",
     "app-gameuserdata", "app-singletonclass_1", "app-stream_2",
-    "app-resourcemanager_2",
+    "app-resourcemanager_2", "app-skillarray", "app-skillarray-types",
     "system-collections-generic-dictionary_2", "system-collections-generic-list_1",
+    "combat-character", "combat-characterappearance", "combat-characterbuilder",
 
 ] }
 unity2 = { git = "https://github.com/DivineDragonFanClub/unity2" }

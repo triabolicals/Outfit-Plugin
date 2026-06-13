@@ -8,6 +8,7 @@ use engage::gamedata::item::ItemData;
 use engage::gameuserdata::GameUserData;
 use engage::gamevariable::GameVariableManager;
 use engage::random::Random;
+use engage_il2cpp::app::IUnitMethods;
 use crate::{get_outfit_data, UnitAssetMenuData};
 
 #[derive(PartialEq, Eq, Clone, Copy)]
@@ -33,9 +34,9 @@ impl RandomDressMode {
         }
         else { RandomDressMode::Off }
     }
-    pub fn get_random(&self, unit: &Unit, base_seed: i32) -> Option<&'static Random> {
+    pub fn get_random(&self, unit: engage_il2cpp::app::Unit, base_seed: i32) -> Option<&'static Random> {
         let god =
-            if unit.status.value & UnitStatusField::Engaging != 0 { unit.god_link.or(unit.god_unit)
+            if unit.is_engaging_2() { unit.god_link.or(unit.god_unit)
                 .map(|v| v.data.parent.hash >> 2)
                 .unwrap_or(0) }
             else { 0 };

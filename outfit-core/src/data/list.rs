@@ -254,7 +254,7 @@ impl AssetLabelTable {
     pub fn get_body(&self, asset: &str) -> Option<(&String, &AssetLabel)> {
         self.body.iter().find(|s| asset.contains(s.0))
     }
-    pub fn get_suffix_name(&self, asset: &str) -> Option<&'static Il2CppString> {
+    pub fn get_suffix_name(&self, asset: &str) -> Option<unity2::Il2CppString> {
         self.get_suffix(asset).map(|x|{
             let out = x.1.get();
             if asset.ends_with(x.0) { out }

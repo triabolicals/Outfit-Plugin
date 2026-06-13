@@ -1,9 +1,9 @@
+use engage_il2cpp::app::{AssetTable_Accessory, IAssetTable_AccessoryMethods};
 use super::*;
 
-pub fn new_asset_table_accessory(model: impl Into<&'static Il2CppString>, loc: impl Into<&'static Il2CppString>) -> &'static mut AssetTableAccessory {
-    let accessory_class = Il2CppClass::from_name("App", "AssetTable").unwrap().get_nested_types().iter().find(|x| x.get_name() == "Accessory").unwrap();
-    let new_accessory = Il2CppObject::<AssetTableAccessory>::from_class( accessory_class ).unwrap();
-    new_accessory.model = Some(model.into() );
-    new_accessory.locator = Some(loc.into());
-    new_accessory
+pub fn new_asset_table_accessory<T: Into<unity2::Il2CppString>>(model: T, loc: T) -> AssetTable_Accessory {
+    let accessory = AssetTable_Accessory::new();
+    accessory.set_model(model.into());
+    accessory.set_locator(loc.into());
+    accessory
 }

@@ -1,5 +1,7 @@
 use bitflags::{bitflags};
 use engage::{gamedata::assettable::*, gamedata::Gamedata, gamedata::item::ItemData, mess::Mess};
+use engage_il2cpp::app::{AssetTable_Result, IAssetTable_ResultMethods, IStructData_1Methods};
+use unity2::Cast;
 use unity::prelude::Il2CppString;
 use crate::{capitalize_first, AssetLabelTable, AssetType};
 
@@ -200,7 +202,8 @@ impl ItemAsset {
         let entry = AssetTableStaticFields::get().search_lists[2].iter().find(|x| x.condition_indexes.has_condition_index(con)).map(|entry| entry.parent.index)?;
         Some(Self { entry, hash: data.parent.hash, kind: data.kind as i32 })
     }
-    pub fn apply(&self, result: &mut AssetTableResult) {
-        if let Some(entry) = AssetTable::try_index_get(self.entry) { result.commit_asset_table(entry); }
+    pub fn apply(&self, result: AssetTable_Result) {
+        let entry = engage_il2cpp::app::AssetTable::try_get_2(self.entry);
+        if !entry.is_null() { result.commit_4(entry); }
     }
 }
