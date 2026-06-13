@@ -242,6 +242,7 @@ impl OutfitData {
         let anims = AnimData::init(&mut assets);
         hashes.get_info_anim();
         new_list.add_eye_presets(&new_labels);
+        hashes.create_uo_pairs();
         Self {
             dress, anims,
             list: new_list,
