@@ -1,12 +1,47 @@
 use engage::{
-    unit::Gender, mess::Mess, unityengine::GameObject, gameicon::GameIcon,
+    mess::Mess, gameicon::GameIcon,
     menu::{
         content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo},
         menu_item::accessory::AccessoryMenuItemContent
     },
 };
+use engage_il2cpp::app::{AccessoryData_Kinds, BasicMenuItem, IAccessoryEquipmentInfo, IAccessoryMenuItemMethods, IBasicMenuItem, IBasicMenuItemContentMethods, IBasicMenuItemMethods};
+use engage_il2cpp::BasicMenuItemExt;
+use engage_il2cpp::prelude::List_1;
+use engage_il2cpp::system::collections::generic::IList_1Methods;
+use engage_il2cpp::unity_engine::{GameObject, IComponentMethods, IGameObjectMethods, IObject_2Methods, ITransformMethods};
 use unity::{engine::Sprite, engine::ui::IsImage, system::Il2CppString};
+use unity2::{Cast, FromIlInstance};
 use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData, items::Profile, menu::icons::CustomMenuIcon, FACIAL_STATES};
+
+pub fn build_equipment_window(this: engage_il2cpp::app::AccessoryEquipmentInfo) {
+    let content = this.m_content_object();
+    if content.is_null() { return; }
+    let transform = content.get_transform();
+    let child_1 = transform.get_child(0).get_game_object();
+    for i in 0..2 {
+        let obj = engage_il2cpp::unity_engine::Object_2::instantiate_3(child_1);
+        obj.set_name(format!("Acc{}",i+6));
+        unsafe {
+            let go: engage_il2cpp::unity_engine::GameObject = obj.cast();
+            let go_t = go.get_transform();
+            go_t.set_parent(transform);
+        }
+    }
+    let list = List_1::<BasicMenuItem>::new();
+    this.set_m_menu_item_list(list);
+    let count = transform.get_child_count();
+    for i in 0..count {
+        let item = engage_il2cpp::app::AccessoryMenuItem::instantiate().unwrap();
+        IBasicMenuItemMethods::ctor(item);
+        item.set_m_index(i);
+        item.set_m_accessory_kind(AccessoryData_Kinds{value: i});
+        let item_content = transform.get_child(i).get_game_object().get_component::<engage_il2cpp::app::AccessoryMenuItemContent>();
+        item_content.build(item);
+        list.add(BasicMenuItem::from(item));
+    }
+}
+
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum EquipmentBoxMode {
@@ -166,9 +201,9 @@ impl EquipmentBoxMode {
                     }
                 }
                 EquipmentBoxPage::AOCAnimations => {
-                    let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(if UnitAssetMenuData::get_current_dress_gender() == 2 { Gender::Female } else { Gender::Male });
+                    let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(if UnitAssetMenuData::get_current_dress_gender() == 2 { engage_il2cpp::app::Gender::female() } else { engage_il2cpp::app::Gender::male() });
                     for x in 0..4 {
-                        let hash = if gender == Gender::Female { data.aoc_alt[x] } else { data.aoc[x] };
+                        let hash = if gender == engage_il2cpp::app::Gender::female() { data.aoc_alt[x] } else { data.aoc[x] };
                         let aoc_name = db.try_get_asset(AssetType::AOC(x as u8), hash)
                             .or_else(|| db.try_get_asset(AssetType::AOC(x as u8), preview.original_assets[10 + x]).filter(|_| no_data))
                             .map(|v| v.into()).or_else(|| Some(Mess::get_item_none2()));

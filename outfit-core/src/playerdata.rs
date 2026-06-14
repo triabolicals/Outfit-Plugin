@@ -1,11 +1,8 @@
 use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
-use engage::{
-    gamedata::{assettable::AssetTableResult, Gamedata, GodData, PersonData},
-    unit::Gender, mess::Mess,
-};
-use engage_il2cpp::app::{AssetTable_Result, GameUserData, IGameUserDataMethods, ISingletonClass_1Methods, IStream_2Methods, Stream_2};
+use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, GameUserData, IAssetTable_ResultMethods, IGameUserDataMethods, ISingletonClass_1Methods, IStream_2Methods, IStructData_1Methods, Stream_2};
+use unity2::Cast;
 use unity::prelude::*;
-use crate::{assets::new_asset_table_accessory, apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice};
+use crate::{assets::new_asset_table_accessory, apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,
@@ -48,7 +45,7 @@ impl UnitAssetData {
     pub fn version() -> i32 { 10 }
     pub fn new_hash(hash: i32, random_app: bool) -> Self {
         let (profile, flag) =
-        if GodData::try_get_hash(hash).is_some() { (vec![PlayerOutfitData::new_with_flag(0); 3], 1) }
+        if !engage_il2cpp::app::GodData::try_get_from_hash(hash).is_null() { (vec![PlayerOutfitData::new_with_flag(0); 3], 1) }
         else { (vec![PlayerOutfitData::new_with_flag(0); 5], if random_app { 8 } else { 0 }) };
         Self { person: hash, profile, set_profile: [0, 1, 2, 0, 0], flag, }
     }
@@ -80,11 +77,11 @@ impl UnitAssetData {
         let i = self.profile_index(engaged);
         self.profile.get(i as usize).map(|v| v.flag).unwrap_or(0)
     }
-    pub fn set_result(&self, result: &mut AssetTableResult, mode: i32, engaged: bool, stun: bool) {
+    pub fn set_result(&self, result: AssetTable_Result, mode: i32, engaged: bool, stun: bool) {
         let index = self.profile_index(engaged);
         if let Some(profile) = self.profile.get(index as usize) { profile.set_result(result, mode, engaged, stun); }
     }
-    pub fn set_color(&self, result: &mut AssetTableResult, engaged: bool) {
+    pub fn set_color(&self, result: AssetTable_Result, engaged: bool) {
         let index = self.profile_index(engaged);
         if let Some(profile) = self.profile.get(index as usize) { profile.set_color(result); }
     }
@@ -156,8 +153,8 @@ impl PlayerOutfitData {
             let db = get_outfit_data();
             for x in 0..4 {
                 match db.get_aoc_gender_hash(x as i32, data.aoc[x]) {
-                    Some(Gender::Male) => { self.aoc[x] = data.aoc[x]; }
-                    Some(Gender::Female) => { self.aoc_alt[x] = data.aoc[x]; }
+                    Some(engage_il2cpp::app::Gender::male()) => { self.aoc[x] = data.aoc[x]; }
+                    Some(engage_il2cpp::app::Gender::female()) => { self.aoc_alt[x] = data.aoc[x]; }
                     _ => {}
                 }
             }
@@ -170,7 +167,7 @@ impl PlayerOutfitData {
         }
         for x in 0..8 { self.colors[x].set_by_i32(data.color[x]); }
     }
-    pub fn is_empty(&self, _gender: Option<Gender>) -> bool {
+    pub fn is_empty(&self, _gender: Option<engage_il2cpp::app::Gender>) -> bool {
         let db = get_outfit_data();
         let not_empty =
         self.colors.iter().any(|v| v.has_color()) ||
@@ -216,13 +213,11 @@ impl PlayerOutfitData {
         mount.iter_mut().for_each(|m|{ *m = stream.read_int(); });
         let voice = stream.read_int();
         let mut aoc_alt = [0; 4];
-        if version >= 8 {
-            for x in 0..4 { aoc_alt[x] = stream.read_int(); }
-        }
+        if version >= 8 { for x in 0..4 { aoc_alt[x] = stream.read_int(); } }
         else {
             let db = get_outfit_data();
             for x in 0..4 {
-                if db.get_aoc_gender_hash(x, aoc[x as usize]).is_some_and(|x| x == Gender::Female){
+                if db.get_aoc_gender_hash(x, aoc[x as usize]).is_some_and(|x| x == engage_il2cpp::app::Gender::female()){
                     aoc_alt[x as usize] = aoc[x as usize];
                     aoc[x as usize] = 0;
                 }
@@ -230,14 +225,10 @@ impl PlayerOutfitData {
         }
         if version < 10 {
             if flag & 1 != 0 {
-                for x in 0..8 {
-                    if colors[x].has_color() { colors[x].values[3] = 1; }
-                }
+                for x in 0..8 { if colors[x].has_color() { colors[x].values[3] = 1; } }
             }
             if flag & 512 != 0 {
-                for x in 0..8 {
-                    if colors[x+8].has_color() { colors[x+8].values[3] = 1; }
-                }
+                for x in 0..8 { if colors[x+8].has_color() { colors[x+8].values[3] = 1; } }
             }
             if flag & 64 != 0 {
                 for x in 0..16 { if scale[x] > 0 { scale[x] |= 1024; } }
@@ -268,19 +259,19 @@ impl PlayerOutfitData {
             if self.colors[i].values[3] != 0 { set_color_by_u8_slice(result, i, self.colors[i].values); }
         }
     }
-    pub fn set_result(&self, result: &mut AssetTableResult, mode: i32, engaged: bool, stun: bool) {
+    pub fn set_result(&self, result: AssetTable_Result, mode: i32, engaged: bool, stun: bool) {
         let sequence = GameUserData::get_instance().get_sequence().value;
         let db = get_outfit_data();
         self.set_color(result);
         if sequence != 4 {
-            if let Some(voice) = db.hashes.voice.get(&self.voice){ result.sound.voice = Some(voice.into()); }
+            if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.into(); }
         }
         if mode == 2 {
-            let original_dress_gender = db.get_dress_gender(result.dress_model);
-            if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.body_model = rig.into(); }
-            if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.head_model = head.into(); }
-            if !self.colors[2].has_color() || self.flag & 1 == 0 {
-                let head_hash = result.head_model.get_hash_code();
+            let original_dress_gender = db.get_dress_gender(result.get_dress_model());
+            if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.set_body_model(rig); }
+            if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.set_head_model(head); }
+            if !self.colors[2].has_color() {
+                let head_hash = result.get_head_model().get_hash_code();
                 if let Some(color) = db.list.skin.get(&head_hash) { color.set_result_color(result, 2); }
             }
             if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_hair(hair, result); }
@@ -291,69 +282,60 @@ impl PlayerOutfitData {
                     .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
                 {
                     let new_dress_gender = db.get_dress_gender(body.into());
-                    if original_dress_gender == new_dress_gender { result.dress_model = body.into(); }
-                    else if allow_cross_dress { result.dress_model = body.into(); }
+                    if original_dress_gender == new_dress_gender { result.set_dress_model(body); }
+                    else if allow_cross_dress { result.set_dress_model(body); }
                 }
                 for x in 0..5 {
                     if let Some(head) = db.try_get_asset(Acc(x as u8), self.acc[x]) {
-                        if head.contains("Msc0AT") { result.left_hand = head.into(); } else {
-                            let accessory = new_asset_table_accessory(head.to_string().as_str(), ACC_LOC[x]);
-                            result.commit_accessory(&accessory);
-                        }
+                        if head.contains("Msc0AT") { result.set_left_hand(head); }
+                        else { result.commit_8(new_asset_table_accessory(head.to_string().as_str(), ACC_LOC[x])); }
                     }
                 }
             }
             for x in 0..16 {
                 if self.scale[x] & 1024 != 0 {
                     let v = self.scale[x] & 1023;
-                    if v > 0 && v <= 1000 { result.scale_stuff[x] = (v as f32) / 100.0; }
+                    if v > 0 && v <= 1000 { set_result_scale_u16(result, x, v); }
                 }
             }
-            if let Some(ride_dress_model) = result.ride_dress_model {
-                let current_mount = Mount::from(ride_dress_model.to_string().as_str());
+            if let Some(ride_dress_model) = il2str(result.get_ride_dress_model()) {
+                let current_mount = Mount::from(ride_dress_model.as_str());
                 let mount_index = i32::from(current_mount) - 1;
                 if mount_index >= 0 && mount_index < 5 {
                     let selection = self.mount[mount_index as usize];
-                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.ride_dress_model = Some(ride.into()); }
+                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.set_ride_model(ride); }
                 }
             }
-            let dress_gender = db.get_dress_gender(result.dress_model);
-
-            let aoc_default_offset = if dress_gender == Gender::Male { 0 } else { 4 } as usize;
+            let dress_gender = db.get_dress_gender(result.get_dress_model());
+            let aoc_default_offset = if dress_gender == engage_il2cpp::app::Gender::male() { 0 } else { 4 } as usize;
             for x in 0..4 {
-                if let Some(anim) = result.get_anim(x as i32) {
-                    let hash = if dress_gender == Gender::Male { self.aoc[x] } else { self.aoc_alt[x] };
-                    if let Some(aoc) = db.try_get_asset(AssetType::AOC(x as u8), hash){
-                        *anim = aoc.into();
-                    }
-                    else {
-                        let anim_gender = db.get_aoc_gender(x as i32, anim);
-                        if anim_gender != dress_gender && anim_gender != Gender::None {
-                            *anim = DEFAULT_AOC[aoc_default_offset + x].into();
-                        }
-                    }
+                let hash = if dress_gender == engage_il2cpp::app::Gender::male() { self.aoc[x] } else { self.aoc_alt[x] };
+                if let Some(aoc) = db.try_get_asset(AssetType::AOC(x as u8), hash){ 
+                    set_result_anim(result, x, aoc);
+                }
+                else if let Some(anim) = crate::get_result_anim(result, x).and_then(|x| try_get_il2cpp_hash(x)){
+                    let anim_gender = db.get_aoc_gender_hash(AssetType::AOC(x as u8), anim);
+                    if anim_gender != Some(dress_gender) { set_result_anim(result, x, DEFAULT_AOC[aoc_default_offset + x]) }
                 }
             }
-            result.replace(2);
+            result.replace(AssetTable_Modes::combat());
         }
         else {
             // if let Some(skin) = db.list.skin.get(&self.uhead) { ColorPreset::set_color(&mut result.unity_colors[2], *skin); }
             if !engaged || (engaged && self.flag & 2 != 0) {
-                let original_dress_gender = db.get_dress_gender(result.body_model);
+                let original_dress_gender = db.get_dress_gender(result.get_body_model());
+                let allow_cross_dress = self.flag & 128 != 0;
                 let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
                 if let Some(body) = db.hashes.get_obody(b).or_else(|| db.hashes.get_obody(self.ubody)){
                     let same_gender = db.get_dress_gender(body.into()) == original_dress_gender;
-                    if same_gender { result.body_model = body.into(); }
-                    else if self.flag & 128 != 0 { result.body_model = body.into(); }
+                    if same_gender { result.set_body_model(body); }
+                    else if allow_cross_dress { result.set_body_model(body); }
                 }
                 else if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
-                    let allow_cross_dress = self.flag & 128 != 0;
-                    if let Some(body) = db.try_get_asset(AssetType::Body, b)
-                        .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
-                    {
-                        let new_dress_gender = db.get_dress_gender(body.into());
-                        if original_dress_gender == new_dress_gender { result.dress_model = body.into(); }
-                        else if allow_cross_dress { result.dress_model = body.into(); }
+                    if let Some(body) = db.hashes.get_obody(b).or_else(|| db.hashes.get_obody(self.ubody)){
+                        let same_gender = db.get_dress_gender(body.into()) == original_dress_gender;
+                        if same_gender { result.set_body_model(body); }
+                        else if allow_cross_dress { result.set_body_model(body); }
                     }
                 }
                 for x in 0..5 {
@@ -362,31 +344,34 @@ impl PlayerOutfitData {
                         else {
                             let oacc = head.replace("uAcc", "oAcc");
                             if db.hashes.o_acc.iter().any(|x| *x.1 == oacc) {
-                                let accessory = new_asset_table_accessory(oacc.as_str(), ACC_LOC[x]);
-                                result.commit_accessory(&accessory);
+                                result.commit_8(new_asset_table_accessory(oacc.as_str(), ACC_LOC[x]));
                             }
                         }
                     }
                 }
             }
             if let Some(hair) = db.hashes.get_ohair(self.uhair){
-                if (result.body_model.str_contains("Drg0AF_c05") || result.body_model.str_contains("Drg1AF_c05"))
-                    && (hair.contains("h050") || hair.contains("h051")) { result.head_model = "oHair_h050".into();
+                if let Some(body) = il2str(result.get_body_model()){
+                    if (body.contains("Drg0AF_c05") || body.contains("Drg1AF_c05")) && (hair.contains("h050") || hair.contains("h051")) {
+                        result.set_head_model("oHair_h050");
+                    }
+                    else { result.set_head_model(hair); }
                 }
-                else { result.head_model = hair; }
+                else { result.set_head_model(hair); }
             }
-            if let Some(ride) = result.ride_model.as_ref() {
-                let current_mount = Mount::from(ride.to_string().as_str());
+            if let Some(ride) = il2str(result.get_ride_model()) {
+                let current_mount = Mount::from(ride.as_str());
                 let mount_index = i32::from(current_mount) - 1;
                 if mount_index >= 0 {
                     if let Some(ride) = self.mount.get(mount_index as usize).and_then(|hash| db.hashes.get_mount_obody(*hash)) {
-                        result.ride_model = Some(ride);
+                        result.set_ride_model(ride);
                     }
                 }
             }
+            result.replace(AssetTable_Modes::onmap);
         }
     }
-    pub fn try_load_from_file(dir_entry: &DirEntry, gender_restriction: Option<Gender>) -> Option<Self> {
+    pub fn try_load_from_file(dir_entry: &DirEntry, gender_restriction: Option<engage_il2cpp::app::Gender>) -> Option<Self> {
         if let Ok(file) = read_to_string(dir_entry.path()) {
             let scale_name = SCALE_NAME.iter().map(|v| v.to_lowercase()).collect::<Vec<String>>();
             let color = COLORS.iter().map(|v| v.to_lowercase()).collect::<Vec<String>>();
@@ -409,8 +394,8 @@ impl PlayerOutfitData {
                             8..20 => {
                                 let rel_pos = pos % 4;
                                 if let Some(g) = db.get_aoc_gender_hash(rel_pos as i32, v){
-                                    if g == Gender::Male { out.aoc[rel_pos] = v; }
-                                    else if g == Gender::Male { out.aoc_alt[rel_pos] = v; }
+                                    if g == engage_il2cpp::app::Gender::male() { out.aoc[rel_pos] = v; }
+                                    else if g == engage_il2cpp::app::Gender::male() { out.aoc_alt[rel_pos] = v; }
                                 }
                             }
                             20..25 => { out.mount[pos - 20] = v; }
@@ -491,7 +476,7 @@ impl PlayerOutfitData {
             let db = OUTFIT_DATA.get_or_init(||OutfitData::init());
             if let Some(g) = db.get_dress_gender_hash(self.ubody) {
                 string.push_str("Gender=");
-                if g == Gender::Male { string.push_str("Male\n"); } else { string.push_str("Female\n"); }
+                if g == engage_il2cpp::app::Gender::male() { string.push_str("Male\n"); } else { string.push_str("Female\n"); }
             }
             string.push_str(format!("{}={}\n", VAR_NAMES[0], db.try_get_asset(AssetType::Body, self.ubody).unwrap_or(&none)).as_str());
             string.push_str(format!("{}={}\n", VAR_NAMES[1], db.try_get_asset(AssetType::Head, self.uhead).unwrap_or(&none)).as_str());

@@ -522,7 +522,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                             let current_dress = profile.ubody;
                             let current_dress_gender = db.get_dress_gender_hash(current_dress)
                                 .or_else(||db.get_dress_gender_hash(data.preview.original_assets[0]))
-                                .unwrap_or(Gender::None);
+                                .unwrap_or(engage_il2cpp::app::Gender::none());
                             let flag = profile.flag;
                             *profile = new_data.data.clone();
                             if flag & 128 == 0 && db.try_get_asset(AssetType::Body, new_data.data.ubody).is_some() {

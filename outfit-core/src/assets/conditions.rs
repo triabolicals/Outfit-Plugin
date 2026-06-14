@@ -2,7 +2,7 @@ use bitflags::{bitflags, Flags};
 use engage::gamedata::assettable::AssetTableStaticFields;
 use engage::gamedata::{Gamedata, GodData, PersonData};
 use engage::gamedata::accessory::AccessoryData;
-use engage::unit::{Gender, Unit, UnitAccessory, UnitStatusField, UnitUtil};
+use engage::unit::{Unit, UnitAccessory, UnitStatusField, UnitUtil};
 use unity::system::Il2CppString;
 use engage::gamedata::item::ItemData;
 use engage::gameuserdata::GameUserData;
@@ -218,13 +218,13 @@ impl AssetFlags {
                 flags.set(AssetFlags::Monster, false);
             }
             if unit.person.flag.value & 32 != 0 {
-                let gender = if unit.person.get_gender() == 2 { Gender::Male } else { Gender::Female };
+                let gender = if unit.person.get_gender() == 2 { engage_il2cpp::app::Gender::male() } else { engage_il2cpp::app::Gender::female() };
                 flags.set_gender(gender);
             }
             else { flags.set_gender(unit.person.get_gender2()); }
             if unit.person.parent.index == 1 || unit.person.flag.value & 128 != 0 {
                 if unit.edit.gender & 3 != 0 {
-                    let gender = if unit.edit.gender == 1 { Gender::Male } else { Gender::Female };
+                    let gender = if unit.edit.gender == 1 { engage_il2cpp::app::Gender::male() } else { engage_il2cpp::app::Gender::female() };
                     flags.set_gender(gender);
                 }
             }
@@ -238,9 +238,9 @@ impl AssetFlags {
         }
         flags
     }
-    pub fn set_gender(&mut self, gender: Gender) {
-        self.set_condition_flag(AssetFlags::Male, gender == Gender::Male);
-        self.set_condition_flag(AssetFlags::Female, gender == Gender::Female);
+    pub fn set_gender(&mut self, gender: engage_il2cpp::app::Gender) {
+        self.set_condition_flag(AssetFlags::Male, gender == engage_il2cpp::app::Gender::male());
+        self.set_condition_flag(AssetFlags::Female, gender == engage_il2cpp::app::Gender::none());
     }
     pub fn set_condition_flag(&mut self, rhs: Self, value: bool){
         if let Some(condition) = Self::FLAGS.iter()

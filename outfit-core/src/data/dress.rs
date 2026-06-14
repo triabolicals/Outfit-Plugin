@@ -181,7 +181,7 @@ impl DressData {
             self.engaged.iter().find(|x| x.asset_id == str)
         }
     }
-    pub fn get_job_dress(&self, job: engage_il2cpp::app::JobData, gender: Gender) -> Option<&JobDressData> {
+    pub fn get_job_dress(&self, job: engage_il2cpp::app::JobData, gender: engage_il2cpp::app::Gender) -> Option<&JobDressData> {
         self.job.iter().find(|x| x.is_match(gender, job))
     }
     pub fn get_personal_dress(&self, unit: engage_il2cpp::app::Unit) -> Option<&PersonalDressData> {
@@ -457,7 +457,7 @@ impl JobTransformData {
 
 pub struct JobDressData {
     pub hash: i32,
-    pub gender: Gender,
+    pub gender: engage_il2cpp::app::Gender,
     pub mount: Mount,
     pub dress_model: String,
     pub hair_color: i32,
@@ -474,9 +474,9 @@ impl JobDressData {
             asset.contains("Body_Swd0A") && !asset.contains("c251")
         }
     }
-    pub fn is_match(&self, gender: Gender, job: engage_il2cpp::app::JobData) -> bool { self.gender == gender && job.hash() == self.hash }
-    pub fn new_generic_gender(hash: i32, gender: Gender, prefix: &str, ride_dress: &Option<String>, ride_body: &Option<String>) -> Self {
-        let dress_model = format!("uBody_{}_c000", if gender == Gender::Male { prefix.replace("*", "M") } else { prefix.replace("*", "F") });
+    pub fn is_match(&self, gender: engage_il2cpp::app::Gender, job: engage_il2cpp::app::JobData) -> bool { self.gender == gender && job.hash() == self.hash }
+    pub fn new_generic_gender(hash: i32, gender: engage_il2cpp::app::Gender, prefix: &str, ride_dress: &Option<String>, ride_body: &Option<String>) -> Self {
+        let dress_model = format!("uBody_{}_c000", if gender == engage_il2cpp::app::Gender::male() { prefix.replace("*", "M") } else { prefix.replace("*", "F") });
         Self {
             hair_color: 0,
             hash, dress_model, gender,
@@ -489,7 +489,7 @@ impl JobDressData {
 
     pub fn new(hash: i32, prefix: &str, ride_dress: &Option<String>, ride_body: &Option<String>, hair_color: i32) -> Self {
         let dress_model = if prefix.len() > 6 { format!("uBody_{}", prefix) } else { format!("uBody_{}_c000", prefix) };
-        let gender = if dress_model.contains("M_c") { Gender::Male } else { Gender::Female };
+        let gender = if dress_model.contains("M_c") { engage_il2cpp::app::Gender::male() } else { engage_il2cpp::app::Gender::female() };
         let body_model = if prefix.contains("c") { Some(dress_model.replace("uBody", "oBody")) } else { None };
         Self {
             hash, gender, dress_model, hair_color,
@@ -532,8 +532,8 @@ impl JobDressData {
                 }
                 else if spilt[1].ends_with("*") {
                     hashes.iter().for_each(|h| {
-                        class.push(Self::new_generic_gender(*h, Gender::Male, spilt[1], &ride_dress, &ride_body));
-                        class.push(Self::new_generic_gender(*h, Gender::Female, spilt[1], &ride_dress, &ride_body));
+                        class.push(Self::new_generic_gender(*h, engage_il2cpp::app::Gender::male(), spilt[1], &ride_dress, &ride_body));
+                        class.push(Self::new_generic_gender(*h, engage_il2cpp::app::Gender::female(), spilt[1], &ride_dress, &ride_body));
                     });
                 }
                 else {
@@ -594,15 +594,15 @@ impl EngagedDressData {
         let hair_grad = spilt.next().map(|v| ColorPreset::parse_color(v))?;
         Some(Self{ asset_id, body_prefix, hair_color, hair_grad, })
     }
-    pub fn apply(&self, result: AssetTable_Result, mode: i32, gender: Gender) {
+    pub fn apply(&self, result: AssetTable_Result, mode: i32, gender: engage_il2cpp::app::Gender) {
         let mut body = String::from(if mode == 2 { "uBody_" } else { "oBody_"});
-        if (self.body_prefix.contains("AF_") && gender == Gender::Female) || (self.body_prefix.contains("AM_") && gender == Gender::Male) {
+        if (self.body_prefix.contains("AF_") && gender == engage_il2cpp::app::Gender::female()) || (self.body_prefix.contains("AM_") && gender == engage_il2cpp::app::Gender::male()) {
             let body = format!("{}_{}", body, self.body_prefix.as_str());
             set_result_dress_body_model(result, mode, body);
         }
         else {
             body.push_str(self.body_prefix.as_str());
-            body.push_str(if gender == Gender::Male { "M_c000" } else { "F_c000" });
+            body.push_str(if gender == engage_il2cpp::app::Gender::male() { "M_c000" } else { "F_c000" });
             set_result_dress_body_model(result, mode, body);
         }
         if self.hair_color != 0 { set_color_by_i32(result, 0, self.hair_color); }

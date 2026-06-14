@@ -166,4 +166,17 @@ impl OutfitHashes {
                 else if self.aoc_m.contains(h) { self.info_m.push(*h); }
             });
     }
+    pub fn create_uo_pairs(&mut self) {
+        let v: Vec<_> =
+        self.body.iter()
+            .map(|(hash, asset)| (*hash, hash_string(asset.replace("uBody", "oBody"))))
+            .filter(|(u, o)| self.o_body.contains_key(o) && !self.female_ou.iter().any(|i| *i.0 == *u) && !self.male_ou.iter().any(|i| *i.0 == *u))
+            .map(|(u, o)|(u, o, self.female_u.contains(&u)))
+            .collect();
+
+        v.into_iter()
+            .for_each(|(u, o, female)|{
+                if female { self.female_ou.push((u, o)); } else { self.male_ou.push((u, o)); }
+            });
+    }
 }

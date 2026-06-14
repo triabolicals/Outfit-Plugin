@@ -475,7 +475,7 @@ impl CustomAssetMenuKind {
             }
             ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
             ShopAoc(page) => {
-                let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == Gender::Female).unwrap_or(female);
+                let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == engage_il2cpp::app::Gender::female()).unwrap_or(female);
                 db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
             }
             ShopMount(mount) => {
@@ -799,7 +799,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
                 let db = get_outfit_data();
                 let mut body = format!("{} ({})",
                    MenuText::get_command(80 + *kind as i32),
-                   MenuTextCommand::get_gender(db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(Gender::Female))
+                   MenuTextCommand::get_gender(db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(engage_il2cpp::app::Gender::female()))
                 );
                 body.push_str(&format!(" [{}/4]", *kind +1).as_str());
                 left_right_enclose(&body)

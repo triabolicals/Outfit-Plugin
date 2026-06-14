@@ -72,7 +72,6 @@ dependencies = [
 [[package]]
 name = "engage"
 version = "0.12.0"
-source = "git+https://github.com/triabolicals/engage?branch=macro#89bc7efd118f0111dd0e204259f7bdaba8d36942"
 dependencies = [
  "bitflags",
  "modular-bitfield",
@@ -80,6 +79,15 @@ dependencies = [
  "num-traits",
  "skyline 0.6.0 (git+https://github.com/ultimate-research/skyline-rs)",
  "unity",
+]
+
+[[package]]
+name = "engage-il2cpp"
+version = "0.1.0"
+source = "git+https://github.com/DivineDragonFanClub/engage-il2cpp#1dcca509ce563298f7902149cd530b38955ed1ca"
+dependencies = [
+ "skyline 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "unity2",
 ]
 
 [[package]]
@@ -121,6 +129,12 @@ name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "bbd2bcb4c963f2ddae06a2efc7e9f3591312473c50c6685e1f298068316e66fe"
+
+[[package]]
+name = "lazysimd"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "835be3adea8395b2d81a7688c72ea6ddc958b311dbe8ecffcf07f321e242a3c3"
 
 [[package]]
 name = "lazysimd"
@@ -224,8 +238,10 @@ version = "0.1.0"
 dependencies = [
  "bitflags",
  "engage",
+ "engage-il2cpp",
  "skyline 0.6.0 (git+https://github.com/ultimate-research/skyline-rs)",
  "unity",
+ "unity2",
 ]
 
 [[package]]
@@ -391,25 +407,54 @@ checksum = "e6e4313cd5fcd3dad5cafa179702e2b244f760991f45397d14d4ebf38247da75"
 [[package]]
 name = "unity"
 version = "0.3.0"
-source = "git+https://github.com/triabolicals/unity?branch=macro#14f5cc32e6a9ce1b883200e4630e7fc0acf20946"
 dependencies = [
- "lazysimd",
+ "lazysimd 0.1.0 (git+https://github.com/Raytwo/lazysimd)",
  "memoffset",
  "skyline 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "thiserror",
- "unity-macro",
+ "unity-macro 0.1.0",
 ]
 
 [[package]]
 name = "unity-macro"
 version = "0.1.0"
-source = "git+https://github.com/triabolicals/unity?branch=macro#14f5cc32e6a9ce1b883200e4630e7fc0acf20946"
 dependencies = [
  "deluxe",
  "proc-macro-crate",
  "proc-macro2",
  "quote",
  "syn 2.0.116",
+]
+
+[[package]]
+name = "unity-macro"
+version = "0.1.0"
+source = "git+https://github.com/DivineDragonFanClub/unity2#6a89a47eb81d1eb91bb23132a06dc955f72a504c"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "venial",
+]
+
+[[package]]
+name = "unity2"
+version = "0.1.0"
+source = "git+https://github.com/DivineDragonFanClub/unity2#6a89a47eb81d1eb91bb23132a06dc955f72a504c"
+dependencies = [
+ "lazysimd 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "skyline 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "thiserror",
+ "unity-macro 0.1.0 (git+https://github.com/DivineDragonFanClub/unity2)",
+]
+
+[[package]]
+name = "venial"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9a42528baceab6c7784446df2a10f4185078c39bf73dc614f154353f1a6b1229"
+dependencies = [
+ "proc-macro2",
+ "quote",
 ]
 
 [[package]]

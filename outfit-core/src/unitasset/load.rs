@@ -51,7 +51,7 @@ impl UnitAssetLoader {
         self.loaded_data.get(self.selected_index? as usize)
     }
     pub fn set_profile(&mut self, profile: i32) { self.profile = profile; }
-    pub fn load_files(&mut self, gender_restrict: Gender) -> LoadResult {
+    pub fn load_files(&mut self, gender_restrict: engage_il2cpp::app::Gender) -> LoadResult {
         self.loaded_data.clear();
         self.selected_index = None;
         let path = std::path::Path::new(crate::INPUT_DIR);

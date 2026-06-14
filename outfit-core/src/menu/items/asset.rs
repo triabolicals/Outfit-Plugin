@@ -1,11 +1,11 @@
-use engage::{
-    unit::Gender, gameuserdata::GameUserData,
+use engage::{gameuserdata::GameUserData,
     map::mind::MapMind, mess::Mess, random::Random,
     sequence::hubaccessory::room::HubAccessoryRoom,
     unitinfo::UnitInfo, util::get_singleton_proc_instance,
     combat::CharacterAppearance, gamedata::assettable::AssetTableResult,
     gamesound::{GameSound, GameSoundFadeSpeedType}
 };
+use engage_il2cpp::app::IAssetTable_ResultMethods;
 use crate::{
     get_outfit_data, left_right_enclose, new_asset_table_accessory,
     EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData,
@@ -88,7 +88,7 @@ impl AssetType {
                 AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
                 AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
                 AssetType::AOC(kind) => {
-                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(Gender::Male) { preview.preview_data.aoc[*kind as usize] = hash; }
+                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage_il2cpp::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
                     else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
                 }
                 AssetType::Rig => { preview.preview_data.rig = hash; },
@@ -109,7 +109,7 @@ impl AssetType {
                 if let Some(asset) = asset {
                     result.dress_model = asset.as_str().into();
                     result.body_anim = Some(
-                        if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
+                        if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::male() { "AOC_Hub_Hum0M" }
                         else { "AOC_Hub_Hum0F" }.into()
                     );
                     if UnitAssetMenuData::get_preview().update_dress_gender {
@@ -156,8 +156,8 @@ impl AssetType {
                 }
                 if let Some(asset) = asset {
                     result.body_anims.clear();
-                    let dress = db.get_dress_gender(result.dress_model);
-                    let gender = if db.get_dress_gender(result.dress_model) == Gender::Female { "F" } else { "M" };
+                    let dress = db.get_dress_gender(result.get_dress_model());
+                    let gender = if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::female() { "F" } else { "M" };
                     result.ride_dress_model = Some(asset.into());
                     result.ride_model = Some(Mount::from_i32(1+*kind as i32).get_default_asset(true).into());
                     match kind {
@@ -179,7 +179,7 @@ impl AssetType {
                             result.body_anim = Some(anim.into());
                         }
                         3 => {
-                            if dress == Gender::Male { result.dress_model = "uBody_Wng0EF_c000".into(); }
+                            if dress == engage_il2cpp::app::Gender::male() { result.dress_model = "uBody_Wng0EF_c000".into(); }
                             let anim = "Wng0EF-No1_c000_N";
                             result.body_anims.add(anim.into());
                             result.body_anim = Some(anim.into());
@@ -357,7 +357,7 @@ impl CustomMenuItem for AssetType {
             AssetType::ColorPreset(kind) => { format!("{} (Preset)", MenuText::get_command(1140+*kind as i32)).into() }
             AssetType::AOC(kind) => {
                 let db = get_outfit_data();
-                let mut body = format!("{} ({})", MenuText::get_command(idx), if db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(Gender::Male) { "Male" } else { "Female" });
+                let mut body = format!("{} ({})", MenuText::get_command(idx), if db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(engage_il2cpp::app::Gender::male()) { "Male" } else { "Female" });
                 body.push_str(&format!(" [{}/5]", *kind +1).as_str());
                 left_right_enclose(&body)
             },
@@ -396,7 +396,7 @@ impl CustomMenuItem for AssetType {
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
             AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
             AssetType::AOC(kind) => {
-                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(Gender::Male) { preview.preview_data.aoc[*kind as usize] = hash; }
+                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage_il2cpp::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
                 else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
             }
             AssetType::Rig => { preview.preview_data.rig = hash; },

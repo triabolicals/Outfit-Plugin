@@ -1,24 +1,72 @@
 use engage::{
-    mess::Mess, combat::*, scene::ProcScene, unitinfo::*,
-    hub::HubMiniMapMapMode,
-    proc::{desc::ProcDesc, Bindable, ProcBoolMethod, ProcInst, ProcVoidMethod},
-    manager::*,
-    resourcemanager::ResourceManager, scene::SceneManager,
-    gamedata::{Gamedata, GodData, assettable::AssetTableResult}, unit::{UnitPool, Unit},
-    gameuserdata::GameUserData,
-    map::terrain::MapTerrainInfo,
-    sequence::{gmap_sequence::GmapSequence, hub::HubSequence, hubaccessory::{HubAccessoryShopSequence, room::*}},
-    sortie::SortieSequenceUnitSelect,
+    mess::Mess, combat::*, unitinfo::*,
+    resourcemanager::ResourceManager,
     titlebar::TitleBar,
     unityengine::*,
-    scene::LoadSceneMode,
-    util::{get_singleton_proc_instance},
     sequence::photograph::*,
     ut::Ut
 };
+use engage_il2cpp::{
+    app::{
+        ISingletonProcInst_1Methods,
+        IHubAccessoryRoomMethods,
+        proc::*,
+        fade::{Fade, Fade_Layer as FadeLayer},
+        ProcVoidMethod,
+        HubAccessoryRoom_Shop,
+        ProcBoolMethod,
+        HubAccessoryRoom,
+        ProcDesc,
+        IProcInstMethods,
+        HubAccessoryShopSequence,
+        HubAccessoryRoomCamera,
+        IGameUserDataMethods,
+        ISingletonClass_1Methods,
+        IChapterDataMethods,
+        IProcSceneSequence_1Methods,
+        IHubAccessoryRoom,
+        HubSequence,
+        GmapSequence,
+        IGmapSequence,
+        IGmapMapInfoContentMethods,
+        IHubSequenceMethods,
+        IHubMiniMapMethods,
+        IHubSequence,
+        RenderManager,
+        IHubPlayerControllerMethods,
+        IHubLocatorGroupMethods,
+        AccessoryShopChangeRoot_ReturnEventHandler,
+        AccessoryShopChangeRoot,
+        BasicMenuContent,
+        ResourceManager_2,
+        IAccessoryShopChangeRoot,
+        AccessoryShopChangeMenuContent,
+        AccessoryShopChangeMenu,
+        IAccessoryShopChangeMenuMethods,
+        IBasicMenuMethods,
+        HubAccessoryRoom_ViewMode,
+        IAccessoryEquipmentInfo,
+        AccessoryDetailInfoWindow,
+        IHubAccessoryShopSequence,
+        AssetTable_Result
+    },
+    List_1Ext,
+    ProcBoolMethodExt,
+    ProcExt,
+    ProcVoidMethodExt,
+    system::collections::generic::IList_1Methods,
+    tm_pro::ITMP_Text,
+    unity_engine::{IComponentMethods, IGameObjectMethods},
+    unity_engine::scene_management::{LoadSceneMode, SceneManager}
+};
 use engage::gamedata::PersonData;
+use engage_il2cpp::app::{IGodDataMethods, IStructData_1Methods};
+use engage_il2cpp::tm_pro::ITMP_TextMethods;
 use unity::{prelude::*, system::action::{SystemDelegate, Action}, system::List};
-use crate::{get_outfit_data, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
+use unity2::{field_set_value_at_offset, Cast, ClassIdentity, FromIlInstance, IlInstance, IlNull, IntPtr, SystemObject};
+use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
+use crate::data::change_root::create_accessory_shop_change_root_proc;
+use crate::data::unitselect::create_accessory_unit_select;
 
 #[unity::class("", ".<>c__DisplayClass31_0")]
 pub struct HubAccessoryRoomAction31 {
@@ -46,51 +94,95 @@ pub enum ReloadType {
 }
 pub struct CustomHubAccessoryRoom;
 impl CustomHubAccessoryRoom {
-    pub fn create_bind<B: Bindable>(proc: &mut B) {
+    pub fn create_bind<B: IProcInstMethods>(proc: B) {
+        let sequence = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
+        if sequence < 4 { return; }
         let asset = UnitAssetMenuData::get();
-        asset.is_shop_combat = GameUserData::get_sequence() != 4;
+        asset.is_shop_combat = sequence != 4;
         asset.mode = MenuMode::Shop;
         asset.is_preview = true;
-        HubAccessoryRoom::create_bind(proc, HubAccessoryRoomShop::Hub);
-        if let Some(hub_accessory_room) = proc.get_child() {
-            if let Some(hub_sequence) = get_singleton_proc_instance::<HubSequence>() {
-                let mini_map = hub_sequence.get_mini_map();
-                mini_map.set_mode(HubMiniMapMapMode::None);
-                mini_map.hide_system_menu();
-                mini_map.update();
-            }
-            if hub_accessory_room.name.is_some_and(|name| name.str_contains("HubAccessoryRoom")) {
-                let descs = hub_accessory_room.descs.get_mut();
-                descs[3] = ProcDesc::call(ProcVoidMethod::new(None, Self::additive_scene));
-                descs[5] = ProcDesc::call(ProcVoidMethod::new(None, Self::init));
-                descs[9] = ProcDesc::call(ProcVoidMethod::new(None, Self::main));
-                descs[14] = ProcDesc::call(ProcVoidMethod::new(None, Self::exit));
-                descs[15] = ProcDesc::wait_while_true(ProcBoolMethod::new(None, Self::is_character_loading));
-                descs[16] = ProcDesc::call(ProcVoidMethod::new(None, Self::exit_other));
-                descs[17] = ProcDesc::wait_while_true(ProcBoolMethod::new(None, Self::is_character_loading));
-                descs[18] = ProcDesc::call(ProcVoidMethod::new(None, Self::exit_after));
+        let room = HubAccessoryRoom::new(HubAccessoryRoom_Shop::hub());
+        let room_obj = engage_il2cpp::system::Object::from_il_instance(room.as_instance());
+        let room_instance = room.as_instance();
+        let descs = [
+            Fade::black_out(0.25, FadeLayer::current()),
+            Fade::fade_wait(FadeLayer::current()),
+            Proc::call_method(ProcVoidMethod::new(room_obj, IntPtr::from(HubAccessoryRoom::open_title_method_info()))),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::additive_scene).unwrap()),
+            Proc::r#yield(),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::init).unwrap()),
+            Proc::r#yield(),
+            Fade::black_in(0.25, FadeLayer::current()),
+            Fade::fade_wait(FadeLayer::current()),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::main).unwrap()),
+            Fade::black_out(0.25, FadeLayer::current()),
+            Fade::fade_wait(FadeLayer::current()),
+            Proc::call_method(ProcVoidMethod::new(room_obj, IntPtr::from(HubAccessoryRoom::un_additive_scene_method_info()))),
+            Proc::r#yield(),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::exit).unwrap()),    // 14
+            Proc::wait_while_true_2(ProcBoolMethod::from_fn(room_instance, Self::is_character_loading).unwrap()),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::exit_other).unwrap()),
+            Proc::wait_while_true_2(ProcBoolMethod::from_fn(room_instance, Self::is_character_loading).unwrap()),
+            Proc::call_method(ProcVoidMethod::from_fn(room_instance, Self::exit_after).unwrap()),
+            Proc::r#yield(),
+            Fade::black_in(0.25, FadeLayer::current()),
+            Fade::fade_wait(FadeLayer::current()),
+            Proc::end(),
+        ];
+        let arr = unity2::Array::<ProcDesc>::new(<ProcDesc as ClassIdentity>::class().raw(), descs.len()).unwrap();
+        for (i, d) in descs.iter().enumerate() { arr.set(i, *d); }
+        room.create_bind(proc, arr, "CustomHubAccessoryRoom");
+        if sequence != 6 {
+            let hub_sequence = HubSequence::get_instance();
+            if !hub_sequence.is_null() {
+                let map = hub_sequence.get_mini_map();
+                map.set_mode(engage_il2cpp::app::HubMiniMap_MapMode::none());
+                map.hide_system_menu();
+                map.update();
             }
         }
     }
-    pub extern "C" fn init(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
-        if Self::is_hub_solanel()  {
-            proc.init();
-            if let Some(scene) = HubSequence::get_instance().map(|v| v.scene_name){
-                proc.return_scene_name = scene;
-            }
+    pub extern "C" fn init(proc: HubAccessoryRoom, _: unity2::OptionalMethod) {
+        let hub = HubSequence::get_instance();
+        if !hub.is_null() {
+            let group = hub.m_hub_locator_group();
+            if !group.is_null() { group.save_accessory(); }
+            let controller = hub.m_hub_player_controller();
+            if !controller.is_null() { controller.save_accessory(); }
         }
-        else {
-            let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom".into());
-            SceneManager::set_active_scene(scene);
-            proc.camera_pos = HubAccessoryRoomCamera::find_object(true);
-            RenderManager::push_render_scale2(1.0);
-        }
+        let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom".into());
+        SceneManager::set_active_scene(scene);
+        let camera = engage_il2cpp::unity_engine::Object_2::find_object_of_type::<HubAccessoryRoomCamera>();
+        if !camera.is_null() { proc.set_camera_pos(camera); }
+        RenderManager::push_render_scale_2(1.0);
     }
-    pub extern "C" fn main(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
-        proc.main();
-        if let Some(hub_acc_shop) = proc.get_child() { hub_accessory_shop_sequence_edit(hub_acc_shop); }
+    pub extern "C" fn main(proc: HubAccessoryRoom, _: unity2::OptionalMethod) {
+        let null = engage_il2cpp::system::Object::null();
+        let null2 = IlInstance::null();
+        let shop_sequence = HubAccessoryShopSequence::new();
+        let descs = [
+            Proc::label(0), // Label 0
+            Proc::call_method(ProcVoidMethod::new(null, IntPtr::from(HubAccessoryShopSequence::load_resources_method_info()))),
+            Proc::wait_while_true_2(ProcBoolMethod::new(null, IntPtr::from(HubAccessoryShopSequence::is_loading_resources_method_info()))),
+            Proc::call_method(ProcVoidMethod::from_fn(null2, start_sequence_hub_accessory_shop).unwrap()),
+            Proc::label(1), // Label 1  UnitSelectMenu
+            Proc::call_method(ProcVoidMethod::from_fn(null2, create_accessory_unit_select).unwrap()),
+            Proc::call_method(ProcVoidMethod::new(null, IntPtr::from(HubAccessoryShopSequence::destroy_shop_unit_select_menu_method_info()))),
+            Proc::jump_true_3(ProcBoolMethod::null(), 2),  // Jump to AccessoryChange
+            Proc::jump_true_3(ProcBoolMethod::null(), 3), // Jump to Exit?
+            Proc::label(2), // Label 2  AccessoryChangeMenu
+            Proc::call_method(ProcVoidMethod::from_fn(null2, create_accessory_change_menu).unwrap()),
+            Proc::call_method(ProcVoidMethod::new(null, IntPtr::from(HubAccessoryShopSequence::destroy_accessory_shop_change_menu_method_info()))),
+            Proc::label(3), // Label 3  Exit
+            Proc::call_method(ProcVoidMethod::new(null, IntPtr::from(HubAccessoryShopSequence::end_sequence_method_info()))),
+            Proc::end(),
+        ];
+        let arr = unity2::Array::<ProcDesc>::new(<ProcDesc as ClassIdentity>::class().raw(), descs.len()).unwrap();
+        for (i, d) in descs.iter().enumerate() { arr.set(i, *d); }
+        shop_sequence.create_bind(proc, arr, "CustomHubAccessoryShopSequence");
     }
-    pub fn on_dispose(proc: &mut ProcInst, _optional_method: OptionalMethod) {
+    /*
+    pub fn on_dispose(proc: &mut ProcInst, _: unity2::OptionalMethod) {
         if let Some(parent) = proc.parent.as_ref() {
             if let Some(method) = parent.klass.get_virtual_method("OpenAnime") {
                 let open_anime_all = unsafe { std::mem::transmute::<_, extern "C" fn(&ProcInst, &MethodInfo)>(method.method_info.method_ptr) };
@@ -102,69 +194,77 @@ impl CustomHubAccessoryRoom {
             }
         }
     }
-    pub extern "C" fn additive_scene(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
-        let sequence = GameUserData::get_sequence();
-        proc.disable_list.clear();
+     */
+    pub extern "C" fn additive_scene(proc: HubAccessoryRoom, _: unity2::OptionalMethod) {
+        let user_data = engage_il2cpp::app::GameUserData::get_instance();
+        let sequence = user_data.get_sequence().value;
         match sequence {
-            3|2 => {
-                proc.return_scene_name = GameUserData::get_chapter().field;
-                if sequence == 3 {
-                    UnitInfo::set_visible_side(UnitInfoSide::Left, false);
-                    if let Some(info) = MapTerrainInfo::get_instance() {
-                        info.hide_all();
-                    }
-                }
-            }
             4|5 => {
-                if let Some(hub_sequence) = HubSequence::get_instance() { proc.return_scene_name = hub_sequence.scene_name; }
-                proc.additive_scene();
+                let hub = HubSequence::get_instance();
+                if !hub.is_null() { field_set_value_at_offset::<unity2::Il2CppString>(proc, 0x80, hub.m_scene_name()); }
                 return;
             }
             6 => {
-                if let Some(gmap) = GmapSequence::get_instance(){
-                    gmap.map_info.close();
-                    if let Some(scene_name) = gmap.scene_name {
-                        proc.return_scene_name = scene_name;
-                    }
+                let gmap = ISingletonProcInst_1Methods::<GmapSequence>::get_instance();
+                if gmap.is_null() {
+                    gmap.m_map_info().close();
+                    field_set_value_at_offset::<unity2::Il2CppString>(proc, 0x80, gmap.get_scene_name());
                 }
             }
-            _ => { proc.additive_scene() }
+            _ => { return; }
         }
-        let scene = SceneManager::get_scene_by_name(proc.return_scene_name);
-        scene.get_root_game_objects().iter().for_each(|obj|{
-            obj.set_active(false);
-            proc.disable_list.add(obj);
+        let mut scene = SceneManager::get_scene_by_name(proc.get_return_scene_name());
+        let disable_list = proc.disable_list();
+        disable_list.clear();
+        scene.get_root_game_objects().iter().for_each(|o|{
+            o.set_active(false);
+            disable_list.add(o);
         });
-        proc.load_scene("Hub_AccessoryRoom", LoadSceneMode::Additive);
+        proc.load_scene_2("Hub_AccessoryRoom".into(), LoadSceneMode::additive());
     }
-    pub extern "C" fn exit(proc: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
+    pub extern "C" fn exit(proc: HubAccessoryRoom, _: unity2::OptionalMethod) {
         let menu_data = UnitAssetMenuData::get();
         menu_data.is_preview = false;
         menu_data.mode = MenuMode::Inactive;
-        if Self::is_hub_solanel()  { proc.exit(); }
-        else {
-            if let Some(char) = proc.character.as_ref() { char.destroy(); }
-            if let Some(camera) = proc.camera_pos.as_ref() { camera.destroy(); }
-            println!("Proc Return Scene Name: {}", proc.return_scene_name);
-            let scene = SceneManager::get_scene_by_name(proc.return_scene_name);
-            SceneManager::set_active_scene(scene);
-            if proc.disable_list.len() > 0 {
-                proc.disable_list.iter().for_each(|g|{ g.set_active(true); });
-            }
-            if GameUserData::get_sequence() == 3 { UnitInfo::set_visible_side(UnitInfoSide::Left, true); }
+        RenderManager::pop_render_scale();
+        let character = proc.m_character();
+        if !character.is_null() { engage_il2cpp::unity_engine::Object_2::destroy_2(character); }
+        let camera = proc.get_camera_pos();
+        if !camera.is_null() { engage_il2cpp::unity_engine::Object_2::destroy_2(camera); }
+
+        let scene = SceneManager::get_scene_by_name(proc.get_return_scene_name());
+        SceneManager::set_active_scene(scene);
+
+        let disable_list = proc.disable_list();
+        if disable_list.count() > 0 { disable_list.iter().for_each(|g|{ g.set_active(true); }); }
+
+        let hub = HubSequence::get_instance();
+        if !hub.is_null() {
+            let player_controller = hub.m_hub_player_controller();
+            if !player_controller.is_null() { player_controller.restore_accessory(); }
         }
     }
-    pub extern "C" fn is_character_loading(proc: &mut HubAccessoryRoom, _: OptionalMethod) -> bool {
-        if HubSequence::get_instance().is_some() { proc.is_character_loading() } else { ResourceManager::is_loading() }
+    pub extern "C" fn is_character_loading(proc: HubAccessoryRoom, _: unity2::OptionalMethod) -> bool {
+        if !HubSequence::get_instance().is_null() { proc.is_character_loading() } else { ResourceManager::is_loading() }
     }
-    pub extern "C" fn exit_other(proc: &mut HubAccessoryRoom, _: OptionalMethod) {
-        if Self::is_hub_solanel()  { proc.exit_other(); }
+    pub extern "C" fn exit_other(_: HubAccessoryRoom, _: unity2::OptionalMethod) {
+        let hub = HubSequence::get_instance();
+        if !hub.is_null() {
+            let group = hub.m_hub_locator_group();
+            if !group.is_null() {
+                group.set_active(true);
+                group.restore_accessory();
+            }
+        }
     }
-    pub extern "C" fn exit_after(proc: &mut HubAccessoryRoom, _: OptionalMethod) {
-        if Self::is_hub_solanel()  { proc.exit_after(); }
-    }
-    pub extern "C" fn is_hub_solanel() -> bool {
-        HubSequence::get_instance().is_some()
+    pub extern "C" fn exit_after(_: HubAccessoryRoom, _: unity2::OptionalMethod) {
+        let hub = HubSequence::get_instance();
+        if !HubSequence::get_instance().is_null() {
+            let group = hub.m_hub_locator_group();
+            if !group.is_null() { group.reset_look_at(); }
+            let controller = hub.m_hub_player_controller();
+            if !controller.is_null() { controller.init_look_at_target(); }
+        }
     }
 }
 #[repr(C)]
@@ -305,10 +405,10 @@ pub fn break_effect(this: &mut CharacterEffect){
         }
     }
 }
-fn change_scaling(builder: &CharacterBuilder, result: Option<&mut AssetTableResult>) {
+fn change_scaling(builder: &CharacterBuilder, result: Option<AssetTable_Result>) {
     let mut scale_values = [0.0; 16];
     if let Some(result) = result {
-        for x in 0..16 { scale_values[x] = result.scale_stuff[x] + 0.001; }
+        for x in 0..16 { scale_values[x] = get_result_scale_f32(result, x) + 0.001; }
     }
     else {
         let preview = UnitAssetMenuData::get_preview();
@@ -333,7 +433,7 @@ fn change_scaling(builder: &CharacterBuilder, result: Option<&mut AssetTableResu
         char_prop.commit_changes();
     }
 }
-fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
+fn force_load(result: Option<AssetTable_Result>, reload_type: ReloadType) {
     let result = result.or_else(||Some(UnitAssetMenuData::get_result())).unwrap();
     if let Some(p) = PhotographTopSequence::get_photograph_sequence(){
         crate::photo::update_character(p.dispos_manager.current_dispos_info, result);
@@ -366,7 +466,7 @@ fn force_load(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
     }
 
 }
-pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type: ReloadType) {
+pub fn hub_room_set_by_result(result: Option<AssetTable_Result>, reload_type: ReloadType) {
     let character =
         if UnitAssetMenuData::is_photo_graph() {
             PhotographTopSequence::get_photograph_sequence().and_then(|p| p.dispos_manager.current_dispos_info.m_character_cmp.as_ref())
@@ -398,14 +498,14 @@ pub fn hub_room_set_by_result(result: Option<&mut AssetTableResult>, reload_type
             }
             ReloadType::ColorScale => {
                 let result = result.or_else(||Some(UnitAssetMenuData::get_result())).unwrap();
-                builder.appearance.hair_color = result.unity_colors[0];
-                builder.appearance.grad_color = result.unity_colors[1];
-                builder.appearance.skin_color = result.unity_colors[2];
-                builder.appearance.toon_shadow_color = result.unity_colors[3];
-                builder.appearance.mask_color_100 = result.unity_colors[4];
-                builder.appearance.mask_color_075 = result.unity_colors[5];
-                builder.appearance.mask_color_050 = result.unity_colors[6];
-                builder.appearance.mask_color_025 = result.unity_colors[7];
+                builder.appearance.hair_color = get_result_color(result, 0);
+                builder.appearance.grad_color = get_result_color(result, 1);
+                builder.appearance.skin_color = get_result_color(result, 2);
+                builder.appearance.toon_shadow_color = get_result_color(result, 3);
+                builder.appearance.mask_color_100 = get_result_color(result, 4);
+                builder.appearance.mask_color_075 = get_result_color(result, 5);
+                builder.appearance.mask_color_050 = get_result_color(result, 6);
+                builder.appearance.mask_color_025 = get_result_color(result, 7);
                 if let Some(go) = builder.get_game_object().filter(|o| !o.is_null() ) { builder.appearance.modify_colors(go); }
             }
             ReloadType::Facial(increase) => {
@@ -452,57 +552,76 @@ pub struct UnitInfoWindowCharaModelDisplayClass103 {
     pub this: &'static mut UnitInfoWindowCharaModel,
     pub call_back: Option<&'static mut Character>,
 }
-pub fn hub_accessory_shop_sequence_edit(proc: &mut ProcInst) {
-    let descs = proc.descs.get_mut();
-    descs[3] = ProcDesc::call(ProcVoidMethod::new(None, start_sequence_hub_accessory_shop));
-    descs[4] = ProcDesc::jump(4);
-    descs[10] = ProcDesc::call(ProcVoidMethod::new(None, crate::shop::unitselect::create_accessory_unit_select));
-    descs[20] = ProcDesc::call(ProcVoidMethod::new(None, crate::shop::unitselect::create_accessory_unit_select));
-    descs[23] = ProcDesc::jump(6); // Jump to End
-    descs[24] = ProcDesc::jump(6); // Jump to End
-    descs[26] = ProcDesc::call(ProcVoidMethod::new(None, create_accessory_change_menu));    // Edited AccessoryShopMenu
-}
 
-pub extern "C" fn start_sequence_hub_accessory_shop(this: &mut HubAccessoryShopSequence, _optional_method: OptionalMethod) {
-    this.shop_menu_result = 1;
-    if let Some(unit) = UnitPool::get_first(9, 0) {
+pub extern "C" fn start_sequence_hub_accessory_shop(this: HubAccessoryShopSequence, _: unity2::OptionalMethod) {
+    if let Some(unit) = engage_il2cpp::app::UnitPool::get_first(9u32, 0) {
         UnitAssetMenuData::set_unit(unit);
         HubAccessoryRoom::set_unit(unit, None, true, false);
-        this.unit = Some(unit);
+        this.set_m_unit(unit);
     }
 }
-pub extern "C" fn create_accessory_change_menu(this: &mut HubAccessoryShopSequence, _optional_method: OptionalMethod) {
-    this.create_accessory_shop_change_menu();
-    CustomAssetMenu::init(this.change_root.change_menu, true);
-    crate::shop::change_root::edit_accessory_root_change_unit(this.change_root.change_root_proc);
-    let data = UnitAssetMenuData::get();
-    if data.god_mode {
-        let god_name = GodData::try_get_hash(data.preview.person)
-            .map(|v| format!("{} ({})", Mess::get(v.mid), Mess::get("MID_H_INFO_Param_Correction_God")).into())
-            .unwrap_or(Mess::get("MPID_Unknown"));
-
-        this.change_root.unit_name.set_text(god_name, true);
+pub extern "C" fn create_accessory_change_menu(this: HubAccessoryShopSequence, _: unity2::OptionalMethod) {
+    if let Some(root) = accessory_shop_change_create_bind(this, _) {
+        EquipmentBoxMode::CurrentProfile.change_equipment_box(root.m_accessory_equipment_info_window());
+        this.set_m_accessory_shop_change_root(root);
+        TitleBar::hide_footer();
     }
-    else if let Some(unit) = UnitAssetMenuData::get_unit() {
-        this.change_root.unit_name.set_text(unit.get_name(), true);
-    }
-    else if let Some(person) = PersonData::try_get_hash(UnitAssetMenuData::get().preview.person){
-        this.change_root.unit_name.set_text(person.get_name(), true);
-    }
-    EquipmentBoxMode::CurrentProfile.change_equipment_box(this.change_root.equipment_menu);
-    TitleBar::hide_footer();
 }
-
-pub extern "C" fn hub_accessory_init(hub_room: &mut HubAccessoryRoom, _optional_method: OptionalMethod) {
-    if get_singleton_proc_instance::<HubSequence>().is_some_and(|s| s.scene_name.str_contains("Hub_Solanel")) {
-        hub_room.init();
+fn accessory_shop_change_create_bind<P: IProcInstMethods>(proc: P, return_handler: AccessoryShopChangeRoot_ReturnEventHandler) -> Option<AccessoryShopChangeRoot> {
+    let canvas = BasicMenuContent::get_canvas();
+    let canvas_transform = canvas.get_transform();
+    let x = ResourceManager_2::instantiate_2("UI/Hub/Shop/Prefabs/ShopAccChangeRoot", canvas_transform);
+    if !x.is_null() {
+        let root = x.get_component::<AccessoryShopChangeRoot>();
+        if !root.is_null() {
+            create_accessory_shop_change_root_proc(proc, root);
+            let menu_object = root.m_menu_object();
+            let menu_content = menu_object.get_component::<AccessoryShopChangeMenuContent>();
+            let klass = CustomAssetMenu::create_class2();
+            let menu = AccessoryShopChangeMenu::instantiate_with_class(klass).unwrap();
+            CustomAssetMenu::ctor(menu, menu_content);
+            root.set_m_return_event_handler(return_handler);
+            root.set_m_accessory_shop_change_menu(menu);
+            menu.create_bind(proc, menu.create_default_desc(), "OutfitAccessoryRoomMenu");
+            let unit_name = root.m_unit_name();
+            let data = UnitAssetMenuData::get();
+            if !unit_name.is_null() {
+                if data.god_mode {
+                    let god = engage_il2cpp::app::GodData::try_get_from_hash(data.preview.person);
+                    if !god.is_null() {
+                        unit_name.set_m_text(format!("{} ({})", engage_il2cpp::app::Mess::get(god.get_mid()), engage_il2cpp::app::Mess::get("MID_H_INFO_Param_Correction_God".into())).into());
+                    }
+                    else { unit_name.set_m_text(engage_il2cpp::app::Mess::get("MPID_Unknown".into())); }
+                }
+                else {
+                    let person = engage_il2cpp::app::PersonData::try_get_from_hash(UnitAssetMenuData::get().preview.person);
+                    if !person.is_null() {
+                        let unit = engage_il2cpp::app::UnitPool::get_from_person(person, false);
+                        if !unit.is_null() { unit_name.set_text(unit.get_name()); }
+                        else { unit_name.set_text(engage_il2cpp::app::Mess::get(person.get_name())); }
+                    }
+                }
+            }
+            let equipment_info = root.m_equipment_info_window_object();
+            if !equipment_info.is_null() {
+                let window = equipment_info.get_component::<engage_il2cpp::app::AccessoryEquipmentInfo>();
+                if !window.is_null() {
+                    crate::build_equipment_window(window);
+                    root.set_m_accessory_equipment_info_window(window);
+                    window.m_cursor_object().set_active(false);
+                }
+            }
+            let detail_info = root.m_detail_info_window_object();
+            if !detail_info.is_null() {
+                let detail = detail_info.get_component::<AccessoryDetailInfoWindow>();
+                if !detail.is_null() { root.set_m_accessory_detail_info_window(detail); }
+            }
+            HubAccessoryRoom::set_view_mode(HubAccessoryRoom_ViewMode{value: 1});
+            Some(root)
+        }
+        else { None }
     }
-    else {
-        let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom".into());
-        SceneManager::set_active_scene(scene);
-        hub_room.camera_pos = HubAccessoryRoomCamera::find_object(true);
-        RenderManager::push_render_scale2(1.0);
-    }
+    else { None }
 }
 pub fn hair_acc(go: &GameObject, enable: bool){
     if let Some(hair_go) = Kaneko::find_in_children(go.get_transform(), "meshHairGP".into())

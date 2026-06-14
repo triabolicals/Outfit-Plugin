@@ -9,17 +9,18 @@ pub use engage::{
     gamevariable::GameVariableManager,
     random::Random
 };
-use engage_il2cpp::app::{
-    AssetTable_Accessory, AssetTable_Result, 
-    IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_Result, IAssetTable_ResultMethods, 
-    IGameUserDataMethods, IGodDataMethods, IGodUnit, IJobDataMethods, ISingletonClass_1Methods, 
-    IStructBase, IStructData_1Methods, IUnitMethods, ResourceManager_2
+use engage_il2cpp::{
+    app::{
+        assettable::*,
+        IGameUserDataMethods, IGodDataMethods, IGodUnit, IJobDataMethods, ISingletonClass_1Methods,
+        IStructBase, IStructData_1Methods, IUnitMethods, ResourceManager_2
+    },
+    Dictionary_2Ext,
+    List_1Ext,
+    app::assettable::prelude::IList_1Methods,
+    system::collections::generic::IList_1
 };
-use engage_il2cpp::{Dictionary_2Ext, List_1Ext};
-use engage_il2cpp::app::assettable::prelude::IList_1Methods;
-use engage_il2cpp::system::collections::generic::IList_1;
-use unity2::Cast;
-use unity2::system::string::IIl2CppStringMethods;
+use unity2::{Cast, system::string::IIl2CppStringMethods};
 pub use super::*;
 
 mod color;
@@ -195,14 +196,14 @@ impl OutfitData {
                                 if let Some(cond_idx) = get_condition_index(condition.as_str()) {
                                     name = get_condition_label(&condition);
                                     o_hash = find_mode_1_body(cond_idx, gender).map(|obody|hash_string(obody));
-                                    if condition.starts_with("EID_") && gender != Gender::None && name.is_some() {
-                                        let female = gender == Gender::Female;
-                                        new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == Gender::Female);
+                                    if condition.starts_with("EID_") && gender != engage_il2cpp::app::Gender::none() && name.is_some() {
+                                        let female = gender == engage_il2cpp::app::Gender::female();
+                                        new_list.add_engaged_body(name.clone().unwrap(), asset.as_str(), gender == engage_il2cpp::app::Gender::female());
                                         hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
                                         added = true;
                                     }
-                                    else if gender != Gender::None {
-                                        let female = gender == Gender::Female;
+                                    else if gender != engage_il2cpp::app::Gender::none() {
+                                        let female = gender == engage_il2cpp::app::Gender::female();
                                         hashes.try_add_body_by_hash(*hash, o_hash, asset, female);
                                         new_list.add(asset, female, name.clone(), 0, true);
                                         added = true;
@@ -258,33 +259,47 @@ impl OutfitData {
         let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
         hashes.get_info_anim();
+        hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
         Self {
-            dress, anims,
+            dress, anims, hashes,
             list: new_list,
             labels: new_labels,
-            hashes,
             item: ItemAsset::init(),
             accessory_conditions: AccessoryConditions::new(),
         }
     }
-    pub fn is_monster_class(&self, unit: &Unit) -> bool {
-        let hash = unit.job.parent.hash;
-        (unit.person.gender == 1 || unit.person.gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && !x.is_transform).is_some()
-    }
-    pub fn is_transform_class(&self, unit: &Unit) -> bool {
-        let hash = unit.job.parent.hash;
-        (unit.person.gender == 1 || unit.person.gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && x.is_transform).is_some()
-    }
-    pub fn apply_monster_asset(&self, result: AssetTable_Result, unit: &Unit, mode: i32) -> bool {
-        if let Some(transform) = self.dress.transform.iter().find(|x| x.hash == unit.job.parent.hash) {
-            transform.get_result(mode, unit);
-            if let Some(item) = transform.item.and_then(|item| self.item.iter().find(|x| x.hash == item)) {
-                item.apply(result);
-            }
-            true
+    pub fn is_monster_class(&self, unit: engage_il2cpp::app::Unit) -> bool {
+        let job = unit.get_job();
+        if job.is_null() { false }
+        else {
+            let gender = unit.get_gender().value;
+            let hash = job.hash();
+            (gender == 1 || gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && !x.is_transform).is_some()
         }
-        else { false }
+    }
+    pub fn is_transform_class(&self, unit: engage_il2cpp::app::Unit) -> bool {
+        let job = unit.get_job();
+        if job.is_null() { false } else {
+            let gender = unit.get_gender().value;
+            let hash = job.hash();
+            (gender == 1 || gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && x.is_transform).is_some()
+        }
+    }
+    pub fn apply_monster_asset(&self, result: AssetTable_Result, unit: engage_il2cpp::app::Unit, mode: i32) -> bool {
+        let job = unit.get_job();
+        if job.is_null() { false }
+        else {
+            let hash = job.hash();
+            if let Some(transform) = self.dress.transform.iter().find(|x| x.hash == hash) {
+                transform.get_result(mode, unit);
+                if let Some(item) = transform.item.and_then(|item| self.item.iter().find(|x| x.hash == item)) {
+                    item.apply(result);
+                }
+                true
+            }
+            else { false }
+        }
     }
     pub fn adjust_dress(&self, result: AssetTable_Result, unit: engage_il2cpp::app::Unit, conditions: &AssetConditions) {
         let job_data = unit.get_job();
@@ -295,7 +310,7 @@ impl OutfitData {
         let transforming = conditions.flags.contains(AssetFlags::CombatTranforming);
         if transforming { AnimData::remove(result, true, true); }
         if let Some(rng) = conditions.random_dress.get_random(unit, GameVariableManager::get_number("G_Random_Seed")){
-            self.random_body(result, conditions.mode, rng, dress_gender == Gender::Female);
+            self.random_body(result, conditions.mode, rng, dress_gender == engage_il2cpp::app::Gender::female());
             if transforming { return; }
         }
         if engaged {
@@ -304,7 +319,7 @@ impl OutfitData {
             if !god_unit.is_null(){
                 let god_data = god_unit.m_data().get_main_data().hash();
                 if let Some(data) = UnitAssetMenuData::get_by_person_data(god_data, false) {
-                    let hash = data.profile[0].mount[if dress_gender == Gender::Female { 1 } else { 0 } as usize];
+                    let hash = data.profile[0].mount[if dress_gender == engage_il2cpp::app::Gender::female() { 1 } else { 0 } as usize];
                     if conditions.mode == 2 {
                         if let Some(body) = self.try_get_asset(AssetType::Body, hash) {
                             set_result_dress_body_model(result, conditions.mode, body);
@@ -324,7 +339,7 @@ impl OutfitData {
                     if !unit.is_hero() { data.apply(result, conditions.mode, dress_gender); }
                     else {
                         let mut body = if conditions.mode == 1 { "o" } else { "u" }.to_string();
-                        body += if dress_gender == Gender::Male { "Body_Drg0AM_c003" } else { "Body_Drg0AF_c053"};
+                        body += if dress_gender == engage_il2cpp::app::Gender::male() { "Body_Drg0AM_c003" } else { "Body_Drg0AF_c053"};
                         set_result_dress_body_model(result, conditions.mode, body);
                     }
                 }
@@ -338,14 +353,17 @@ impl OutfitData {
                 d.apply(result, conditions.mode, true, engaged);
             }
         }
-        else if transforming  || (unit.force.is_some_and(|x| x.force_type == 1 || x.force_type == 2) && !conditions.flags.is_generic() && !engaged){
-            if let Some(person_data) = self.dress.get_personal_dress(unit) {
-                person_data.apply(result, conditions.mode, is_promoted, None, &self.hashes);
-                return;
-            }
-            else if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)){
-                dress_data.apply(result, conditions.mode, false, false);
-                return;
+        else {
+            let force = unit.get_force_type();
+            if transforming || ((force.value == 1 || force.value == 2) && !conditions.flags.is_generic() && !engaged){
+                if let Some(person_data) = self.dress.get_personal_dress(unit) {
+                    person_data.apply(result, conditions.mode, is_promoted, None, &self.hashes);
+                    return;
+                }
+                else if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)){
+                    dress_data.apply(result, conditions.mode, false, false);
+                    return;
+                }
             }
         }
         if transforming  { return; }
@@ -414,12 +432,12 @@ impl OutfitData {
             }
         }
     }
-    pub fn correct_anims(&self, result: AssetTable_Result, unit: &Unit, profile_flags: i32, conditions: &AssetConditions){
+    pub fn correct_anims(&self, result: AssetTable_Result, unit: engage_il2cpp::app::Unit, profile_flags: i32, conditions: &AssetConditions){
         let dress_gender =
             if conditions.mode == 2 { self.get_dress_gender(get_result_dress_body_model(result, conditions.mode)) }
-            else { unit.get_dress_gender() };
+            else { unit.get_dress_gender()};
 
-        if dress_gender != Gender::Male && dress_gender != Gender::Female { return; }
+        if dress_gender != engage_il2cpp::app::Gender::male() && dress_gender != engage_il2cpp::app::Gender::female() { return; }
         let kind_ =
             if conditions.flags.contains(AssetFlags::CombatTranforming) { 9 }
             else if conditions.flags.contains(AssetFlags::Bullet) { 10 }
@@ -437,9 +455,10 @@ impl OutfitData {
             self.anims.set_vision_anims(result, dress_gender, conditions.mode);
             return;
         }
-        let engaged = unit.is_engaging();
+        let engaged = unit.is_engaging_2();
+        let job = unit.get_job();
         if engaged && profile_flags & 256 == 0 {
-            if conditions.mode == 2 { self.anims.set_engaged_anim(result, dress_gender, unit.job.style, conditions.kind); }
+            if conditions.mode == 2 { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, conditions.kind); }
             else { result.set_body_anim(AnimData::add_uas_gen_str("UAS_Enb0A", dress_gender)); }
         }
         let no_engaged_anim = profile_flags & 256 != 0;
@@ -458,17 +477,20 @@ impl OutfitData {
                 AnimData::remove(result, true, true);
             }
             else if engaged {
-                let god_unit = unit.god_link.or(unit.god_unit);
-                if unit.person.parent.hash == 258677212 {
-                    if let Some(god) = god_unit.as_ref().and_then(|d| self.dress.get_engaged_dress(d.data.asset_id)) { god.apply(result, 2, dress_gender); }
-                }
-                if no_engaged_anim {
-                    if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || (unit.person.get_job().is_some_and(|v| v.parent.hash == 499211320) && conditions.kind > 0){
-                        result.get_body_anims().clear();
-                        self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
+                let god_unit = unit.get_god_unit();
+                if !god_unit.is_null() {
+                    if unit.get_person().hash() == 258677212 {
+                        if let Some(god) = god_unit.as_ref().and_then(|d| self.dress.get_engaged_dress(d.data.asset_id)) { god.apply(result, 2, dress_gender); }
                     }
+                    if no_engaged_anim {
+                        if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || ((unit.get_job().hash() == 499211320) && conditions.kind > 0){
+                            result.get_body_anims().clear();
+                            self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
+                        }
+                    }
+                    else { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_); }
                 }
-                else { self.anims.set_engaged_anim(result, dress_gender, unit.job.style, kind_); }
+
             }
             else {
                 if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_){
@@ -479,9 +501,7 @@ impl OutfitData {
         }
         else {
             if engaged && !no_engaged_anim { result.set_body_anim(AnimData::add_uas_gen_str("UAS_Enb0A", dress_gender)); }
-            else if !self.anims.has_uas_anims(result, mount, dress_gender, unit.job) {
-                self.anims.set_uas_anims(result, mount, dress_gender, unit.job);
-            }
+            else if !self.anims.has_uas_anims(result, mount, dress_gender, job) { self.anims.set_uas_anims(result, mount, dress_gender, job); }
         }
     }
     pub fn assign_random_head_hair(&self, result: AssetTable_Result, rng: &Random) {
@@ -541,34 +561,34 @@ impl OutfitData {
         let hash = dress_model.into().get_hash_code();
         self.hashes.body.contains_key(&hash)
     }
-    pub fn get_dress_gender(&self, dress_model: unity2::Il2CppString) -> Gender {
-        if dress_model.is_null() { return Gender::None; }
+    pub fn get_dress_gender(&self, dress_model: unity2::Il2CppString) -> engage_il2cpp::app::Gender {
+        if dress_model.is_null() { return engage_il2cpp::app::Gender::none(); }
         let hash = dress_model.get_hash_code();
         if dress_model.to_rust_string().starts_with("oBody") {
-            if self.hashes.male_ou.iter().any(|b| b.1 == hash) { Gender::Male }
-            else if self.hashes.female_ou.iter().any(|b| b.1 == hash) { Gender::Female }
-            else { Gender::None }
+            if self.hashes.male_ou.iter().any(|b| b.1 == hash) { engage_il2cpp::app::Gender::male() }
+            else if self.hashes.female_ou.iter().any(|b| b.1 == hash) { engage_il2cpp::app::Gender::female() }
+            else { engage_il2cpp::app::Gender::none() }
         }
-        else { self.get_dress_gender_hash(dress_model.get_hash_code()).unwrap_or(Gender::None) }
+        else { self.get_dress_gender_hash(dress_model.get_hash_code()).unwrap_or(engage_il2cpp::app::Gender::none()) }
     }
-    pub fn get_dress_gender_hash(&self, hashcode: i32) -> Option<Gender> {
-        if self.hashes.male_u.contains(&hashcode) { Some(Gender::Male) }
-        else if self.hashes.female_u.contains(&hashcode) { Some(Gender::Female) }
+    pub fn get_dress_gender_hash(&self, hashcode: i32) -> Option<engage_il2cpp::app::Gender> {
+        if self.hashes.male_u.contains(&hashcode) { Some(engage_il2cpp::app::Gender::male()) }
+        else if self.hashes.female_u.contains(&hashcode) { Some(engage_il2cpp::app::Gender::female()) }
         else { None }
     }
-    pub fn get_gender_aoc(&self, hash: i32) -> Gender {
+    pub fn get_gender_aoc(&self, hash: i32) -> engage_il2cpp::app::Gender {
         for x in 0..4 {
             if let Some(gender) = self.get_aoc_gender_hash(x, hash){ return gender }
         }
-        Gender::None
+        engage_il2cpp::app::Gender::none()
     }
-    pub fn get_aoc_gender(&self, ty: i32, aoc_anim: unity2::Il2CppString) -> Gender {
-        if aoc_anim.is_null() { Gender::None }
-        else { self.get_aoc_gender_hash(ty, aoc_anim.get_hash_code()).unwrap_or(Gender::None) }
+    pub fn get_aoc_gender(&self, ty: i32, aoc_anim: unity2::Il2CppString) -> engage_il2cpp::app::Gender {
+        if aoc_anim.is_null() { engage_il2cpp::app::Gender::none() }
+        else { self.get_aoc_gender_hash(ty, aoc_anim.get_hash_code()).unwrap_or(engage_il2cpp::app::Gender::none()) }
     }
-    pub fn get_aoc_gender_hash(&self, _ty: i32, hashcode: i32) -> Option<Gender> {
-        if self.hashes.aoc_m.contains(&hashcode) { Some(Gender::Male) }
-        else if self.hashes.aoc_f.contains(&hashcode) { Some(Gender::Female) }
+    pub fn get_aoc_gender_hash(&self, _ty: i32, hashcode: i32) -> Option<engage_il2cpp::app::Gender> {
+        if self.hashes.aoc_m.contains(&hashcode) { Some(engage_il2cpp::app::Gender::male()) }
+        else if self.hashes.aoc_f.contains(&hashcode) { Some(engage_il2cpp::app::Gender::female()) }
         else { None }
     }
 }
@@ -577,17 +597,17 @@ pub fn get_remove(data: &mut Vec<String>, asset: &str) -> Option<String> {
     data.iter().position(|s| s.contains(asset)).map(|x| data.remove(x)).map(|str| str.split('/').last().unwrap().to_string() )
 }
 
-pub fn get_asset_name(condition: &String, gender: Gender) -> Option<String> {
+pub fn get_asset_name(condition: &String, gender: engage_il2cpp::app::Gender) -> Option<String> {
     AccessoryData::get(condition.as_str()).map(|a| {
-        if a.condition_gender == 1 && gender == Gender::Male && a.name_m.is_some() { a.name_m.unwrap().to_string() }
-        else if a.condition_gender == 2 && gender == Gender::Female && a.name_f.is_some() { a.name_f.unwrap().to_string() }
+        if a.condition_gender == 1 && gender == engage_il2cpp::app::Gender::male() && a.name_m.is_some() { a.name_m.unwrap().to_string() }
+        else if a.condition_gender == 2 && gender == engage_il2cpp::app::Gender::female() && a.name_f.is_some() { a.name_f.unwrap().to_string() }
         else { a.name.to_string() }
     })
         .or_else(|| PersonData::get(condition.as_str()).and_then(|p| p.name.as_ref() ).map(|name| name.to_string()))
         .or_else(|| JobData::get(condition.as_str()).map(|j| j.name.to_string()))
         .or_else(|| GodData::get(condition.as_str()).map(|g| g.mid.to_string()))
 }
-fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, map: &HashMap<i32, String>) -> Option<(String, Gender)> {
+fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, map: &HashMap<i32, String>) -> Option<(String, engage_il2cpp::app::Gender)> {
     match kind {
         AssetType::Body => {
             let filter = |e: AssetTable, a: &str| e.dress_model.is_some_and(|s| s.to_string() == a);

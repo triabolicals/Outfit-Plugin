@@ -1,8 +1,8 @@
 use engage::gamedata::assettable::AssetTableResult;
-use engage_il2cpp::app::{AssetTable_Accessory, AssetTable_Modes, AssetTable_Result, IAssetTable_AccessoryMethods, IAssetTable_Result, IAssetTable_ResultMethods};
+use engage_il2cpp::app::{AssetTable_Accessory, AssetTable_Modes, AssetTable_Result, IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_Result, IAssetTable_ResultMethods};
 use engage_il2cpp::system::collections::generic::IList_1;
 use engage_il2cpp::unity_engine::Color;
-use unity2::Il2CppString;
+use unity2::{Cast, Il2CppString};
 use crate::new_asset_table_accessory;
 
 pub fn set_color_by_u8_slice(result: AssetTable_Result, idx: usize, v: [u8; 4]) {
@@ -134,6 +134,50 @@ pub fn get_result_scale_f32(result: AssetTable_Result, index: usize) -> f32 {
     }
 }
 
+pub fn get_asset_table_color(entry: engage_il2cpp::app::AssetTable, idx: usize) -> Color {
+    match idx {
+        1 => entry.grad_color(),
+        2 => entry.skin_color(),
+        3 => entry.toon_shadow_color(),
+        4 => entry.mask_color100(),
+        5 => entry.mask_color075(),
+        6 => entry.mask_color050(),
+        7 => entry.mask_color025(),
+        _ => entry.hair_color(),
+    }
+}
+
+pub fn get_asset_table_color_u8_slice(entry: engage_il2cpp::app::AssetTable, idx: usize) -> [u8; 3]{
+    let color = get_asset_table_color(entry, idx);
+    [(color.r * 255.0) as u8, (color.g * 255.0) as u8, (color.b * 255.0) as u8]
+}
+pub fn get_asset_table_scale(entry: engage_il2cpp::app::AssetTable, idx: usize) -> f32 {
+    match idx {
+        1 => entry.get_scale_head(),
+        2 => entry.get_scale_neck(),
+        3 => entry.get_scale_torso(),
+        4 => entry.get_scale_shoulders(),
+        5 => entry.get_scale_arms(),
+        6 => entry.get_scale_hands(),
+        7 => entry.get_scale_legs(),
+        8 => entry.get_scale_feet(),
+        9 => entry.get_volume_bust(),
+        10 => entry.get_volume_abdomen(),
+        11 => entry.get_volume_torso(),
+        12 => entry.get_volume_base_arms(),
+        13 => entry.get_volume_base_legs(),
+        14 => entry.get_volume_scale_arms(),
+        15 => entry.get_volume_scale_legs(),
+        16 => entry.get_map_scale_all(),
+        17 => entry.get_map_scale_head(),
+        18 => entry.get_map_scale_wing(),
+        _ => entry.get_scale_all(),
+    }
+}
+pub fn get_asset_table_scale_u16(entry: engage_il2cpp::app::AssetTable, idx: usize) -> u16 {
+    let v = get_asset_table_scale(entry, idx) * 100.0;
+    v as u16
+}
 pub fn get_result_scale_u16(result: AssetTable_Result, index: usize) -> u16 {
     let v = get_result_scale_f32(result, index) * 100.0;
     v as u16
@@ -147,4 +191,23 @@ pub fn try_get_model_at_locator(result: AssetTable_Result, search_locator: &str)
         .filter_map(|a| crate::il2str(a.get_model()).zip(crate::il2str(a.get_locator())))
         .find(|(model, locator)| locator == search_locator)
         .map(|(model, _)| model.clone())
+}
+pub fn get_result_anim(result: AssetTable_Result, index: usize) -> Option<Il2CppString> {
+    let s =
+    match index {
+        1 => result.m_talk_anim(),
+        2 => result.m_demo_anim(),
+        3 => result.m_hub_anim(),
+        _ => result.m_info_anim()
+    };
+    if s.is_null() { None } else { Some(s) }
+}
+pub fn set_result_anim(result: AssetTable_Result, index: usize, anim: impl Into<Il2CppString>{
+    match index {
+        0 => result.set_m_info_anim(anim.into()),
+        1 => result.set_m_talk_anim(anim.into()),
+        2 => result.set_m_demo_anim(anim.into()),
+        3 => result.set_m_hub_anim(anim.into()),
+        _ => {}
+    }
 }

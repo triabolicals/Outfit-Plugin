@@ -1,21 +1,21 @@
 use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
     unit::*,
-    gamedata::{Gamedata, GodData, PersonData, assettable::*},
+    gamedata::{Gamedata, PersonData},
     gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
     util::try_get_instance,
 };
-use engage_il2cpp::app::AssetTable_Result;
-pub use crate::playerdata::*;
-use crate::{
-    assets::unit_dress_gender, get_outfit_data,
-    AssetConditions, AssetType, Mount, PhotoCameraControl,
-    data::{
-        room::hub_room_set_by_result,
-        unitselect::{UnitSelect, UnitSelectList}
-    },
-    anim::AnimData, room::ReloadType
+use engage_il2cpp::{
+    app::{AssetTable_Modes, AssetTable_Result, IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_ConditionIndexesMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGameUserDataMethods, IPersonDataMethods, ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods},
+    List_1Ext,
+    system::collections::generic::IList_1
 };
+use unity2::Cast;
+pub use crate::playerdata::*;
+use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
+    room::hub_room_set_by_result,
+    unitselect::{UnitSelect, UnitSelectList}
+}, anim::AnimData, room::ReloadType, get_result_color_u8, set_result_scale_u16, set_color_by_u8_slice, set_color_by_i32, il2str, get_result_scale_u16, try_get_il2cpp_hash, try_find_accessory_model};
 
 mod load;
 pub use load::*;
@@ -147,13 +147,13 @@ impl UnitAssetMenuData {
                 let result = select.get_result(hub);
                 if data.mode == MenuMode::UnitInfo {
                     AnimData::remove(result, true, true);
-                    result.body_anim = result.hub_anims;
-                    result.info_anims = result.hub_anims;
-                    result.talk_anims = None;
-                    result.demo_anims = None;
-                    result.left_hand = "null".into();
-                    result.right_hand = "null".into();
-                    result.replace(2);
+                    result.set_body_anim(result.m_hub_anim());
+                    result.set_m_demo_anim(unity2::Il2CppString::null());
+                    result.set_m_talk_anim(unity2::Il2CppString::null());
+                    result.set_m_hub_anim(unity2::Il2CppString::null());
+                    result.set_left_hand("null");
+                    result.set_right_hand("null");
+                    result.replace(AssetTable_Modes::combat());
                 }
                 result
             }
@@ -251,48 +251,50 @@ impl UnitAssetMenuData {
         }
         menu.data.iter().find(|x| x.person == hash)
     }
-    pub fn get_unit_data(unit: &Unit) -> Option<&UnitAssetData>  {
-        Self::get_by_person_data(unit.person.parent.hash, false).or_else(||{
-            if (unit.force.is_some_and(|x| (1 << x.force_type) & 25 != 0) && unit.status.value & 35184372088832 == 0) || unit.person.is_hero() {
-                Self::get_by_person_data(unit.person.parent.hash, true)
-            }
-            else { None }
-        })
+    pub fn get_unit_data(unit: engage_il2cpp::app::Unit) -> Option<&'static UnitAssetData>  {
+        let person = unit.get_person();
+        let hash = person.hash();
+        Self::get_by_person_data(hash, false)
+            .or_else(||
+                if person.is_hero() || ((1  << unit.get_force_type().value) & 25 != 0 && !unit.is_summon() && !unit.is_vision()){
+                    Self::get_by_person_data(hash, true)
+                }
+                else { None }
+            )
     }
-    pub fn set_god(god: &GodData){
-        let hash = god.parent.hash;
-        Self::set_by_hash(hash);
-    }
+    pub fn set_god(god: engage_il2cpp::app::GodData){ Self::set_by_hash(god.hash()); }
     pub fn set_by_hash(person: i32) -> bool {
         let menu = Self::get();
         let mut engaged = false;
         let gender;
         let photo = menu.mode == MenuMode::PhotoGraph;
-        if let Some(person) = PersonData::try_get_hash(person) {
+        let person_data = engage_il2cpp::app::PersonData::try_get_from_hash(person);
+        if !person_data.is_null() {
             menu.god_mode = false;
-            if let Some(unit) = UnitPool::get_from_person(person, false) {
-                engaged = unit.status.value & 8388608 != 0;
-                gender = unit_dress_gender(unit);
-                if unit.person.parent.index == 1 {
-                    if let Some(data) = UnitAssetMenuData::get().data.iter_mut().find(|v| v.person == person.parent.hash) {
-                        if unit.edit.gender == 2 { data.flag |= 16; }
+            let unit = engage_il2cpp::app::UnitPool::get_from_person(person_data, false);
+            if !unit.is_null(){
+                engaged = unit.is_engaging_2();
+                gender = unit.get_dress_gender().value;
+                if unit.get_person().index() == 1 {
+                    if let Some(data) = UnitAssetMenuData::get().data.iter_mut().find(|v| v.person == person) {
+                        if unit.m_edit().m_gender().value == 2 { data.flag |= 16; }
                     }
                 }
             }
             else {
                 gender =
-                    if person.flag.value & 32 != 0 { if person.gender == 2 { 1 } else { 2 } }
-                    else { if person.gender == 2 { 2 } else { 1 } };
+                    if person_data.get_flag().m_value() & 32 != 0 { if person_data.get_gender().value == 2 { 1 } else { 2 } }
+                    else { if person_data.get_gender().value == 2 { 2 } else { 1 } };
             }
         }
-        else if let Some(god) = GodData::try_get_hash(person) {
+        else if let Some(god) =  engage_il2cpp::app::GodData::try_get_from_hash(person) {
             menu.god_mode = true;
             gender =
                 if god.is_hero() { UnitPool::get_hero(false).map(|u| unit_dress_gender(u)).unwrap_or(god.female + 1) }
                 else { god.female + 1 };
         }
         else { return false; }
-        let s = GameUserData::get_sequence();
+        let s = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
         if photo {
             if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == person).cloned(){ menu.preview.preview_data = data; }
             else if let Some(data) = menu.data.iter().find(|x| x.person == person){
@@ -304,10 +306,10 @@ impl UnitAssetMenuData {
             }
         }
         else {
-            if let Some(hash) = PersonData::try_get_hash(person).map(|v| v.parent.hash)
-                .or_else(|| GodData::try_get_hash(person).map(|v| v.parent.hash))
-            {
-                if let Some(data) = Self::get_by_person_data(hash, true) {
+            let p1 = engage_il2cpp::app::PersonData::try_get_from_hash(person);
+            let p2 = engage_il2cpp::app::GodData::try_get_from_hash(person);
+            if !p1.is_null() || p2.is_null() {
+                if let Some(data) = Self::get_by_person_data(person, true) {
                     let index = if s != 4 { if engaged && !menu.god_mode { 1 } else { 0 } } else { 2 };
                     menu.preview.selected_profile = index;
                     let profile = data.set_profile[index as usize];
@@ -324,23 +326,25 @@ impl UnitAssetMenuData {
         let result = Self::get_result();
         Self::set_original_assets();
         for x in 0..8 {
-            menu.preview.color_preview[x * 4] = if result.unity_colors[x].r >= 1.0 { 255 } else { (result.unity_colors[x].r * 255.5) as u8 };
-            menu.preview.color_preview[x * 4 + 1] = if result.unity_colors[x].g >= 1.0 { 255 } else { (result.unity_colors[x].g * 255.5) as u8 };
-            menu.preview.color_preview[x * 4 + 2] = if result.unity_colors[x].b >= 1.0 { 255 } else { (result.unity_colors[x].b * 255.5) as u8 };
+            let c = get_result_color_u8(result, x);
+            for i in 0..3 { menu.preview.color_preview[x * 4+i] = c[i]; }
         }
         for x in 8..16 {
             for y in 0..3 { menu.preview.color_preview[x*4+y] = menu.preview.preview_data.colors[x].values[y] }
         }
         for x in 0..16 {
             let v = menu.preview.preview_data.scale[x] & 1023;
-            if v == 0 || v >= 1000 { menu.preview.scale_preview[x] = (result.scale_stuff[x] * 100.0) as u16; }
+            if v == 0 || v >= 1000 { menu.preview.scale_preview[x] = get_result_scale_u16(result, x); }
             else { menu.preview.scale_preview[x] = v; }
         }
         menu.preview.update = 3;
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
         true
     }
-    pub fn set_unit(unit: &Unit) -> bool { Self::set_by_hash(unit.person.parent.hash) }
+    pub fn set_unit(unit: engage_il2cpp::app::Unit) -> bool {
+        if unit.is_null() || unit.get_person().is_null() { false }
+        else { Self::set_by_hash(unit.get_person().hash()) }
+    }
     pub fn get_shop_unit() -> Option<&'static mut Unit> {
         let data = Self::get();
         if data.god_mode { None }
@@ -361,41 +365,30 @@ impl UnitAssetMenuData {
                 let k = kind as usize;
                 if k < 8 {
                     for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
-                    if color > 0 {
-                        result.unity_colors[k].r = data.preview.color_preview[4*k] as f32 / 255.0;
-                        result.unity_colors[k].g = data.preview.color_preview[4*k+1] as f32 / 255.0;
-                        result.unity_colors[k].b = data.preview.color_preview[4*k+2] as f32 / 255.0;
-                    }
+                    if color > 0 { set_color_by_i32(result, k, color); }
                 }
-
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
             ReloadPreview::ResetColor(kind) => {
                 let k = (kind % 16) as usize;
-                result.unity_colors[k].r = data.preview.original_color[4*k] as f32 / 255.0;
-                result.unity_colors[k].g = data.preview.original_color[4*k+1] as f32 / 255.0;
-                result.unity_colors[k].b = data.preview.original_color[4*k+2] as f32 / 255.0;
+                let c = [data.preview.original_color[4*k], data.preview.original_color[4*k+1], data.preview.original_color[4*k+2], 255];
+                set_color_by_u8_slice(result, k, c);
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
-            ReloadPreview::Scale => {
-                hub_room_set_by_result(Some(result), ReloadType::Scale);
-            }
+            ReloadPreview::Scale => { hub_room_set_by_result(Some(result), ReloadType::Scale); }
             ReloadPreview::ScalePreview(kind) => {
-                result.scale_stuff[kind as usize] = data.preview.scale_preview[kind as usize] as f32 / 100.0;
+                set_result_scale_u16(result, kind as usize,data.preview.scale_preview[kind as usize]);
                 hub_room_set_by_result(Some(result), ReloadType::Scale);
             }
             ReloadPreview::Preset(index) => {
                 let db = get_outfit_data();
                 if let Some(appearance) = db.dress.personal.get(index) {
                     appearance.apply_appearance(result, 2, false, None, &db.hashes, true);
-                    result.ride_dress_model = None;
-                    result.ride_model = None;
-                    result.left_hand = "null".into();
-                    result.right_hand = "null".into();
-                    result.body_anim = Some(
-                        if db.get_dress_gender(result.dress_model) == Gender::Male { "AOC_Hub_Hum0M" }
-                        else { "AOC_Hub_Hum0F" }.into()
-                    );
+                    result.set_ride_model(unity2::Il2CppString::null());
+                    result.set_ride_dress_model(unity2::Il2CppString::null());
+                    result.set_left_hand("null");
+                    result.set_right_hand("null");
+                    result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
                     hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
                 }
             }
@@ -408,11 +401,8 @@ impl UnitAssetMenuData {
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
             }
-            ReloadPreview::Forced => {
-                hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
-            ReloadPreview::Full => {
-                hub_room_set_by_result(Some(result), ReloadType::All);
-            }
+            ReloadPreview::Forced => { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
+            ReloadPreview::Full => { hub_room_set_by_result(Some(result), ReloadType::All); }
         }
         data.reload_type = None;
     }
@@ -462,14 +452,15 @@ impl UnitAssetMenuData {
         let hash = Self::get_preview().person;
         Self::get().data.iter().find(|x| x.person == hash ).map(|x| x.flag).unwrap_or(0)
     }
-    pub fn set_assets(result: &mut AssetTableResult, unit: &Unit, asset_conditions: &AssetConditions) {
-        if !result.body_model.is_null() { if result.body_model.str_contains("AT") { return; } }
-        if !result.dress_model.is_null() { if result.dress_model.str_contains("AT") { return; } }
+    pub fn set_assets(result: AssetTable_Result, unit: engage_il2cpp::app::Unit, asset_conditions: &AssetConditions) {
+        if il2str(result.get_body_model()).is_some_and(|v| v.contains("AT")) { return; }
+        if il2str(result.get_dress_model()).is_some_and(|v| v.contains("AT")) { return; }
         let mode = asset_conditions.mode;
         let menu = Self::get();
         let is_preview =  menu.is_preview;
-        let is_engaged = unit.status.value & 8388608 != 0;
+        let is_engaged = unit.is_engaging_2();
         let is_photo = menu.mode == MenuMode::PhotoGraph;
+        let person_hash = unit.get_person().hash();
         if is_preview {
             if is_photo  { menu.preview.preview_data.set_result(result, mode, is_engaged, false); }
             else {
@@ -485,26 +476,27 @@ impl UnitAssetMenuData {
             }
         }
         else if is_photo {
-            if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == unit.person.parent.hash) {
+            if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == person_hash) {
                 data.set_result(result, 2, false, false);
             }
         }
-        else if let Some(data) = menu.data.iter().find(|s| s.person == unit.person.parent.hash){
+        else if let Some(data) = menu.data.iter().find(|s| s.person == person_hash){
             data.set_result(result, mode, is_engaged, asset_conditions.broken);
         }
     }
-    pub fn set_god_assets(result: &mut AssetTableResult, mode: i32, god: &GodData, darkness: bool) {
+    pub fn set_god_assets(result: AssetTable_Result, mode: i32, god: engage_il2cpp::app::GodData, darkness: bool) {
         let menu = Self::get();
+        let hash = god.hash();
         if UnitAssetMenuData::is_photo_graph()  {
             if menu.is_preview {
                 menu.preview.preview_data.set_result(result, 2, darkness, false);
             }
-            else if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == god.parent.hash) {
+            else if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == hash) {
                 data.set_result(result, 2, darkness, false);
             }
             return;
         }
-        if let Some(data) = menu.data.iter().find(|s| s.person == god.parent.hash){
+        if let Some(data) = menu.data.iter().find(|s| s.person == hash){
             data.set_result(result, mode, darkness, false)
         }
     }
@@ -589,8 +581,8 @@ impl UnitAssetMenuData {
         format!("{}/{}/{}", menu.values[0], menu.values[1], menu.values[2])
     }
     pub fn set_original_assets() -> (Vec<i32>, Vec<i32>){
-        let sf = AssetTableStaticFields::get();
-        let flags = &sf.condition_flags;
+        let search_lists = engage_il2cpp::app::AssetTable::s_search_lists();
+        let flags = engage_il2cpp::app::AssetTable::s_condition_flags();
         let db = get_outfit_data();
         let menu = Self::get_preview();
         let mut modes: (Vec<i32>, Vec<i32>) = (vec![], vec![]);
@@ -600,86 +592,65 @@ impl UnitAssetMenuData {
         menu.original_assets[16] = -1;
         let photo = UnitAssetMenuData::is_photo_graph();
         for mode in 1..3 {
-            sf.search_lists[mode].iter().filter(|a| a.condition_indexes.test(flags)).for_each(|entry|{
+            search_lists.get(mode).iter().filter(|a| a.m_condition_indexes().test(flags)).for_each(|e|{
+                let idx = e.index();
                 if mode == 1 {
-                    modes.0.push(entry.parent.index);
-                    if let Some(obody) = entry.body_model.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[3] = obody; }
-                    if let Some(ohair) = entry.hair_model.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[4] = ohair; }
+                    modes.0.push(idx);
+                    if let Some(h) = try_get_il2cpp_hash(e.get_body_model()).filter(|v| db.hashes.o_body.contains_key(v)) { menu.original_assets[3] = h; }
+                    if let Some(h) = try_get_il2cpp_hash(e.get_head_model()).filter(|v| db.hashes.o_hair.contains_key(v)) { menu.original_assets[4] = h; }
                 }
                 else if mode == 2 {
-                    modes.1.push(entry.parent.index);
-                    if let Some(body) = entry.dress_model.and_then(|h| db.try_get_asset_hash(h)) {
-                        menu.original_assets[0] = body;
-                    }
-                    if let Some(head) = entry.head_model.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[1] = head; }
-                    if let Some(hair) = entry.accessory_list.list.iter()
-                        .find(|x| x.model.is_some_and(|h| h.str_contains("Hair") && !h.str_contains("null")))
-                        .and_then(|a| a.model.and_then(|a| db.try_get_asset_hash(a)))
-                        .or_else(||entry.hair_model.and_then(|h| db.try_get_asset_hash(h)))
+                    modes.1.push(idx);
+                    if let Some(hash) = try_get_il2cpp_hash(e.get_dress_model()).filter(|h| db.hashes.body.contains_key(h)) { menu.original_assets[0] = hash; }
+                    if let Some(head) = try_get_il2cpp_hash(e.get_head_model()).filter(|h| db.hashes.head.contains_key(h)) { menu.original_assets[1] = head; }
+                    if let Some(hair) = try_get_il2cpp_hash(e.get_hair_model()).filter(|h| db.hashes.hair.contains_key(h)) { menu.original_assets[2] = hair; }
+                    if let Some(hair) = e.get_accessories().items().iter()
+                        .find(|x| il2str(x.get_model()).is_some_and(|v| v.contains("Hair")))
+                        .and_then(|x| try_get_il2cpp_hash(x.get_model()))
+                        .filter(|hash| db.hashes.hair.contains_key(hash))
                     {
                         menu.original_assets[2] = hair;
                     }
                     for xx in 0..5 {
-                        if let Some(acc) = entry.accessory_list.list.iter().find(|x| x.locator.is_some_and(|x| x.str_contains(ACC_LOC[xx])))
-                            .and_then(|a| a.model.and_then(|a| db.try_get_asset_hash(a)))
+                        if let Some(acc) =
+                            e.get_accessories().items().iter()
+                                .find(|x| il2str(x.get_locator()).is_some_and(|v| v == ACC_LOC[xx]))
+                                .and_then(|x| try_get_il2cpp_hash(x.get_model()))
+                                .filter(|hash| db.hashes.hair.contains_key(hash))
                         {
-                            menu.original_assets[5+xx] = acc;
-
+                            menu.original_assets[5 + xx] = acc;
                         }
                     }
-                    if let Some(rig) = entry.body_model.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[15] = rig; }
+                    if let Some(rig) = try_get_il2cpp_hash(e.get_body_model()).filter(|g| db.hashes.rigs.contains_key(g)) { menu.original_assets[15] = rig; }
                 }
-                if let Some(ride) = entry.ride_dress_model.as_ref() {
-                    let mount = Mount::from(ride.to_string().as_str()) as i32 - 1;
+                if let Some((ride, hash)) = il2str(e.get_ride_dress_model()).zip(try_get_il2cpp_hash(e.get_ride_dress_model())){
+                    let mount = Mount::from(ride.as_str()) as i32 - 1;
                     if menu.original_assets[16] < 0 && mount >= 0 { menu.original_assets[16] = mount; }
                 }
+                for x in 0..19 {
+                    let v = crate::get_asset_table_scale_u16(e, x);
+                    if v < 10 && v >= 1000 { menu.original_scaling[x] = 100; } else { menu.original_scaling[x] = v; }
+                }
                 for x in 0..8 {
-                    if (entry.unity_colors[x].r + entry.unity_colors[x].g + entry.unity_colors[x].b) > 0.0 {
-                        menu.original_color[4*x] = (entry.unity_colors[x].r * 255.0) as u8;
-                        menu.original_color[4*x+1] = (entry.unity_colors[x].g * 255.0) as u8;
-                        menu.original_color[4*x+2] = (entry.unity_colors[x].b * 255.0) as u8;
-                        menu.original_color[4*x+3] = (entry.unity_colors[x].a * 255.0) as u8;
-                    }
+                    let color = crate::get_asset_table_color_u8_slice(e, x);
+                    for i in 0..3 { menu.original_color[4*x+i] = color[i]; }
                 }
-                for x in 0..9 {
-                    if entry.scale_stuff[x] > 0.0 { menu.original_scaling[x] = (entry.scale_stuff[x] * 100.0) as u16; }
-                }
-                menu.original_scaling[9] = (entry.scale_stuff[11] * 100.0) as u16;
-                menu.original_scaling[10] = (entry.scale_stuff[12] * 100.0) as u16;
-                menu.original_scaling[11] = (entry.scale_stuff[13] * 100.0) as u16;
-                menu.original_scaling[12] = (entry.scale_stuff[9] * 100.0) as u16;
-                menu.original_scaling[13] = (entry.scale_stuff[10] * 100.0) as u16;
-                for x in 14..19 {
-                    if entry.scale_stuff[x] > 0.0 {
-                        menu.original_scaling[x] = (entry.scale_stuff[x] * 100.0) as u16;
-                    }
-                }
-                if let Some(voice) = entry.voice.and_then(|h| db.try_get_asset_hash(h)) { menu.original_assets[14] = voice; }
-                if let Some(aoc) = entry.info_anim.and_then(|a| db.try_get_asset_hash(a)) { menu.original_assets[10] = aoc; }
-                if let Some(aoc) = entry.talk_anim.and_then(|a| db.try_get_asset_hash(a)) { menu.original_assets[11] = aoc; }
-                if let Some(aoc) = entry.demo_anim.and_then(|a| db.try_get_asset_hash(a)) { menu.original_assets[12] = aoc; }
-                if let Some(aoc) = entry.hub_anim.and_then(|a| db.try_get_asset_hash(a)) { menu.original_assets[13] = aoc; }
+                if let Some(h) = try_get_il2cpp_hash(e.get_info_anim()).filter(|h| db.hashes.aoc.contains_key(h)) { menu.original_assets[10] = h; }
+                if let Some(h) = try_get_il2cpp_hash(e.get_talk_anim()).filter(|h| db.hashes.aoc.contains_key(h)) { menu.original_assets[11] = h; }
+                if let Some(h) = try_get_il2cpp_hash(e.get_demo_anim()).filter(|h| db.hashes.aoc.contains_key(h)) { menu.original_assets[12] = h; }
+                if let Some(h) = try_get_il2cpp_hash(e.get_hub_anim()).filter(|h| db.hashes.aoc.contains_key(h)) { menu.original_assets[13] = h; }
+                if let Some(h) = try_get_il2cpp_hash(e.get_voice()).filter(|h| db.hashes.voice.contains_key(h)) { menu.original_assets[14] = h; }
             });
         }
         if photo {
-            if menu.preview_data.ubody == 0 && menu.original_assets[0] != 0 {
-                menu.preview_data.ubody = menu.original_assets[0];
-            }
-            if menu.preview_data.uhead == 0 && menu.original_assets[1] != 0 {
-                menu.preview_data.uhead = menu.original_assets[1];
-            }
-            if menu.preview_data.uhair == 0 && menu.original_assets[2] != 0 {
-                menu.preview_data.uhair = menu.original_assets[2];
-            }
+            if menu.preview_data.ubody == 0 && menu.original_assets[0] != 0 { menu.preview_data.ubody = menu.original_assets[0]; }
+            if menu.preview_data.uhead == 0 && menu.original_assets[1] != 0 { menu.preview_data.uhead = menu.original_assets[1]; }
+            if menu.preview_data.uhair == 0 && menu.original_assets[2] != 0 { menu.preview_data.uhair = menu.original_assets[2]; }
             for x in 0..5 {
-                if menu.preview_data.acc[x] == 0 && menu.original_assets[5+x] != 0 {
-                    menu.preview_data.acc[x] = menu.original_assets[5+x];
-                }
+                if menu.preview_data.acc[x] == 0 && menu.original_assets[5+x] != 0 { menu.preview_data.acc[x] = menu.original_assets[5+x]; }
             }
         }
-        for x in 0..19 {
-            if menu.original_scaling[x] < 10 { menu.original_scaling[x] = 100; }
-        }
+        for x in 0..19 { if menu.original_scaling[x] < 10 { menu.original_scaling[x] = 100; } }
         for x in 0..32 { menu.color_preview[x] = menu.original_color[x]; }
         for x in 0..16 { menu.scale_preview[x] = menu.original_scaling[x]; }
         modes

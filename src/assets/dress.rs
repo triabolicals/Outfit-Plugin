@@ -28,7 +28,7 @@ pub fn commit_for_unit_dress(
             result.setup_for_person(1, PersonData::get("PID_G001_チキ_竜化"),conds);
         }
         else if !get_outfit_data().apply_monster_asset(result, unit, mode) {
-            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == Gender::Male {
+            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == engage_il2cpp::app::Gender::male() {
                 result.setup_for_person_job_item(1, PersonData::get("PID_ラファール_竜化"), Some(condition_unit.job), None, conds);
             }
             else { result.setup_for_person_job_item(1, PersonData::get("PID_エル_竜化"), Some(condition_unit.job), None, conds); }
@@ -56,7 +56,7 @@ pub fn commit_for_unit_dress(
                 AssetFlags::set_condition_key(god.data.mid, true);
                 AssetFlags::set_condition_key(god.data.asset_id, true);
                 conditions.flags.set_condition_flag(AssetFlags::Engaged, false);
-                let gender = if god.data.female == 1 { Gender::Female } else { Gender::Male };
+                let gender = if god.data.female == 1 { engage_il2cpp::app::Gender::female() } else { engage_il2cpp::app::Gender::male() };
                 conditions.flags.set_gender(gender);
                 result.commit(mode, Some(condition_unit.person), None, equipped);
                 db.correct_anims(result, unit, profile_flag, conditions);
@@ -81,7 +81,7 @@ pub fn commit_for_unit_dress(
     if is_monster_body(result) {
         if conditions.flags.contains(AssetFlags::Vision) {
             result.setup_for_person_job_item(mode, PersonData::get("PID_S004_リン"), JobData::get("JID_紋章士_リン"), equipped, conds);
-            db.anims.set_vision_anims(result, Gender::Female, mode);
+            db.anims.set_vision_anims(result, engage_il2cpp::app::Gender::female(), mode);
         }
         return;
     }

@@ -1,4 +1,4 @@
-use engage::{unit::Gender, gamemessage::GameMessage, mess::Mess};
+use engage::{gamemessage::GameMessage, mess::Mess};
 use crate::{LoadResult, UnitAssetMenuData, localize::MenuText};
 use super::*;
 #[derive(PartialEq, Copy, Clone)]
@@ -33,9 +33,9 @@ impl CustomMenuItem for AssetDataMode {
         match self {
             Self::Import => {
                 let gender =
-                    if UnitAssetMenuData::get_flag() & 128 != 0 { Gender::None }
-                    else if UnitAssetMenuData::get_current_dress_gender() == 2 { Gender::Female }
-                    else { Gender::Male };
+                    if UnitAssetMenuData::get_flag() & 128 != 0 { engage_il2cpp::app::Gender::none() }
+                    else if UnitAssetMenuData::get_current_dress_gender() == 2 { engage_il2cpp::app::Gender::female() }
+                    else { engage_il2cpp::app::Gender::male() };
                 match UnitAssetMenuData::get().loaded_data.load_files(gender){
                     LoadResult::Success => {
                         menu_item.menu.kind = 1;

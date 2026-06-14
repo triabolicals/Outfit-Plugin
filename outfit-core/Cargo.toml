@@ -13,15 +13,21 @@ engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 bitflags = "2.11.0"
 
 engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", features = [
-    "app-assettable", "app-assettable-types",
-    "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon",
-    "app-unit", "app-unit-types", "app-random_2",
+    "app-assettable", "app-assettable-types", "app-chapterdata", "app-gmapsequence", "app-unitinfo", "app-unitinfo-types", "app-hubsequence", "app-gmapsequence-types",
+    "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon", "app-unitpool",
+    "app-unit", "app-unit-types", "app-random_2", "app-basicmenu", "app-basicmenucontent", "app-basicmenuselect", "app-accessoryshopchangerootproc",
     "app-persondata", "app-jobdata", "app-itemdata", "app-goddata", "app-godunit",
     "app-gameuserdata", "app-singletonclass_1", "app-stream_2",
     "app-resourcemanager_2", "app-skillarray", "app-skillarray-types",
     "system-collections-generic-dictionary_2", "system-collections-generic-list_1",
     "combat-character", "combat-characterappearance", "combat-characterbuilder",
-
+    "app-gmapmapinfocontent", "app-hubminimap", "app-rendermanager", "app-hubplayercontroller", "app-hublocatorgroup", "app-accessoryshopchangemenu-types",
+    "app-singletonclass_1-types", "app-singletonprocinst_1", "app-singletonprocinst_1-types",
+    "app-shopunitselectmenuitem", "app-shopunitselectmenucontent", "app-shopunitselectmenuitemcontent",
+    "unity_engine", "app-fade", "app-procdesc", "app-procdesc-types", "app-fade-types", "app-proc", "app-procvoidfunction", "app-procvoidmethod", "app-procboolmethod",
+    "app-accessoryshopchangeroot", "app-accessoryshopchangemenu", "app-hubaccessoryroom", "app-hubaccessoryshopsequence", "app-hubaccessoryroomcamera",
+    "tm_pro-textmeshpro", "app-accessorymenuitem", "app-accessorymenuitemcontent", "app-accessoryequipmentinfo", "app-facethumbnail", "app-godpool", "app-singletonpool_2",
+    "app-unitfor",
 ] }
 unity2 = { git = "https://github.com/DivineDragonFanClub/unity2" }
 

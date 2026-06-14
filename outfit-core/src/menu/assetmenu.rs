@@ -1,21 +1,24 @@
-use std::sync::OnceLock;
 use super::*;
-use engage::{
-    unit::Unit, gamesound::GameSound, titlebar::TitleBar,
-    keyhelp::*, pad::Pad, unitinfo::*,
-    manager::BackgroundManager,
-    proc::{Bindable, ProcInst, ProcInstFields},
-    gamedata::{assettable::AssetTableResult, WeaponMask},
-    menu::{
-        menu_item::accessory::*,
-        content::{BasicMenuContent, AccessoryShopChangeMenuContent, AccessoryEquipmentInfo, AccessoryDetailInfoWindow},
-        BasicMenuResult, BasicMenuSelect, menus::accessory::change::*
-    },
-    unityengine::GameObject, sortie::{SortieUtil, SortieSequenceUnitSelect},
-    pad::NpadButton, combat::Kaneko, tmpro::TextMeshProUGUI,
-};
-use unity::{system::List, il2cpp::object::Array, engine::Vector2, };
 use crate::{is_up_down_press, menu::items::{CustomAssetMenuKind, MainShop}};
+use engage::{
+    combat::Kaneko, gamedata::{assettable::AssetTableResult, WeaponMask}, gamesound::GameSound,
+    keyhelp::*, manager::BackgroundManager, menu::{
+        content::{AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, BasicMenuContent},
+        menu_item::accessory::*,
+        menus::accessory::change::*, BasicMenuResult, BasicMenuSelect
+    },
+    pad::NpadButton, pad::Pad,
+    proc::{Bindable, ProcInst, ProcInstFields},
+    sortie::{SortieSequenceUnitSelect, SortieUtil},
+    titlebar::TitleBar, tmpro::TextMeshProUGUI,
+    unit::Unit, unitinfo::*, unityengine::GameObject,
+};
+use engage_il2cpp::unity_engine::{IGameObjectMethods, IObject_2Methods};
+use std::sync::OnceLock;
+use engage_il2cpp::app::IAccessoryShopChangeMenu;
+use engage_il2cpp::prelude::List_1;
+use unity::{engine::Vector2, il2cpp::object::Array, system::List, };
+use unity2::{Cast, Class};
 
 pub static CUSTOM_ASSET_MENU: OnceLock<&'static mut Il2CppClass> = OnceLock::new();
 
@@ -66,16 +69,6 @@ impl BasicMenuMethods for CustomAssetMenu {}
 impl Bindable for CustomAssetMenu {}
 
 impl CustomAssetMenu {
-    #[unity::class_method(2,AccessoryShopChangeMenu)]
-    pub fn base_ctor(
-        &self, list: &List<CustomAssetMenuItem>,
-        content: &AccessoryShopChangeMenuContent,
-        unit: Option<&Unit>,
-        selec: Option<&AccessoryMenuItemSelectHandler>,
-        decide: Option<&AccessoryMenuItemDecideHandler>,
-        request: Option<&AccessoryShopChangeMenuRequestCloseHandler>,
-        change: Option<&AccessoryShopChangeMenuChangeKindHandler>
-    );
     pub fn get_menu_content(only_menu_content: bool) -> Option<&'static mut AccessoryShopChangeRoot> {
         AccessoryShopChangeRoot::load_prefab_async();
         if AccessoryShopChangeRoot::is_loading_prefab() { return None; }
@@ -90,9 +83,11 @@ impl CustomAssetMenu {
             x.get_component_by_type::<AccessoryShopChangeRoot>()
         })
     }
-    pub fn set_unit_name(name: &Il2CppString){
-        if let Some(accessory_change) = GameObject::find("CharacterName").and_then(|v| v.get_component_in_parent::<AccessoryShopChangeRoot>(false)) {
-            accessory_change.unit_name.set_text(name, true)
+    pub fn set_unit_name(name: unity2::Il2CppString){
+        let go = engage_il2cpp::unity_engine::GameObject::find("CharacterName");
+        if !go.is_null() {
+            let change_root = go.get_component_in_parent_3::<engage_il2cpp::app::AccessoryShopChangeRoot>();
+            if !change_root.is_null() { change_root.set_name(name); }
         }
     }
     pub fn photo_graph_bind<B: Bindable>(proc: &B) {
@@ -194,8 +189,9 @@ impl CustomAssetMenu {
         }
     }
     pub fn create_class() -> &'static mut Il2CppClass {
-        let klass = Il2CppClass::from_name("App", "AccessoryShopChangeMenu").unwrap().clone();
-        let vtable = klass.get_vtable_mut();
+        let klass = unity2::Class::try_lookup("App", "AccessoryShopChangeMenu").unwrap();
+        let klass_raw = klass.raw_mut();
+        let vtable = klass_raw.get_vtable_mut();
         vtable[10].method_ptr = Self::on_dispose as _;
         vtable[24].method_ptr = Self::on_build as _;
         vtable[39].method_ptr = Self::tick_input as _;
@@ -203,9 +199,40 @@ impl CustomAssetMenu {
         vtable[43].method_ptr = Self::key_right as _;
         vtable[51].method_ptr = Self::b_call as _;
         vtable[56].method_ptr = Self::plus_call as _;
-        klass
+        klass.set_instance_size(size_of::<Self>() as u32);
     }
-    pub fn init1(this: &mut AccessoryShopChangeMenu, first: bool) {
+    pub fn create_class2() -> Class {
+        static CLASS: OnceLock<Class> = OnceLock::new();
+        *CLASS.get_or_init(|| {
+            let klass = unity2::Class::try_lookup("App", "AccessoryShopChangeMenu").unwrap().clone_for_override();
+            let klass_raw = klass.raw_mut();
+            let vtable = klass_raw.get_vtable_mut();
+            vtable[10].method_ptr = Self::on_dispose as _;
+            vtable[24].method_ptr = Self::on_build as _;
+            vtable[39].method_ptr = Self::tick_input as _;
+            vtable[42].method_ptr = Self::key_left as _;
+            vtable[43].method_ptr = Self::key_right as _;
+            vtable[51].method_ptr = Self::b_call as _;
+            vtable[56].method_ptr = Self::plus_call as _;
+            klass.set_instance_size(size_of::<Self>() as u32);
+            klass
+        })
+    }
+    pub fn ctor(this: engage_il2cpp::app::AccessoryShopChangeMenu, menu_content: engage_il2cpp::app::AccessoryShopChangeMenuContent) {
+        let items = List_1::<engage_il2cpp::app::BasicMenuItem>::new();
+        // Change AccessoryShopChangeMenuContent Here
+        engage_il2cpp::app::IBasicMenuMethods::ctor(this, items, menu_content);
+        let selects: unity2::Array<BasicMenuSelect> = unity2::Array::<BasicMenuSelect>::new(engage_il2cpp::app::BasicMenuSelect::class().raw(), CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
+        for x in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT { selects.set(x,engage_il2cpp::app::BasicMenuSelect::new()); }
+        this.set_m_selects(selects);
+        let custom_menu = unsafe { std::mem::transmute::<engage_il2cpp::app::AccessoryShopChangeMenu, &mut CustomAssetMenu>(this) };
+        custom_menu.kind = 0;
+        custom_menu.menu_kind = MainShop;
+        custom_menu.is_shop = true;
+        custom_menu.disable = false;
+        custom_menu.is_photo = false;
+    }
+    pub fn init1(this: engage_il2cpp::app::AccessoryShopChangeMenu, first: bool) {
         let custom_menu = unsafe { std::mem::transmute::<&mut AccessoryShopChangeMenu, &mut CustomAssetMenu>(this) };
         if first || custom_menu.selects.len() < CustomAssetMenuKind::SAVE_SELECT_COUNT {
             custom_menu.klass = *CUSTOM_ASSET_MENU.get_or_init(|| Self::create_class());
@@ -224,10 +251,9 @@ impl CustomAssetMenu {
         custom_menu.disable = false;
         custom_menu.is_photo = false;
         MainShop.create_menu_items(custom_menu);
-        println!("Done with ITems");
         if !first { custom_menu.rebuild_menu(); }
     }
-    pub fn init(this: &mut AccessoryShopChangeMenu, first: bool) {
+    pub fn init(this: engage_il2cpp::app::AccessoryShopChangeMenu, first: bool) {
         Self::init1(this, first);
         UnitAssetMenuData::get().mode = MenuMode::Shop;
         let custom_menu = unsafe { std::mem::transmute::<&mut AccessoryShopChangeMenu, &mut CustomAssetMenu>(this) };
@@ -235,10 +261,11 @@ impl CustomAssetMenu {
             request_close.method_ptr = crate::shop::change_root::accessory_menu_on_close_menu as _;
         }
     }
-    pub fn on_build(_this: &CustomAssetMenu, _optional_method: OptionalMethod) {
-        if let Some(cat) = GameObject::find("Category").filter(|s| !s.is_null()) {
-            cat.set_active(false);
-            cat.destroy();
+    pub fn on_build(_this: &CustomAssetMenu, _: OptionalMethod) {
+        let go = engage_il2cpp::unity_engine::GameObject::find("Category");
+        if !go.is_null() {
+            go.set_active(false);
+            engage_il2cpp::unity_engine::Object_2::destroy_2(go);
         }
     }
     pub fn toggle_ui() -> bool {
