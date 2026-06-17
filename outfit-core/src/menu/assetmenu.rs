@@ -261,7 +261,7 @@ impl CustomAssetMenu {
             request_close.method_ptr = crate::shop::change_root::accessory_menu_on_close_menu as _;
         }
     }
-    pub fn on_build(_this: &CustomAssetMenu, _: OptionalMethod) {
+    pub fn on_build(_this: &CustomAssetMenu, _: unity2::OptionalMethod) {
         let go = engage_il2cpp::unity_engine::GameObject::find("Category");
         if !go.is_null() {
             go.set_active(false);
@@ -286,13 +286,13 @@ impl CustomAssetMenu {
         }
         else { false }
     }
-    pub fn plus_call(_this: &mut CustomAssetMenu, _optional_method: OptionalMethod) -> BasicMenuResult {
+    pub fn plus_call(_this: &mut CustomAssetMenu, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
         if UnitAssetMenuData::is_unit_info() {
             if Self::toggle_ui() { return BasicMenuResult::se_cursor() }
         }
         BasicMenuResult::new()
     }
-    pub fn on_dispose(this: &mut CustomAssetMenu, _optional_method: OptionalMethod) {
+    pub fn on_dispose(this: &mut CustomAssetMenu, _optional_method: unity2::OptionalMethod) {
         let menu = UnitAssetMenuData::get();
         TitleBar::close_header();
         menu.control.reset_all();
@@ -370,7 +370,7 @@ impl CustomAssetMenu {
         if self.menu_kind == HeadEdit || self.menu_kind == HairEdit { hub_room_set_by_result(None, ReloadType::ForcedUpdate); }
         self.menu_kind.key_help_update(false);
     }
-    pub fn b_call(this: &mut CustomAssetMenu, _method_info: OptionalMethod) -> BasicMenuResult {
+    pub fn b_call(this: &mut CustomAssetMenu, _method_info: unity2::OptionalMethod) -> BasicMenuResult {
         this.menu_kind.b_call();
         if let Some(previous) = this.menu_kind.get_previous() {
             this.save_current_select();
@@ -397,17 +397,17 @@ impl CustomAssetMenu {
             self.selects[i].scroll = scroll;
         }
     }
-    pub fn minus_call(this: &mut CustomAssetMenu, _method_info: OptionalMethod) -> BasicMenuResult {
+    pub fn minus_call(this: &mut CustomAssetMenu, _method_info: unity2::OptionalMethod) -> BasicMenuResult {
         let select_index = this.select_index as usize;
         this.full_menu_item_list.get_mut(select_index)
             .map(|v|  CustomAssetMenuItem::minus_call(v, None)).unwrap_or(BasicMenuResult::new() )
     }
-    pub fn key_right(this: &mut CustomAssetMenu, trigger: bool, _method_info: OptionalMethod) {
+    pub fn key_right(this: &mut CustomAssetMenu, trigger: bool, _method_info: unity2::OptionalMethod) {
         let pad = get_instance::<Pad>();
         if !UnitAssetMenuData::is_shop() && (pad.npad_state.buttons.stick_l_right() || pad.npad_state.buttons.stick_r_right()) { return; }
         Self::key_base(this, trigger, true);
     }
-    pub fn key_left(this: &mut CustomAssetMenu, trigger: bool, _method_info: OptionalMethod) {
+    pub fn key_left(this: &mut CustomAssetMenu, trigger: bool, _method_info: unity2::OptionalMethod) {
         let pad = get_instance::<Pad>();
         if !UnitAssetMenuData::is_shop() && (pad.npad_state.buttons.stick_l_left() || pad.npad_state.buttons.stick_r_left()) { return; }
         Self::key_base(this, trigger, false);
@@ -454,7 +454,7 @@ impl CustomAssetMenu {
         }
         else { false }
     }
-    fn tick_input(this: &mut CustomAssetMenu, optional_method: OptionalMethod) -> bool {
+    fn tick_input(this: &mut CustomAssetMenu, optional_method: unity2::OptionalMethod) -> bool {
         let left = Pad::is_trigger(NpadButton::new().with_left(true));
         let right = Pad::is_trigger(NpadButton::new().with_right(true));
         let unit_info = UnitAssetMenuData::is_unit_info();

@@ -44,9 +44,9 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                     assets::dress::modify_colors,
                                     assets::asset_table_setup_person_outfit,
                                     assets::asset_table_result_setup_hook_outfit,
-                                    assets::transform::change_dragon2,
+                                    // assets::transform::change_dragon2,
                                     assets::asset_table_result_god_setup_outfit,
-                                    assets::transform::transformation_chain_atk,
+                                    // assets::transform::transformation_chain_atk,
                                     assets::create_break_effect_hook,
                                     assets::dress::combat_character_play_facial,
                                 );
@@ -68,6 +68,10 @@ pub fn main() {
     cobapi::register_system_event_handler(dvc_check_warning);
     Patch::in_text(0x2517830).bytes(&[0xc0, 0x02, 0x80, 0x52]).unwrap();   // GameUserData Version 21
     Patch::in_text(0x1bb5f88).bytes(&[0x15, 0x00, 0x80, 0x52]).unwrap();    // Bypass the default variable in generating cutscene characters.
+
+    Patch::in_text(0x0228151c).bytes(&[0x8A, 0x0C, 0x80, 0x52]).unwrap();
+    Patch::in_text(0x02281fb8).bytes(&[0x88, 0x0C, 0x80, 0x52]).unwrap();
+
     std::panic::set_hook(Box::new(|info| {
         let location = info.location().unwrap();
         let msg = match info.payload().downcast_ref::<&'static str>() {

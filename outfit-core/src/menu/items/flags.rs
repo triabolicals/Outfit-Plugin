@@ -1,9 +1,8 @@
-use engage::{gamemessage::GameMessage, gamevariable::GameVariableManager, mess::Mess, unit::UnitStatusField};
-use unity::prelude::Il2CppString;
+use engage::{gamevariable::GameVariableManager, unit::UnitStatusField};
+use engage_il2cpp::app::{IAccessoryMenuItemMethods, IBasicMenuItemMethods};
 use crate::{
     menu::icons::CustomMenuIcon,
-    r_l_press, set_detail_box,
-    CustomAssetMenu, LoadResult, MenuTextCommand, ReloadPreview,
+    r_l_press, set_detail_box, LoadResult, MenuTextCommand, ReloadPreview,
     UnitAssetMenuData, THUMB_DIR, localize::MenuText
 };
 use crate::room::{hub_room_set_by_result, ReloadType};
@@ -69,7 +68,7 @@ impl AssetFlag {
     }
 }
 impl CustomMenuItem for AssetFlag {
-    fn get_icon(&self, _menu_item: &CustomAssetMenuItem) -> CustomMenuIcon {
+    fn get_icon(&self, _menu_item: CustomAssetMenuItem3) -> CustomMenuIcon {
         match self {
             Self::EngageOutfit|Self::EngagedAnimation => { CustomMenuIcon::EngageCommon }
             Self::RandomAppearance => { CustomMenuIcon::Rare }
@@ -81,8 +80,8 @@ impl CustomMenuItem for AssetFlag {
             Self::UseFaceThumbnail => { CustomMenuIcon::SilverCard }
         }
     }
-    fn get_equipment_box_type(&self, _: &CustomAssetMenuItem) -> EquipmentBoxMode { EquipmentBoxMode::CurrentProfile }
-    fn get_name(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_equipment_box_type(&self, _: CustomAssetMenuItem3) -> EquipmentBoxMode { EquipmentBoxMode::CurrentProfile }
+    fn get_name(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         let mode = UnitAssetMenuData::get_flag();
         let rel = self.get_rel_index() + 20;
         match self {
@@ -95,12 +94,12 @@ impl CustomMenuItem for AssetFlag {
             Self::ViewMode => {
                 let base = MenuText::get_command(rel);
                 let kind = if UnitAssetMenuData::get().is_shop_combat { "MID_TUT_CATEGORY_TITLE_Battle" } else { "MID_SAVEDATA_SEQ_HUB" };
-                format!("{}: {}", base, Mess::get(kind)).into()
+                format!("{}: {}", base, engage_il2cpp::app::Mess::get(kind)).into()
             }
             _ => { MenuText::get_command(rel) }
         }
     }
-    fn get_detail_box_name(&self, _menu_item: &CustomAssetMenuItem) -> Option<&'static Il2CppString> {
+    fn get_detail_box_name(&self, _menu_item: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
         let rel = self.get_rel_index() + 20;
         match self {
             Self::EngageOutfit => Some(MenuTextCommand::Engage.get()),
@@ -109,7 +108,7 @@ impl CustomMenuItem for AssetFlag {
             _ => Some(MenuText::get_command(rel)),
         }
     }
-    fn get_help(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_help(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         let rel = self.get_rel_index() + 20;
         let is_engaged = UnitAssetMenuData::get_current_asset_data().map(|v|{ v.set_profile[1] == UnitAssetMenuData::get_preview().selected_profile }).unwrap_or(false);
         match self {
@@ -148,8 +147,8 @@ impl CustomMenuItem for AssetFlag {
             _ => { MenuText::get_help(rel) }
         }.unwrap()
     }
-    fn get_body(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString { MenuTextCommand::Settings.get() }
-    fn a_call(&self, menu_item: &mut CustomAssetMenuItem) -> BasicMenuResult {
+    fn get_body(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString { MenuTextCommand::Settings.get() }
+    fn a_call(&self, menu_item: CustomAssetMenuItem3) -> BasicMenu_Result {
         let change_unit;
         match self {
             Self::RandomAppearance => {
@@ -170,50 +169,46 @@ impl CustomMenuItem for AssetFlag {
             }
             Self::DisableHeadAcc => {
                 UnitAssetMenuData::toggle_profile_flag(64);
-                menu_item.decided = self.is_decided();
                 menu_item.rebuild_text();
                 hub_room_set_by_result(None, ReloadType::HeadAcc);
-                return BasicMenuResult::se_cursor();
+                return BasicMenu_Result::se_cursor();
             }
             Self::DisableHairAcc => {
                 UnitAssetMenuData::toggle_profile_flag(16);
-                menu_item.decided = self.is_decided();
                 menu_item.rebuild_text();
                 hub_room_set_by_result(None, ReloadType::HairAcc);
-                return BasicMenuResult::se_cursor();
+                return BasicMenu_Result::se_cursor();
             }
             Self::UseFaceThumbnail => {
                 return
                 if UnitAssetMenuData::get_person_flag() & 8 != 0 {
                     match UnitAssetMenuData::get().loaded_data.load_faces() {
                         LoadResult::Success => {
-                            menu_item.menu.full_menu_item_list.clear();
-                            FaceSelection.create_menu_items(menu_item.menu);
-                            menu_item.menu.menu_kind = FaceSelection;
-                            menu_item.menu.rebuild_menu();
-                            CustomAssetMenu::toggle_ui();
-                            BasicMenuResult::se_cursor()
+                            let menu = menu_item.get_asset_menu();
+                            menu.rebuild_menu(FaceSelection, true);
+                            menu.toggle_ui();
+                            BasicMenu_Result::se_cursor()
                         }
                         LoadResult::NoFiles => {
-                            GameMessage::create_key_wait(menu_item.menu, format!("No Face thumbnails in '{}'.\nFiles are PNG of size 188x74", THUMB_DIR));
-                            BasicMenuResult::se_miss()
+                            engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(), format!("No Face thumbnails in '{}'.\nFiles are PNG of size 188x74", THUMB_DIR));
+                            BasicMenu_Result::se_miss()
                         }
                         LoadResult::MissingDirectory => {
-                            GameMessage::create_key_wait(menu_item.menu, format!("Cannot locate directory:\n{}", THUMB_DIR));
-                            BasicMenuResult::se_miss()
+                            engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(), format!("Cannot locate directory:\n{}", THUMB_DIR));
+                            BasicMenu_Result::se_miss()
                         }
                     }
                 }
-                else { BasicMenuResult::se_miss() }
+                else { BasicMenu_Result::se_miss() }
             }
-            _ => { return BasicMenuResult::new(); }
+            _ => { return BasicMenu_Result::do_nothing(); }
         }
-        menu_item.decided = self.is_decided();
+        menu_item.set_m_decided(self.is_decided());
         menu_item.rebuild_text();
         if change_unit { UnitAssetMenuData::reload_unit(ReloadPreview::Full); }
-        BasicMenuResult::se_cursor()
+        BasicMenu_Result::se_cursor()
     }
-    fn custom_call(&self, menu_item: &mut CustomAssetMenuItem) -> BasicMenuResult {
+    fn custom_call(&self, menu_item: CustomAssetMenuItem3) -> BasicMenu_Result {
         let left = r_l_press(true, false, true);
         let right = r_l_press(false, true, true);
         let change_unit;
@@ -245,10 +240,10 @@ impl CustomMenuItem for AssetFlag {
                     if let Some(unit) = UnitAssetMenuData::get_unit() {
                         crate::capture::update_face(unit, UnitAssetMenuData::get_person_flag() & 8 != 0);
                     }
-                    menu_item.decided = UnitAssetMenuData::get_person_flag() & 8 != 0;
+                    menu_item.set_m_decided(UnitAssetMenuData::get_person_flag() & 8 != 0);
                     menu_item.rebuild_text();
                 }
-                Self::DisableHeadAcc|Self::DisableHairAcc => { return BasicMenuResult::new() }
+                Self::DisableHeadAcc|Self::DisableHairAcc => { return BasicMenu_Result::do_nothing() }
                 _ => { return self.a_call(menu_item); }
             }
             menu_item.rebuild_text();
@@ -257,8 +252,8 @@ impl CustomMenuItem for AssetFlag {
                 if *self == Self::ViewMode { UnitAssetMenuData::set_original_assets(); }
             }
             EquipmentBoxMode::CurrentProfile.update();
-            BasicMenuResult::se_cursor()
+            BasicMenu_Result::se_cursor()
         }
-        else { BasicMenuResult::new() }
+        else { BasicMenu_Result::do_nothing() }
     }
 }

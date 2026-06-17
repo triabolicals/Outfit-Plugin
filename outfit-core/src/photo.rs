@@ -16,7 +16,7 @@ pub struct PhotographEditDisposMenu {
 }
 impl Bindable for PhotographEditDisposMenu {}
 
-pub fn photograph_edit_dispos_menu_minus(this: &PhotographEditDisposMenu, _optional_method: OptionalMethod) -> BasicMenuResult {
+pub fn photograph_edit_dispos_menu_minus(this: &PhotographEditDisposMenu, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
     if PersonData::get(this.dispos_manager.current_dispos_info.current_character_id).is_some_and(|v| v.parent.index > 0){
         if let Some(unit) = UnitPool::get_from_pid(this.dispos_manager.current_dispos_info.current_character_id, false).filter(|v| v.person.parent.index > 0){
             UnitAssetMenuData::get().mode = MenuMode::PhotoGraph;
@@ -51,7 +51,7 @@ pub fn update_character(dispos_info: &'static mut PhotographDisposInfo, result: 
     start.method_ptr = set_up as _;
     obj.character_cmp.call_on_setup_done(start);
 }
-fn set_up(this: &'static mut PhotographDisposInfo77, _optional_method: OptionalMethod) {
+fn set_up(this: &'static mut PhotographDisposInfo77, _optional_method: unity2::OptionalMethod) {
     if let Some(char) = this.this.m_character_cmp.as_ref() {
         if let Some(go) = char.get_game_object().filter(|v| !v.is_null()) {
             go.set_active2(false);

@@ -7,6 +7,7 @@ use engage::hub::variable::HubVariable;
 use engage::menu::BasicMenuResult;
 use engage::menu::menu_item::BasicMenuItem;
 use engage::sequence::hub::HubSequence;
+use engage_il2cpp::app::IBasicMenuItemMethods;
 use unity::macro_context::Il2CppClass;
 use unity::prelude::OptionalMethod;
 use crate::data::room::CustomHubAccessoryRoom;
@@ -36,7 +37,7 @@ pub fn sortie_menu_x_call_edit() {
         k.method_ptr = sortie_top_menu_inventory_y_call as _;
     }
 }
-pub fn sortie_top_menu_inventory_y_call(this: &mut BasicMenuItem, _method_info: OptionalMethod) -> BasicMenuResult {
+pub fn sortie_top_menu_inventory_y_call(this: engage_il2cpp::app::BasicMenuItem, _method_info: unity2::OptionalMethod) -> BasicMenuResult {
     if GameUserData::get_sequence() == 2 { BasicMenuResult::se_miss() }
     else {
         UnitAssetMenuData::get().unit_select_index = 0;
@@ -49,7 +50,7 @@ pub fn sortie_top_menu_inventory_y_call(this: &mut BasicMenuItem, _method_info: 
         asset.is_shop_combat = false;
         asset.mode = MenuMode::Shop;
         asset.is_preview = true;
-        CustomHubAccessoryRoom::create_bind(this.menu);
+        CustomHubAccessoryRoom::create_bind(this.get_menu());
         BasicMenuResult::se_decide().with_close_this(true)
     }
 }

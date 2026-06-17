@@ -1,7 +1,10 @@
 use std::{collections::HashMap, io::{Cursor, Read}};
-use engage::mess::Mess;
-use unity::{prelude::Il2CppString, system::List};
-use crate::{Asset, AssetColor, AssetType, ColorPreset, CustomAssetMenuItem, OutfitHashes, UnitAssetMenuData, data::{item::*, util::parse_label}, EyePreset};
+use engage_il2cpp::app::BasicMenuItem;
+use engage_il2cpp::List_1Ext;
+use engage_il2cpp::prelude::List_1;
+use engage_il2cpp::system::collections::generic::IList_1Methods;
+use unity2::Cast;
+use crate::{Asset, AssetColor, AssetType, ColorPreset, OutfitHashes, UnitAssetMenuData, data::{item::*, util::parse_label}, EyePreset, CustomAssetMenuItem3};
 
 pub struct OutfitLists {
     pub null: AssetGroup,   // 1st
@@ -116,7 +119,7 @@ impl OutfitLists {
             }
         }
     }
-    pub fn add_menu_items(&self, kind: AssetType, female: bool, char: bool, other: bool, labels: &AssetLabelTable, menu_item_list: &mut List<CustomAssetMenuItem>) {
+    pub fn add_menu_items(&self, kind: AssetType, female: bool, char: bool, other: bool, labels: &AssetLabelTable, menu_item_list: List_1<BasicMenuItem>) {
         let photo = UnitAssetMenuData::is_photo_graph();
         let check_photo_flag = (kind == AssetType::Head) == photo;
         let mut acc_kind = None;
@@ -131,15 +134,15 @@ impl OutfitLists {
             AssetType::Mount(_) => {
                 self.job_m.iter().for_each(|s| {
                     s.list.iter().filter(|x| x.kind == kind)
-                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, s.label)); });
+                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, s.label).as_basic_menu_item()); });
                 });
             }
             _ => {}
         };
         self.null.list.iter().filter(|v| v.kind == kind2 ).for_each(|v|{
-            let item = CustomAssetMenuItem::new_asset2(&v, self.null.label);
-            item.name = Mess::get("MID_SYS_None");
-            menu_item_list.add(item);
+            let item = CustomAssetMenuItem3::new_asset2(&v, self.null.label);
+            engage_il2cpp::app::IBasicMenuItemMethods::set_name(item, engage_il2cpp::app::Mess::get("MID_SYS_None"));
+            menu_item_list.add(item.as_basic_menu_item());
         });
         if char {
             if gender_restrict {
@@ -148,7 +151,7 @@ impl OutfitLists {
                     .for_each(|char| {
                         char.list.iter()
                             .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                            .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, char.label)); });
+                            .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
                     });
             }
             else {
@@ -157,14 +160,14 @@ impl OutfitLists {
                         .for_each(|char| {
                             char.list.iter()
                                 .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, char.label)); });
+                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
                         });
                 } else {
                     self.char_m.iter().chain(self.char_f.iter())
                         .for_each(|char| {
                             char.list.iter()
                                 .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, char.label)); });
+                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
                         });
                 }
             }
@@ -178,7 +181,7 @@ impl OutfitLists {
                             a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph)))
                             && (gender_restrict && a.flags.contains(gender) || !gender_restrict)
                         )
-                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem::new_asset2(&h, char.label)); });
+                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
                 });
 
             self.other.iter()
@@ -186,11 +189,16 @@ impl OutfitLists {
                     ((gender_restrict && (x.female == female)) || !gender_restrict) &&
                     x.asset.kind == kind2 && (!check_photo_flag || (check_photo_flag != x.asset.flags.contains(AssetItemFlags::NoPhotograph)))
                 })
-                .for_each(|a|{ menu_item_list.add(CustomAssetMenuItem::new_asset3(&a, labels, false)); });
+                .for_each(|a|{ menu_item_list.add(CustomAssetMenuItem3::new_asset3(&a, labels, false).as_basic_menu_item()); });
         }
         if let Some(acc) = acc_kind {
             let menu_kind = AssetType::Acc(acc);
-            menu_item_list.iter_mut().for_each(|a|{ a.menu_kind = Asset(menu_kind); });
+            menu_item_list.iter().for_each(|a| {
+                unsafe {
+                    let a = a.cast::<CustomAssetMenuItem3>();
+                    a.set_menu_item_kind(Asset(menu_kind));
+                }
+            });
         }
     }
     pub fn add_eye_presets(&mut self, labels: &AssetLabelTable) {

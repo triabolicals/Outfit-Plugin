@@ -1,18 +1,17 @@
 use std::sync::OnceLock;
 use engage::{
-    menu::{
-        menu_item::{MenuItem, MenuItemContent}, BasicMenu, BasicMenuResult
-    },
+    menu::{menu_item::{MenuItem, MenuItemContent}, BasicMenuResult},
     menu::BasicMenuMethods
 };
-use engage_il2cpp::app::{ISingletonClass_1Methods, accessoryequipmentinfo::*, IHubAccessoryRoomMethods, AssetTable_Modes, AssetTable_Result, IBasicMenuItemMethods, IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods, IAssetTable_ResultMethods, ShopUnitSelectMenuItem, Proc, IProcInstMethods, IHubAccessoryShopSequence, AccessoryShopTopMenu_Result2, BasicMenu_Result, IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods, IShopUnitSelectMenuItemContent, IUnitMenuItemSetter, IShopUnitSelectMenuItemContentMethods, ShopUnitSelectMenuItemContent, ShopUnitSelectMenu, IBasicMenu, IBasicMenuMethods, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods, BasicMenuItem};
-use engage_il2cpp::List_1Ext;
-use engage_il2cpp::system::collections::generic::IList_1Methods;
-use engage_il2cpp::tm_pro::ITMP_Text;
-use engage_il2cpp::unity_engine::{IComponentMethods, IGameObjectMethods};
-use engage_il2cpp::unity_engine::ui::IImageMethods;
-use unity2::{Cast, Class, FromIlInstance, IlInstance, IlNull};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu};
+use engage_il2cpp::{
+    app::{ISingletonClass_1Methods, accessoryequipmentinfo::*, IHubAccessoryRoomMethods, AssetTable_Modes, AssetTable_Result, IBasicMenuItemMethods, IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods, IAssetTable_ResultMethods, ShopUnitSelectMenuItem, Proc, IProcInstMethods, IHubAccessoryShopSequence, AccessoryShopTopMenu_Result2, BasicMenu_Result, IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods, IShopUnitSelectMenuItemContent, IUnitMenuItemSetter, IShopUnitSelectMenuItemContentMethods, ShopUnitSelectMenuItemContent, ShopUnitSelectMenu, IBasicMenu, IBasicMenuMethods, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods, BasicMenuItem},
+    List_1Ext,
+    system::collections::generic::IList_1Methods,
+    tm_pro::ITMP_Text,
+    unity_engine::{IComponentMethods, IGameObjectMethods, ui::IImageMethods}
+};
+use unity2::{Cast, Class, FromIlInstance, IlNull};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu, get_default_asset_conditions};
 
 #[derive(Default)]
 pub struct UnitSelectList {
@@ -25,7 +24,8 @@ impl UnitSelectList {
         self.selected = Some(0);
         self.list.clear();
         let data = &UnitAssetMenuData::get().data;
-        if let Some(unit) = engage_il2cpp::app::UnitPool::get_hero(false) {
+        let unit = engage_il2cpp::app::UnitPool::get_hero(false);
+        if !unit.is_null() {
             self.list.push(UnitSelect::from_unit(unit));
             let mut start = unit;
             loop {
@@ -44,7 +44,7 @@ impl UnitSelectList {
                 if !person.is_null() { self.list.push(UnitSelect::from_person(person)); }
             }
         });
-        let god_pool = ISingletonClass_1Methods::<engage_il2cpp::app::GodPool>::get_instance();
+        let god_pool = engage_il2cpp::app::GodPool::get_instance();
         if !god_pool.is_null() {
             god_pool.m_sort().iter()
                 .filter(|g_unit| !g_unit.m_is_escaping() && g_unit.get_force_type().value == 0)
@@ -71,7 +71,9 @@ impl UnitSelectList {
             AssetTable_Result::get_from_pid(
                 AssetTable_Modes::combat(),
                 "PID_リュール",
-                engage_il2cpp::combat::CharacterAppearance::get_constions(unity2::Array::<unity2::Il2CppString>::null())) }
+                engage_il2cpp::combat::CharacterAppearance::get_constions(get_default_asset_conditions())
+            )
+        }
 
     }
 }
@@ -126,7 +128,7 @@ impl UnitSelect {
             .or_else(|| self.try_get_person().map(|v| engage_il2cpp::app::Mess::get(v.get_name() )))
     }
     pub fn get_result(&self, hub: bool) -> AssetTable_Result {
-        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(unity2::Array::<unity2::Il2CppString>::null());
+        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(get_default_asset_conditions());
         if hub {
             self.try_get_unit()
                 .map(|u| AssetTable_Result::get_for_accessory(u))
@@ -160,7 +162,7 @@ impl ShopUnitSelect {
         })
     }
     pub fn a_call(this: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenuResult {
-        let hash = unity2::field_get_value_at_offset::<i32>(this, 0x54);
+        let hash = unity2::field_get_value_at_offset::<i32>(this, 0x64);
         if UnitAssetMenuData::set_by_hash(hash) {
             if let Some(shop) = Self::get_hub_shop_sequence() { shop.set_m_shop_unit_select_menu_result(BasicMenu_Result{value: 129}); }
             UnitAssetMenuData::get().unit_select_index = this.get_index();
@@ -181,11 +183,11 @@ impl ShopUnitSelect {
         IBasicMenuItemMethods::on_select(this);
         let select = &mut UnitAssetMenuData::get().unit_select;
         select.selected = Some(this.get_index());
-        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(unity2::Array::<unity2::Il2CppString>::null());
+        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(get_default_asset_conditions());
         if let Some(select) = select.get_selected() {
             if let Some(unit) = select.try_get_unit() {
                 UnitAssetMenuData::set_unit(unit);
-                CustomAssetMenu::set_unit_name(unit.get_name());
+                // CustomAssetMenu::set_unit_name(unit.get_name());
                 let sequence = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
                 let result =
                     if sequence != 4 { AssetTable_Result::get_for_kizuna(unit.get_pid(), default_conditions) }
@@ -201,7 +203,7 @@ impl ShopUnitSelect {
             }
             else if let Some(person) = select.try_get_person() {
                 UnitAssetMenuData::set_by_hash(person.hash());
-                CustomAssetMenu::set_unit_name(person.get_name());
+                // CustomAssetMenu::set_unit_name(person.get_name());
                 let result = AssetTable_Result::get_for_kizuna(person.get_pid(), default_conditions);
                 hub_room_set_by_result(Some(result), ReloadType::All);
             }
@@ -220,7 +222,7 @@ impl ShopUnitSelect {
 }
 pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem){
     if content.is_null() || item.is_null() { return; }
-    let hash = unity2::field_get_value_at_offset::<i32>(item, 0x54);
+    let hash = unity2::field_get_value_at_offset::<i32>(item, 0x64);
     let mut name: Option<unity2::Il2CppString> = None;
     let mut sprite: Option<engage_il2cpp::unity_engine::Sprite> = None;
     let god = engage_il2cpp::app::GodData::try_get_from_hash(hash);
@@ -270,7 +272,7 @@ pub extern "C" fn create_accessory_unit_select(this: engage_il2cpp::app::HubAcce
                 let item = ShopUnitSelectMenuItem::instantiate().unwrap();
                 item.rebind_class(ShopUnitSelect::get_class());
                 IBasicMenuItemMethods::ctor(item);
-                unity2::field_set_value_at_offset(item, 0x54, v.hash);
+                unity2::field_set_value_at_offset(item, 0x64, v.hash);
                 UnitAssetMenuData::get_by_person_data(v.hash, true);
                 menu_list.add(BasicMenuItem::from(item));
             });

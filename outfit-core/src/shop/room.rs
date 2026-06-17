@@ -1,79 +1,48 @@
 use engage::{
-    mess::Mess, combat::*, unitinfo::*,
+    combat::*,
     resourcemanager::ResourceManager,
     titlebar::TitleBar,
-    unityengine::*,
-    sequence::photograph::*,
-    ut::Ut
 };
 use engage_il2cpp::{
     app::{
-        ISingletonProcInst_1Methods,
-        IHubAccessoryRoomMethods,
+        IUnitInfoWindowCharaUpdater,
+        ISingletonProcInst_1Methods, IHubAccessoryRoomMethods,
         proc::*,
         fade::{Fade, Fade_Layer as FadeLayer},
-        ProcVoidMethod,
-        HubAccessoryRoom_Shop,
-        ProcBoolMethod,
-        HubAccessoryRoom,
-        ProcDesc,
+        ProcVoidMethod, HubAccessoryRoom_Shop, ProcBoolMethod, HubAccessoryRoom, ProcDesc,
         IProcInstMethods,
-        HubAccessoryShopSequence,
-        HubAccessoryRoomCamera,
-        IGameUserDataMethods,
-        ISingletonClass_1Methods,
-        IChapterDataMethods,
-        IProcSceneSequence_1Methods,
-        IHubAccessoryRoom,
-        HubSequence,
-        GmapSequence,
-        IGmapSequence,
-        IGmapMapInfoContentMethods,
-        IHubSequenceMethods,
-        IHubMiniMapMethods,
-        IHubSequence,
+        HubAccessoryShopSequence, HubAccessoryRoomCamera,
+        IGameUserDataMethods, ISingletonClass_1Methods, IChapterDataMethods, IProcSceneSequence_1Methods, IHubAccessoryRoom,
+        HubSequence, GmapSequence,
+        IGmapSequence, IGmapMapInfoContentMethods, IHubSequenceMethods, IHubMiniMapMethods, IHubSequence,
         RenderManager,
-        IHubPlayerControllerMethods,
-        IHubLocatorGroupMethods,
-        AccessoryShopChangeRoot_ReturnEventHandler,
-        AccessoryShopChangeRoot,
-        BasicMenuContent,
-        ResourceManager_2,
-        IAccessoryShopChangeRoot,
+        IHubPlayerControllerMethods, IHubLocatorGroupMethods,
+        AccessoryShopChangeRoot_ReturnEventHandler, AccessoryShopChangeRoot, BasicMenuContent, ResourceManager_2,
+        IAccessoryShopChangeRoot, IAccessoryShopChangeMenuMethods, IBasicMenuMethods,
         AccessoryShopChangeMenuContent,
-        AccessoryShopChangeMenu,
-        IAccessoryShopChangeMenuMethods,
-        IBasicMenuMethods,
-        HubAccessoryRoom_ViewMode,
-        IAccessoryEquipmentInfo,
-        AccessoryDetailInfoWindow,
-        IHubAccessoryShopSequence,
-        AssetTable_Result
+        HubAccessoryRoom_ViewMode, AccessoryDetailInfoWindow, AssetTable_Result,
+        IAccessoryEquipmentInfo, IHubAccessoryShopSequence,
     },
-    List_1Ext,
-    ProcBoolMethodExt,
-    ProcExt,
-    ProcVoidMethodExt,
+    system::object::*,
+    List_1Ext, ProcBoolMethodExt, ProcExt, ProcVoidMethodExt,
     system::collections::generic::IList_1Methods,
     tm_pro::ITMP_Text,
     unity_engine::{IComponentMethods, IGameObjectMethods},
     unity_engine::scene_management::{LoadSceneMode, SceneManager}
 };
-use engage::gamedata::PersonData;
-use engage_il2cpp::app::{IGodDataMethods, IStructData_1Methods};
+use engage_il2cpp::app::{IAssetTable_ResultMethods, IGodDataMethods, IStructData_1Methods, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfoWindowCharaModelMethods, IUnitInfoWindowCharaUpdaterMethods, IUnitInfo_Window, IUnitMethods, UnitInfoWindowCharaModel};
+use engage_il2cpp::app::talk3_d::CharacterFactoryAsync_2;
+use engage_il2cpp::combat::{ICharacterAppearance, ICharacterAppearanceMethods, ICharacterAssetForm, ICharacterAssetT_1Methods, ICharacterBuilderMethods, ICharacterMethods, ICharacterProportion, ICharacterProportionMethods, IProportionParameters, IProportionParametersMethods};
+use engage_il2cpp::system::IDelegate;
 use engage_il2cpp::tm_pro::ITMP_TextMethods;
-use unity::{prelude::*, system::action::{SystemDelegate, Action}, system::List};
-use unity2::{field_set_value_at_offset, Cast, ClassIdentity, FromIlInstance, IlInstance, IlNull, IntPtr, SystemObject};
+use engage_il2cpp::unity_engine::{IObject_2Methods, IRendererMethods, ITransformMethods};
+use unity2::{field_set_value_at_offset, Cast, Class, ClassIdentity, FromIlInstance, Il2CppString, IlInstance, IlNull, IntPtr, SystemObject};
 use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, UnitAssetMenuData, FACIAL_STATES};
 use crate::data::change_root::create_accessory_shop_change_root_proc;
 use crate::data::unitselect::create_accessory_unit_select;
+use engage_il2cpp::app::IPersonDataMethods;
+use engage_il2cpp::prelude::Object;
 
-#[unity::class("", ".<>c__DisplayClass31_0")]
-pub struct HubAccessoryRoomAction31 {
-    pub this: &'static HubAccessoryRoom,
-    pub unit: &'static Unit,
-    pub appearance: &'static CharacterAppearance,
-}
 #[derive(PartialEq, Clone, Copy)]
 pub enum ReloadType {
     All,
@@ -94,7 +63,7 @@ pub enum ReloadType {
 }
 pub struct CustomHubAccessoryRoom;
 impl CustomHubAccessoryRoom {
-    pub fn create_bind<B: IProcInstMethods>(proc: B) {
+    pub fn create_bind(proc: impl Into<engage_il2cpp::app::ProcInst>) {
         let sequence = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
         if sequence < 4 { return; }
         let asset = UnitAssetMenuData::get();
@@ -150,7 +119,7 @@ impl CustomHubAccessoryRoom {
             let controller = hub.m_hub_player_controller();
             if !controller.is_null() { controller.save_accessory(); }
         }
-        let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom".into());
+        let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom");
         SceneManager::set_active_scene(scene);
         let camera = engage_il2cpp::unity_engine::Object_2::find_object_of_type::<HubAccessoryRoomCamera>();
         if !camera.is_null() { proc.set_camera_pos(camera); }
@@ -205,7 +174,7 @@ impl CustomHubAccessoryRoom {
                 return;
             }
             6 => {
-                let gmap = ISingletonProcInst_1Methods::<GmapSequence>::get_instance();
+                let gmap = engage_il2cpp::app::GmapSequence::get_instance();
                 if gmap.is_null() {
                     gmap.m_map_info().close();
                     field_set_value_at_offset::<unity2::Il2CppString>(proc, 0x80, gmap.get_scene_name());
@@ -267,6 +236,7 @@ impl CustomHubAccessoryRoom {
         }
     }
 }
+/*
 #[repr(C)]
 pub struct MyCharacterBuilderObject {
     klass: &'static Il2CppClass,
@@ -321,13 +291,31 @@ impl MyCharacterBuilderObject {
             this.appearance.modify_colors(go);
         }
     }
-    pub fn build_non_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: OptionalMethod) {
+    pub fn build_non_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: unity2::OptionalMethod) {
         this.builder.attach_head_hair_and_weapons();
         this.builder.attach_dress();
         if let Some(go) = this.builder.get_game_object() { this.builder.appearance.modify_colors(go); }
         Self::set_unit_info_layer(this.builder);
     }
-    pub fn replace_dress(builder: &'static mut CharacterBuilder, asset: &Il2CppString){
+    pub fn replace_dress(builder: engage_il2cpp::combat::CharacterBuilder, asset: unity2::Il2CppString){
+        let go = builder.get_game_object();
+        if go.is_null() { return; }
+        let appearance = builder.appearance();
+        let list = List_1::<unity2::Il2CppString>::new();
+        list.add("c_trans".into());
+        list.add("HoldWeapon".into());
+        list.add("LookTarget".into());
+        for xx in [0, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19] {
+            let asset = appearance.assets().get(xx);
+            if asset.is_null() { continue; }
+            if !asset.is_ready() { continue; }
+            let go = builder.get_go(asset);
+            if go.is_null() { continue; }
+            go.get_components_in_children_3::<engage_il2cpp::unity_engine::Transform>(true).iter().for_each(|t|{
+                list.add(t.get_name());
+            });
+        };
+
         if let Some(go) = builder.get_game_object().filter(|g| !g.is_null()) {
             let list = List::<Il2CppString>::with_capacity(256).unwrap();
             list.add("c_trans".into());
@@ -364,7 +352,7 @@ impl MyCharacterBuilderObject {
             create_unit_action_object.builder.appearance.assets[1].load_async(Some(action));
         }
     }
-    pub fn build_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: OptionalMethod) {
+    pub fn build_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: unity2::OptionalMethod) {
         if let Some(go) = this.builder.get_game_object().filter(|g| !g.is_null() ){
             go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|tr| {
                 if let Some(parent) = tr.get_transform().get_parent() {
@@ -380,13 +368,14 @@ impl MyCharacterBuilderObject {
         }
     }
 }
-
+ */
 
 #[unity::class("Combat", "CharacterEffect")]
 pub struct CharacterEffect {
     pub cp: &'static mut Character,
 }
 pub fn break_effect(this: &mut CharacterEffect){
+    /*
     if let Some(unit) = this.cp.get_game_status().unit.as_ref() {
         let engaged = unit.is_engaging();
         if let Some(data) = UnitAssetMenuData::get_unit_data(unit).filter(|s| s.get_active_flag(engaged) & 32 != 0){
@@ -404,133 +393,186 @@ pub fn break_effect(this: &mut CharacterEffect){
             }
         }
     }
+
+     */
 }
-fn change_scaling(builder: &CharacterBuilder, result: Option<AssetTable_Result>) {
-    let mut scale_values = [0.0; 16];
-    if let Some(result) = result {
-        for x in 0..16 { scale_values[x] = get_result_scale_f32(result, x) + 0.001; }
-    }
-    else {
-        let preview = UnitAssetMenuData::get_preview();
-        for x in 0..16 { scale_values[x] = preview.scale_preview[x] as f32 * 0.01 + 0.01; }
-    }
-    if let Some(char_prop) = builder.get_component::<CharacterProportion>() {
-        char_prop.proportion_parameters.scale_all = scale_values[0];
-        char_prop.proportion_parameters.scale_head = scale_values[1];
-        char_prop.proportion_parameters.scale_neck = scale_values[2];
-        char_prop.proportion_parameters.scale_torso = scale_values[3];
-        char_prop.proportion_parameters.scale_shoulders = scale_values[4];
-        char_prop.proportion_parameters.scale_arms = scale_values[5];
-        char_prop.proportion_parameters.scale_hands = scale_values[6];
-        char_prop.proportion_parameters.scale_legs = scale_values[7];
-        char_prop.proportion_parameters.scale_feet = scale_values[8];
-        char_prop.proportion_parameters.volume_arms = scale_values[12] * scale_values[14];
-        char_prop.proportion_parameters.volume_legs = scale_values[13] * scale_values[15];
-        char_prop.proportion_parameters.volume_bust = scale_values[9];
-        char_prop.proportion_parameters.volume_abdomen = scale_values[10];
-        char_prop.proportion_parameters.volume_torso = scale_values[11];
-        char_prop.proportion_parameters.flush();
+fn change_scaling(builder: engage_il2cpp::combat::CharacterBuilder, result: Option<AssetTable_Result>) {
+    let char_prop = builder.get_component_2::<engage_il2cpp::combat::CharacterProportion>();
+    if !char_prop.is_null() {
+        let mut scale_values = [0.0; 16];
+        if let Some(result) = result {
+            for x in 0..16 { scale_values[x] = get_result_scale_f32(result, x) + 0.001; }
+        }
+        else {
+            let preview = UnitAssetMenuData::get_preview();
+            for x in 0..16 { scale_values[x] = preview.scale_preview[x] as f32 * 0.01 + 0.01; }
+        }
+        let prop = char_prop.proportion_parameters();
+        prop.set_scale_all(scale_values[0]);
+        prop.set_scale_head(scale_values[1]);
+        prop.set_scale_neck(scale_values[2]);
+        prop.set_scale_torso(scale_values[3]);
+        prop.set_scale_shoulders(scale_values[4]);
+        prop.set_scale_arms(scale_values[5]);
+        prop.set_scale_hands(scale_values[6]);
+        prop.set_scale_legs(scale_values[7]);
+        prop.set_scale_feet(scale_values[8]);
+        prop.set_volume_arms(scale_values[12] * scale_values[14]);
+        prop.set_volume_legs(scale_values[13] * scale_values[15]);
+        prop.set_volume_bust(scale_values[9]);
+        prop.set_volume_abdomen(scale_values[10]);
+        prop.set_volume_torso(scale_values[11]);
+        prop.flush();
         char_prop.commit_changes();
     }
 }
 fn force_load(result: Option<AssetTable_Result>, reload_type: ReloadType) {
     let result = result.or_else(||Some(UnitAssetMenuData::get_result())).unwrap();
+    let room = HubAccessoryRoom::get_instance();
+    if !room.is_null() {
+        if reload_type == ReloadType::ForcedUpdate { room.destroy_current_char(); }
+        let appearance = engage_il2cpp::combat::CharacterAppearance::create_from_result(result, 1);
+        room.set_m_loading_appearance(appearance);
+        room.load_character(appearance, "PID_リュール");
+    }
+
+    /*
     if let Some(p) = PhotographTopSequence::get_photograph_sequence(){
         crate::photo::update_character(p.dispos_manager.current_dispos_info, result);
     }
-    else if let Some(room) = get_singleton_proc_instance::<HubAccessoryRoom>() {
-        let pid = UnitAssetMenuData::get_shop_unit().map(|v| v.person.pid)
-            .or_else(|| GodData::try_get_hash(UnitAssetMenuData::get_preview().person).map(|v| v.gid))
-            .unwrap_or("PID_リュール".into());
-        let hash = crate::new_result_get_hash_code(result, None);
-        if hash == room.last_hash && reload_type != ReloadType::ForcedUpdate { return; }
-        if reload_type == ReloadType::ForcedUpdate { room.destroy_current_char(); }
-        room.last_hash = hash;
-        let appearance = CharacterAppearance::create_from_result(result, 1);
-        room.loading_appearance = Some(appearance);
-        room.load_character(appearance, pid);
-    }
-    else if let Some((unit, info)) = UnitAssetMenuData::get_unit().zip(UnitInfo::get_instance()) {
-        let char_model_window = &mut info.windows[0].unit_info_window_chara_model;
-        let is_mount = reload_type == ReloadType::Mount;
-        char_model_window.padding = if is_mount { 1 } else { 0 };
-        let character = engage::sequence::talk::CharacterFactoryAsync::create_common(result, unit.person.pid, char_model_window.game_object, false, false, false);
-        let display_class_104_klass = char_model_window.klass.get_nested_types()[4];
-        let create_unit_action_object = display_class_104_klass.instantiate_as::<UnitInfoWindowCharaModelDisplayClass103>().unwrap();
-        create_unit_action_object.this = char_model_window;
-        create_unit_action_object.call_back = Some(character);
-        let action = Action::instantiate().unwrap();
-        action.ctor(Some(create_unit_action_object), display_class_104_klass.get_methods()[1]);
-        action.method_ptr = create_char_model as _;
-        create_unit_action_object.call_back.as_ref().map(|c| c.call_on_setup_done(action));
+    else
+    */
+    else {
+        let info = engage_il2cpp::app::UnitInfo::get_instance();
+        if let Some(unit) = UnitAssetMenuData::get_unit(){
+            let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
+            let character = CharacterFactoryAsync_2::create_common(result, unit.get_pid(), char_model_window.m_game_object(), false, false, false);
+            let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
+            create_character_object.set_character(character);
+            create_character_object.set_unit_info_window(char_model_window);
+            let action = engage_il2cpp::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
+            character.call_on_setup_done(action);
+        }
     }
 
 }
 pub fn hub_room_set_by_result(result: Option<AssetTable_Result>, reload_type: ReloadType) {
-    let character =
+    let character = {
+        /*
         if UnitAssetMenuData::is_photo_graph() {
             PhotographTopSequence::get_photograph_sequence().and_then(|p| p.dispos_manager.current_dispos_info.m_character_cmp.as_ref())
         }
         else {
+
             get_singleton_proc_instance::<HubAccessoryRoom>().and_then(|v| v.character.as_ref())
                 .or_else(|| UnitInfo::get_instance().map(|v| &v.windows[0].unit_info_window_chara_model.char))
         };
-    if let Some(char) = character.filter(|v| v.op_implicit()){
+
+         */
+        let room = HubAccessoryRoom::get_instance();
+        if !room.is_null() { Some(room.m_character()) }
+        else {
+            let info = engage_il2cpp::app::UnitInfo::get_instance();
+            Some(info.m_windows().get(0).m_unit_info_window_chara_model().m_chara())
+        }};
+    if let Some(char) = character.filter(|v| !v.is_null()){
         let builder = char.get_builder();
+        let appearance = builder.appearance();
         match reload_type {
             ReloadType::Scale => {
-                builder.appearance.proportion.flush();
+                appearance.proportion().flush();
                 change_scaling(builder, result);
                 UnitAssetMenuData::get().control.setup(false, true);
             }
+            /*
             ReloadType::Dress => {
-                let result = result.or_else(|| Some(UnitAssetMenuData::get_result())).unwrap();
-                if builder.appearance.assets[1].name.is_some_and(|v| v.to_string() != result.dress_model.to_string()) {
-                    MyCharacterBuilderObject::replace_dress(builder, result.dress_model);
+                let result = result.unwrap_or(UnitAssetMenuData::get_result());
+                let dress = appearance.assets().get(1);
+                let name = dress.get_name();
+                if !name.is_null() && !result.get_dress_model().is_null() {
+                    let n1 = name.to_rust_string();
+                    let n2 = result.get_dress_model().to_rust_string();
+                    if n1 != n2 {
+                        MyCharacterBuilderObject::replace_dress(builder, result.dress_model)
+                    }
                 }
             }
             ReloadType::Head => {
                 UnitAssetMenuData::get_preview().update = 2;
                 let result = result.or_else(|| Some(UnitAssetMenuData::get_result())).unwrap();
-                if builder.appearance.assets[2].name.is_some_and(|v| v.to_string() != result.head_model.to_string()) {
-                    MyCharacterBuilderObject::replace_head(builder, result.head_model);
+                let dress = appearance.assets().get(1);
+                let name = dress.get_name();
+                if !name.is_null() && !result.get_head_model().is_null() {
+                    let n1 = name.to_rust_string();
+                    let n2 = result.get_dress_model().to_rust_string();
+                    if n1 != n2 {
+                        MyCharacterBuilderObject::replace_head(builder, result.get_head_model());
+                    }
                 }
             }
+             */
             ReloadType::ColorScale => {
                 let result = result.or_else(||Some(UnitAssetMenuData::get_result())).unwrap();
-                builder.appearance.hair_color = get_result_color(result, 0);
-                builder.appearance.grad_color = get_result_color(result, 1);
-                builder.appearance.skin_color = get_result_color(result, 2);
-                builder.appearance.toon_shadow_color = get_result_color(result, 3);
-                builder.appearance.mask_color_100 = get_result_color(result, 4);
-                builder.appearance.mask_color_075 = get_result_color(result, 5);
-                builder.appearance.mask_color_050 = get_result_color(result, 6);
-                builder.appearance.mask_color_025 = get_result_color(result, 7);
-                if let Some(go) = builder.get_game_object().filter(|o| !o.is_null() ) { builder.appearance.modify_colors(go); }
+                appearance.set_hair_color(get_result_color(result, 0));
+                appearance.set_grad_color(get_result_color(result, 1));
+                appearance.set_skin_color(get_result_color(result, 2));
+                appearance.set_toon_shadow_color(get_result_color(result, 3));
+                appearance.set_mask_color100(get_result_color(result, 4));
+                appearance.set_mask_color075(get_result_color(result, 5));
+                appearance.set_mask_color050(get_result_color(result, 6));
+                appearance.set_mask_color025(get_result_color(result, 7));
+                let go = builder.get_game_object();
+                if !go.is_null() { appearance.modify_colors(go); }
             }
             ReloadType::Facial(increase) => {
                 let len = FACIAL_STATES.len();
                 let v = UnitAssetMenuData::get().facial;
                 let new_v = if increase { v + 1 + len} else { v + len - 1 } % len;
-                char.play_facial(FACIAL_STATES[new_v].0.into());
+                char.play_facial(FACIAL_STATES[new_v].0);
                 UnitAssetMenuData::get().facial = new_v;
                 EquipmentBoxMode::CurrentProfile.update();
             }
             ReloadType::HairAcc => {
-                if let Some(go) = builder.get_game_object(){ hair_acc(go, UnitAssetMenuData::get_flag() & 16 != 0); }
+                let go = builder.get_game_object();
+                if !go.is_null() { hair_acc(go, UnitAssetMenuData::get_flag() & 16 != 0); }
             }
             ReloadType::HeadAcc => {
-                if let Some(go) = builder.get_game_object(){ head_acc(go, UnitAssetMenuData::get_flag() & 64 != 0); }
+                let go = builder.get_game_object();
+                if !go.is_null() { head_acc(go, UnitAssetMenuData::get_flag() & 64 != 0); }
             }
-            ReloadType::FacialPreview(index) => { char.play_facial(FACIAL_STATES[index].0.into()); }
+            ReloadType::FacialPreview(index) => { char.play_facial(FACIAL_STATES[index].0); }
             _ => { force_load(result, reload_type); }
         }
     }
     else { force_load(result, reload_type); }
-
 }
 
-pub fn create_char_model(this: &mut UnitInfoWindowCharaModelDisplayClass103, _optional_method: OptionalMethod) {
+#[unity2::inject(namespace = "App", name = "CreateUnitInfoModel", parent=Object)]
+pub struct CreateUnitInfoModel {
+    pub unit_info_window: UnitInfoWindowCharaModel,
+    pub character: engage_il2cpp::combat::Character,
+}
+#[unity2::callback]
+pub fn create_char_model(this: CreateUnitInfoModel, _optional_method: unity2::OptionalMethod) {
+    let character = this.character();
+    let unit_info_window = this.unit_info_window();
+    if !character.is_null() && !unit_info_window.is_null() {
+        unit_info_window.delete_chara_model();
+        unit_info_window.set_m_chara(character);
+        let char = unit_info_window.create_chara_model_2(character);
+        let update = unit_info_window.m_chara_updater();
+        update.set_m_is_request_to_offset(true);
+        update.late_update();
+        update.try_update_offset(char);
+
+        /*
+        let trans = char.get_transform();
+        let menu_data = UnitAssetMenuData::get();
+        trans.set_position(menu_data.control.current_character.pos);
+        trans.set_local_rotation(menu_data.control.current_character.rotation);
+         */
+    }
+    /*
     if let Some(character) = this.call_back.take() {
         this.this.destroy_chara_model();
         this.this.char = character;
@@ -544,30 +586,25 @@ pub fn create_char_model(this: &mut UnitInfoWindowCharaModelDisplayClass103, _op
         trans.set_position(menu_data.control.current_character.pos);
         trans.set_local_rotation(menu_data.control.current_character.rotation);
     }
-}
-#[repr(C)]
-pub struct UnitInfoWindowCharaModelDisplayClass103 {
-    klass: &'static Il2CppClass,
-    monitor: u64,
-    pub this: &'static mut UnitInfoWindowCharaModel,
-    pub call_back: Option<&'static mut Character>,
-}
 
+     */
+}
 pub extern "C" fn start_sequence_hub_accessory_shop(this: HubAccessoryShopSequence, _: unity2::OptionalMethod) {
-    if let Some(unit) = engage_il2cpp::app::UnitPool::get_first(9u32, 0) {
+    let unit = engage_il2cpp::app::UnitPool::get_first(9u32, 0);
+    if !unit.is_null() {
         UnitAssetMenuData::set_unit(unit);
-        HubAccessoryRoom::set_unit(unit, None, true, false);
+        HubAccessoryRoom::set_unit(unit, engage_il2cpp::app::AccessoryData::null(), true, false);
         this.set_m_unit(unit);
     }
 }
 pub extern "C" fn create_accessory_change_menu(this: HubAccessoryShopSequence, _: unity2::OptionalMethod) {
-    if let Some(root) = accessory_shop_change_create_bind(this, _) {
+    if let Some(root) = accessory_shop_change_create_bind(this, AccessoryShopChangeRoot_ReturnEventHandler::null()) {
         EquipmentBoxMode::CurrentProfile.change_equipment_box(root.m_accessory_equipment_info_window());
         this.set_m_accessory_shop_change_root(root);
         TitleBar::hide_footer();
     }
 }
-fn accessory_shop_change_create_bind<P: IProcInstMethods>(proc: P, return_handler: AccessoryShopChangeRoot_ReturnEventHandler) -> Option<AccessoryShopChangeRoot> {
+fn accessory_shop_change_create_bind(proc: impl Into<engage_il2cpp::app::ProcInst> + Copy, return_handler: AccessoryShopChangeRoot_ReturnEventHandler) -> Option<AccessoryShopChangeRoot> {
     let canvas = BasicMenuContent::get_canvas();
     let canvas_transform = canvas.get_transform();
     let x = ResourceManager_2::instantiate_2("UI/Hub/Shop/Prefabs/ShopAccChangeRoot", canvas_transform);
@@ -577,11 +614,9 @@ fn accessory_shop_change_create_bind<P: IProcInstMethods>(proc: P, return_handle
             create_accessory_shop_change_root_proc(proc, root);
             let menu_object = root.m_menu_object();
             let menu_content = menu_object.get_component::<AccessoryShopChangeMenuContent>();
-            let klass = CustomAssetMenu::create_class2();
-            let menu = AccessoryShopChangeMenu::instantiate_with_class(klass).unwrap();
-            CustomAssetMenu::ctor(menu, menu_content);
+            let menu = CustomAssetMenu::new(menu_content);
             root.set_m_return_event_handler(return_handler);
-            root.set_m_accessory_shop_change_menu(menu);
+            root.set_m_accessory_shop_change_menu(unsafe { menu.cast() });
             menu.create_bind(proc, menu.create_default_desc(), "OutfitAccessoryRoomMenu");
             let unit_name = root.m_unit_name();
             let data = UnitAssetMenuData::get();
@@ -589,9 +624,9 @@ fn accessory_shop_change_create_bind<P: IProcInstMethods>(proc: P, return_handle
                 if data.god_mode {
                     let god = engage_il2cpp::app::GodData::try_get_from_hash(data.preview.person);
                     if !god.is_null() {
-                        unit_name.set_m_text(format!("{} ({})", engage_il2cpp::app::Mess::get(god.get_mid()), engage_il2cpp::app::Mess::get("MID_H_INFO_Param_Correction_God".into())).into());
+                        unit_name.set_m_text(format!("{} ({})", engage_il2cpp::app::Mess::get(god.get_mid()), engage_il2cpp::app::Mess::get("MID_H_INFO_Param_Correction_God")).into());
                     }
-                    else { unit_name.set_m_text(engage_il2cpp::app::Mess::get("MPID_Unknown".into())); }
+                    else { unit_name.set_m_text(engage_il2cpp::app::Mess::get("MPID_Unknown")); }
                 }
                 else {
                     let person = engage_il2cpp::app::PersonData::try_get_from_hash(UnitAssetMenuData::get().preview.person);
@@ -623,26 +658,33 @@ fn accessory_shop_change_create_bind<P: IProcInstMethods>(proc: P, return_handle
     }
     else { None }
 }
-pub fn hair_acc(go: &GameObject, enable: bool){
-    if let Some(hair_go) = Kaneko::find_in_children(go.get_transform(), "meshHairGP".into())
-        .or_else(|| Kaneko::find_in_children(go.get_transform(), "c_spine1_jnt".into()))
-        .and_then(|m| m.get_game_object())
-    {
-        hair_go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|r| {
-            let name = r.get_name().to_string();
-            if (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc"){
-                r.set_enabled(!enable);
-            }
-        });
+pub fn hair_acc(go: engage_il2cpp::unity_engine::GameObject, enable: bool){
+    if go.is_null() { return; }
+    for name in ["meshHairGP", "c_spine1_jnt"]{
+        let t = engage_il2cpp::combat::Kaneko::find_in_children(go.get_transform(), name);
+        if !t.is_null() {
+            let go = t.get_game_object();
+            go.get_components_in_children_3::<engage_il2cpp::unity_engine::SkinnedMeshRenderer>(true).iter().for_each(|r| {
+                let name = r.get_name().to_string();
+                if (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc"){ r.set_enabled(!enable); }
+            });
+            return;
+        }
     }
 }
-pub fn head_acc(go: &GameObject, enable: bool){
-    go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|r| {
-        if let Some(go) = r.get_game_object().filter(|g| g.get_transform().get_parent().is_some_and(|t| t.get_name().to_string().contains("Head"))) {
-            let name = go.get_name().to_string();
-            if name.starts_with("Make") || name.starts_with("Acc_") {
-                r.set_enabled(!enable);
+pub fn head_acc(go: engage_il2cpp::unity_engine::GameObject, enable: bool){
+    if !go.is_null() {
+        go.get_components_in_children_3::<engage_il2cpp::unity_engine::SkinnedMeshRenderer>(true).iter().for_each(|r| {
+            let p = r.get_game_object().get_transform().get_parent();
+            if !p.is_null() {
+                let name = p.get_name().to_string();
+                if name.contains("Head") {
+                    let go_name = r.get_name().to_rust_string();
+                    if go_name.starts_with("Make") || go_name.starts_with("Acc_") {
+                        r.set_enabled(!enable);
+                    }
+                }
             }
-        }
-    });
+        })
+    }
 }

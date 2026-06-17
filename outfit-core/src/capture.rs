@@ -2,10 +2,11 @@ use std::{io::Write, path::Path, f32::consts::PI};
 use engage::{
     combat::Kaneko, gamedata::{Gamedata, PersonData},
     gamemessage::GameMessage, gamevariable::GameVariableManager,
-    proc::Bindable, unit::Unit, unitinfo::{UnitInfo, UnitInfoSide},
+    unitinfo::{UnitInfo, UnitInfoSide},
     unityengine::{Camera, RenderTexture, Transform, UnityComponent, UnityObject, UnityTransform},
     spriteatlasmanager::FaceThumbnail,
 };
+use engage_il2cpp::app::{IPersonDataMethods, IProcInst, IStructBase, IUnit, IUnitEdit, IUnitMethods};
 use unity::{
     engine::{Color, FilterMode, ImageConversion, Rect, Sprite, SpriteMeshType, Texture2D, Vector2},
     prelude::*,
@@ -48,7 +49,7 @@ impl FacialPositions {
     }
 }
 
-pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
+pub fn capture_unit_info(proc: impl Into<engage_il2cpp::app::ProcInst>, face: bool, assign_face: bool) {
     let camera = UnitInfo::get_face_camera_component(UnitInfoSide::Left);
     let rt = UnitInfo::get_render_texture(UnitInfoSide::Left);
     RenderTexture::set_active(rt);
@@ -73,7 +74,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
         }
     }
     if x_pos.is_empty() || x_maxs.is_empty() {
-        GameMessage::create_key_wait(proc, "Capture is empty.\nSwitch to `Docked` mode?");
+        engage_il2cpp::app::GameMessage::create_key_wait(proc, "Capture is empty.\nSwitch to `Docked` mode?");
         return;
     }
     let x_min = x_pos.iter().map(|v| *v).min().unwrap_or(0);
@@ -97,8 +98,8 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
         else { message ="Unable to capture.".to_string(); }
     }
     else {
-        let screen_height = unsafe { get_screen_height(None) } as f32;
-        let screen_width = unsafe { get_screen_width(None) } as f32;
+        let screen_height = engage_il2cpp::unity_engine::Screen::get_height() as f32;
+        let screen_width =  engage_il2cpp::unity_engine::Screen::get_width() as f32;
         if let Some(char) = UnitInfo::get_instance().map(|v| &v.windows[0].unit_info_window_chara_model.char) {
             if let Some(go) = char.get_game_object() {
                 let facial_pos = FacialPositions::from_transform(go.get_transform(), camera, screen_width, screen_height);
@@ -171,7 +172,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
                                         }
                                         FaceThumbnail::try_insert(&active, sprite);
                                         FaceThumbnail::try_insert(&loaded, sprite);
-                                        GameMessage::create_key_wait(proc, format!("Assigned and saved face thumbnail to\n'{}'.", file_path.as_str()));
+                                        engage_il2cpp::app::GameMessage::create_key_wait(proc, format!("Assigned and saved face thumbnail to\n'{}'.", file_path.as_str()));
                                         return;
                                     }
                                 }
@@ -185,7 +186,7 @@ pub fn capture_unit_info<B: Bindable>(proc: &B, face: bool, assign_face: bool) {
         }
         else { message = "Unable to save face thumbnail to file.".to_string(); }
     }
-    GameMessage::create_key_wait(proc, message);
+    engage_il2cpp::app::GameMessage::create_key_wait(proc, message);
     texture_cropped.destroy();
 }
 /// Taken from https://docs.rs/image/latest/src/image/imageops/sample.rs.html
@@ -284,22 +285,20 @@ pub fn save_texture_png(texture2d: &Texture2D, is_face: bool) -> Option<String> 
 /// - active (ascii name) used in game
 /// - original (o_ + ascii name) the original sprite
 /// - loaded (a_ + ascii_name) the replacement sprite
-pub fn get_unit_face_keys(unit: &Unit) -> Option<(String, String, String)> {
-    if let Some(ascii_name) = unit.person.get_ascii_name() {
-        let mut active = ascii_name.to_string();
-        let mut original = format!("o_{}", ascii_name);
-        let mut loaded = format!("a_{}", ascii_name);
+pub fn get_unit_face_keys(unit: engage_il2cpp::app::Unit) -> Option<(String, String, String)> {
+    let ascii_name = unit.get_person().get_ascii_name();
+    let mut active = ascii_name.to_string();
+    let mut original = format!("o_{}", ascii_name);
+    let mut loaded = format!("a_{}", ascii_name);
 
-        if unit.person.parent.index == 1 && unit.edit.gender == 2 {
-            active.push('W');
-            loaded.push('W');
-            original.push('W');
-        }
-        Some((active, original, loaded))
+    if unit.get_person().index() == 1 && unit.m_edit().m_gender().value == 2 {
+        active.push('W');
+        loaded.push('W');
+        original.push('W');
     }
-    else { None }
+    Some((active, original, loaded))
 }
-pub fn update_face(unit: &Unit, use_original: bool){
+pub fn update_face(unit: engage_il2cpp::app::Unit, use_original: bool){
     if let Some((active, loaded, original)) = get_unit_face_keys(unit) {
         if let Some(sprite) = if use_original { FaceThumbnail::get_item(original) } else { FaceThumbnail::get_item(loaded)}{
             FaceThumbnail::try_insert(active, sprite);
@@ -385,7 +384,7 @@ fn lanczos(x: f32, t: f32) -> f32 {
     if x.abs() < t { sinc(x) * sinc(x / t) } else { 0.0 }
 }
 #[skyline::from_offset(0x2f8b960)]
-fn get_screen_height(optional_method: OptionalMethod) -> i32;
+fn get_screen_height(optional_method: unity2::OptionalMethod) -> i32;
 
 #[skyline::from_offset(0x2f8b920)]
-fn get_screen_width(optional_method: OptionalMethod) -> i32;
+fn get_screen_width(optional_method: unity2::OptionalMethod) -> i32;

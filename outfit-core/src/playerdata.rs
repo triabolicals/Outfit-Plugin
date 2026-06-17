@@ -2,7 +2,8 @@ use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
 use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, GameUserData, IAssetTable_ResultMethods, IGameUserDataMethods, ISingletonClass_1Methods, IStream_2Methods, IStructData_1Methods, Stream_2};
 use unity2::Cast;
 use unity::prelude::*;
-use crate::{assets::new_asset_table_accessory, apply_hair, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim};
+use unity2::system::string::IIl2CppStringMethods;
+use crate::{assets::new_asset_table_accessory, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim, apply_result_hair};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,
@@ -152,9 +153,10 @@ impl PlayerOutfitData {
         if !photo {
             let db = get_outfit_data();
             for x in 0..4 {
-                match db.get_aoc_gender_hash(x as i32, data.aoc[x]) {
-                    Some(engage_il2cpp::app::Gender::male()) => { self.aoc[x] = data.aoc[x]; }
-                    Some(engage_il2cpp::app::Gender::female()) => { self.aoc_alt[x] = data.aoc[x]; }
+                let value = db.get_aoc_gender_hash(x as i32, data.aoc[x]).map(|v| v.value);
+                match value {
+                    Some(1) => { self.aoc[x] = data.aoc[x]; }
+                    Some(2) => { self.aoc_alt[x] = data.aoc[x]; }
                     _ => {}
                 }
             }
@@ -264,30 +266,30 @@ impl PlayerOutfitData {
         let db = get_outfit_data();
         self.set_color(result);
         if sequence != 4 {
-            if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.into(); }
+            if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.as_str().into(); }
         }
         if mode == 2 {
             let original_dress_gender = db.get_dress_gender(result.get_dress_model());
-            if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.set_body_model(rig); }
-            if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.set_head_model(head); }
+            if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.set_body_model(rig.as_str()); }
+            if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.set_head_model(head.as_str()); }
             if !self.colors[2].has_color() {
                 let head_hash = result.get_head_model().get_hash_code();
                 if let Some(color) = db.list.skin.get(&head_hash) { color.set_result_color(result, 2); }
             }
-            if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_hair(hair, result); }
+            if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_result_hair(hair, result); }
             if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
                 let allow_cross_dress = self.flag & 128 != 0;
                 let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
                 if let Some(body) = db.try_get_asset(AssetType::Body, b)
                     .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
                 {
-                    let new_dress_gender = db.get_dress_gender(body.into());
-                    if original_dress_gender == new_dress_gender { result.set_dress_model(body); }
-                    else if allow_cross_dress { result.set_dress_model(body); }
+                    let new_dress_gender = db.get_dress_gender(body.as_str().into());
+                    if original_dress_gender == new_dress_gender { result.set_dress_model(body.as_str()); }
+                    else if allow_cross_dress { result.set_dress_model(body.as_str()); }
                 }
                 for x in 0..5 {
                     if let Some(head) = db.try_get_asset(Acc(x as u8), self.acc[x]) {
-                        if head.contains("Msc0AT") { result.set_left_hand(head); }
+                        if head.contains("Msc0AT") { result.set_left_hand(head.as_str()); }
                         else { result.commit_8(new_asset_table_accessory(head.to_string().as_str(), ACC_LOC[x])); }
                     }
                 }
@@ -303,7 +305,7 @@ impl PlayerOutfitData {
                 let mount_index = i32::from(current_mount) - 1;
                 if mount_index >= 0 && mount_index < 5 {
                     let selection = self.mount[mount_index as usize];
-                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.set_ride_model(ride); }
+                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.set_ride_model(ride.as_str()); }
                 }
             }
             let dress_gender = db.get_dress_gender(result.get_dress_model());
@@ -311,10 +313,10 @@ impl PlayerOutfitData {
             for x in 0..4 {
                 let hash = if dress_gender == engage_il2cpp::app::Gender::male() { self.aoc[x] } else { self.aoc_alt[x] };
                 if let Some(aoc) = db.try_get_asset(AssetType::AOC(x as u8), hash){ 
-                    set_result_anim(result, x, aoc);
+                    set_result_anim(result, x, aoc.as_str());
                 }
                 else if let Some(anim) = crate::get_result_anim(result, x).and_then(|x| try_get_il2cpp_hash(x)){
-                    let anim_gender = db.get_aoc_gender_hash(AssetType::AOC(x as u8), anim);
+                    let anim_gender = db.get_aoc_gender_hash(x as i32, anim);
                     if anim_gender != Some(dress_gender) { set_result_anim(result, x, DEFAULT_AOC[aoc_default_offset + x]) }
                 }
             }
@@ -368,7 +370,7 @@ impl PlayerOutfitData {
                     }
                 }
             }
-            result.replace(AssetTable_Modes::onmap);
+            result.replace(AssetTable_Modes::onmap());
         }
     }
     pub fn try_load_from_file(dir_entry: &DirEntry, gender_restriction: Option<engage_il2cpp::app::Gender>) -> Option<Self> {
@@ -468,9 +470,12 @@ impl PlayerOutfitData {
         else { self.to_string(hash) }
     }
     pub fn to_string(&self, hash: i32) -> String {
+        let mut string = String::new();
+        /*
         if let Some(mut string) = PersonData::try_get_hash(hash).map(|v| format!("PID={} [{}]", v.pid, Mess::get_name(v.pid)))
             .or_else(|| GodData::try_get_hash(hash).map(|v| format!("GID={} [{}]", v.gid, Mess::get(v.mid))))
         {
+            */
             let none = "none".into();
             string.push_str(format!("\nFlags={}\n", self.flag).as_str());
             let db = OUTFIT_DATA.get_or_init(||OutfitData::init());
@@ -501,11 +506,11 @@ impl PlayerOutfitData {
             }
             string
         }
-        else { String::new() }
-    }
+       //  else { String::new() }
+    //}
 }
 
-pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method_info: OptionalMethod){
+pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method_info: unity2::OptionalMethod){
     IGameUserDataMethods::on_serialize(this, stream);
     stream.write_begin(UnitAssetData::version());
     let menu_data = UnitAssetMenuData::get();
@@ -524,8 +529,8 @@ pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method
     });
     stream.write_end();
 }
-pub fn game_user_data_version(_this: GameUserData, _method_info: OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
-pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: OptionalMethod){
+pub fn game_user_data_version(_this: GameUserData, _method_info: unity2::OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
+pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: unity2::OptionalMethod){
     IGameUserDataMethods::on_deserialize(this, stream, version);
     let menu_data = UnitAssetMenuData::get();
     if !menu_data.is_loaded && version >= 21 {

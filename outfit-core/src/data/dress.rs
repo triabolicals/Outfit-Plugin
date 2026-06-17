@@ -1,10 +1,5 @@
 use std::collections::{HashMap, HashSet};
-use engage::{
-    gamedata::{Gamedata, GodData, JobData, PersonData, assettable::*},
-    gamedata::item::ItemData,
-    unit::{Gender}, mess::Mess
-};
-use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, Force_Type, IAssetTableMethods, IAssetTable_ConditionFlagsMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IJobDataMethods, IPersonDataMethods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnitMethods};
+use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, IAssetTableMethods, IAssetTable_ConditionFlagsMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IJobDataMethods, IPersonDataMethods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnitMethods};
 use engage_il2cpp::List_1Ext;
 use unity2::{Cast, IlNull};
 use unity2::system::string::IIl2CppStringMethods;
@@ -34,10 +29,13 @@ impl DressData {
                         0 => if let Some(jobs) = JobDressData::from_line(line) { job.extend(jobs); },
                         1 => if let Some(eng) = EngagedDressData::from_line(line) { engaged.push(eng); },
                         2 => {
+                            /*
                             let mut spilt = line.split_whitespace();
                             let job = spilt.next().and_then(|jid| JobData::get(jid));
                             let item = spilt.next().and_then(|iid| ItemData::get(iid));
                             if let Some((job, item)) = job.zip(item){ transform_items.push((job.parent.hash, item.parent.hash)); }
+
+                             */
                         }
                         _ => {}
                     }
@@ -239,7 +237,7 @@ impl PersonalDressData {
         let (dress, head) = (result.get_dress_model(), result.get_head_model());
         if dress.is_null() || head.is_null() { return false; }
         let (ubody, uhead) = (dress.get_hash_code(), head.get_hash_code());
-        if !hash_list.body.contains_key(&ubody) || !hash_list.body.contains_key(&uhead) { return false; }
+        if !hash_list.body.contains_key(&ubody) || !hash_list.head.contains_key(&uhead) { return false; }
         let (dress, head) = (dress.to_rust_string(), head.to_rust_string());
         let mut generic_count = 0;
         let mut uhair = 0;
@@ -257,7 +255,7 @@ impl PersonalDressData {
             let h = unity2::Il2CppString::from(model).get_hash_code();
             if hash_list.hair.contains_key(&h) { uhair = h }
         }
-        if generic_count >= 2 || ubody == 0 || uhair == 0 || uhead == 0 { return false; }
+        if generic_count >= 2 || ubody == 0 || uhead == 0 { return false; }
         self.ubody = ubody;
         self.uhead = uhead;
         self.uhair = uhair;
@@ -295,15 +293,15 @@ impl PersonalDressData {
         if !new.process_from_asset_table(result, &hash_list) { None } else { Some(new) }
     }
     pub fn get_menu_name(&self) -> unity2::Il2CppString {
-        if self.count == 0 { engage_il2cpp::app::Mess::get(self.mpid.as_str().into()) }
-        else { format!("{} {}", engage_il2cpp::app::Mess::get(self.mpid.as_str().into()), self.count + 1).into() }
+        if self.count == 0 { engage_il2cpp::app::Mess::get(self.mpid.as_str()) }
+        else { format!("{} {}", engage_il2cpp::app::Mess::get(self.mpid.as_str()), self.count + 1).into() }
     }
     pub fn apply(&self, result: AssetTable_Result, mode: i32, promoted: bool, mount: Option<Mount>, outfit_hashes: &OutfitHashes) {
         let body_hash = if promoted && self.ubody2 != 0 { self.ubody2 } else { self.ubody };
         if mode == 2 {
-            if let Some(ubody) = outfit_hashes.body.get(&body_hash) { result.set_dress_model(ubody);}
+            if let Some(ubody) = outfit_hashes.body.get(&body_hash) { result.set_dress_model(ubody.as_str());}
             if let Some(mount) = self.mount.filter(|x| Some(x.0) == mount).and_then(|m| outfit_hashes.mounts.get(&m.1).zip(mount)) {
-                result.set_ride_dress_model(mount.0);
+                result.set_ride_dress_model(mount.0.as_str());
                 result.set_ride_model(mount.1.get_default_asset(true));
             }
         }
@@ -315,13 +313,13 @@ impl PersonalDressData {
         }
     }
     pub fn get_name(&self) -> unity2::Il2CppString {
-        if self.mpid.len() > 3 { engage_il2cpp::app::Mess::get(self.mpid.as_str().into()) }
+        if self.mpid.len() > 3 { engage_il2cpp::app::Mess::get(self.mpid.as_str()) }
         else { "Unk".into() }
     }
     pub fn apply_appearance(&self, result: AssetTable_Result, mode: i32, promoted: bool, mount: Option<Mount>, outfit_hashes: &OutfitHashes, remove_empty_acc: bool) {
         self.apply(result, mode, promoted, mount, outfit_hashes);
         if mode == 2 {
-            if let Some(uhead) = outfit_hashes.head.get(&self.uhead) { result.set_head_model(uhead); }
+            if let Some(uhead) = outfit_hashes.head.get(&self.uhead) { result.set_head_model(uhead.as_str()); }
             if let Some(uhair) = outfit_hashes.hair.get(&self.uhair) { apply_result_hair(uhair, result); }
             for x in 0..4 {
                 if let Some(acc) = outfit_hashes.acc.get(&self.acc[x]){
@@ -351,7 +349,7 @@ impl PersonalDressData {
         let shop = il2str(result.m_hub_anim()).is_some_and(|v| v.contains("Shop"));
         let end = if shop { 3 } else { 4 };
         for x in 0..end {
-            if let Some(aoc) = outfit_hashes.aoc.get(&self.aoc[x]).map(|v| v.into()) {
+            if let Some(aoc) = outfit_hashes.aoc.get(&self.aoc[x]).map(|v| v.as_str().into()) {
                 match x {
                     0 => result.set_m_info_anim(aoc),
                     1 => result.set_m_talk_anim(aoc),
@@ -361,7 +359,7 @@ impl PersonalDressData {
                 }
             }
         }
-        if let Some(voice) = outfit_hashes.voice.get(&self.voice) { result.get_sound().voice_id = voice.into(); }
+        if let Some(voice) = outfit_hashes.voice.get(&self.voice) { result.get_sound().voice_id = voice.as_str().into(); }
         result.replace(AssetTable_Modes{ value: mode});
     }
     pub fn match_unit(&self, unit: engage_il2cpp::app::Unit) -> bool {
@@ -393,7 +391,6 @@ impl JobTransformData {
         let transform2 =get_condition_index("竜石")?;
         let mode_1_trans_con = get_condition_index("竜化")?;
         let search_lists = engage_il2cpp::app::AssetTable::s_search_lists();
-        let sf = AssetTableStaticFields::get();
         let mut asset_table = AssetTableIndexes::default();
         let hash = job_data.hash();
         let mut is_transform = search_lists.get(2).iter().any(|x| has_condition_index(x, job_condition) && has_condition_index(x, transform2));
@@ -446,7 +443,7 @@ impl JobTransformData {
         conditions.add_2(unit.get_job().get_jid());
         conditions.add_2(unit.get_person().get_pid());
         conditions.add_2(unit.get_person().get_name());
-        // self.asset_table.apply(result, mode, Some(conditions)); TODO
+        self.asset_table.apply(result, mode, conditions);
         if let Some(item_asset) = self.item.map(|i| engage_il2cpp::app::AssetTable::try_get_4(i)){
             if item_asset.0 { result.commit_4(item_asset.1); }
         }
@@ -563,7 +560,7 @@ impl JobDressData {
                     let ride_dress_model = if is_morph { format!("{}_c707", ride) } else { format!("{}_c000", ride) };
                     result.set_ride_dress_model(ride_dress_model);
                 }
-                else { result.set_ride_dress_model(ride); }
+                else { result.set_ride_dress_model(ride.as_str()); }
                 result.set_ride_model(self.mount.get_default_asset(true));
             }
         }
@@ -573,7 +570,7 @@ impl JobDressData {
                     let ride_model = if is_morph { format!("{}_c707", ride) } else { format!("{}_c000", ride) };
                     result.set_ride_model(ride_model);
                 }
-                else { result.set_ride_model(ride); }
+                else { result.set_ride_model(ride.as_str()); }
             }
         }
     }

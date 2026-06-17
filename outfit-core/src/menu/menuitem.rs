@@ -1,20 +1,215 @@
 use std::sync::OnceLock;
-use engage::{
-	gamedata::accessory::AccessoryData,
-	menu::{
-		BasicMenuItemAttribute, BasicMenuResult,
-		menu_item::{accessory::AccessoryMenuItemContent, accessory::*, MenuItem}
+use engage_il2cpp::{
+	app::{
+		accessorymenuitem::*,
+		IAccessoryMenuItemContent, IBasicMenuItem,
+		IBasicMenuItemMethods, BasicMenu_Result, BasicMenuItem_Attribute, BasicMenuItem,
 	},
-	game::GameColor,
-	spriteatlasmanager::FaceThumbnail
+	tm_pro::ITMP_Text,
+	unity_engine::{
+		IGameObjectMethods, IObject_2Methods,
+		ui::{IGraphicMethods, IImageMethods}
+	},
+	app::{IAccessoryMenuItemContentMethods, IBasicMenuItemContentMethods},
+	unity_engine::ui::IGraphic
 };
-use unity::{engine::{Color, Vector2}, engine::ui::IsImage, prelude::*};
-use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem};
+use unity::{prelude::*};
+use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull};
+use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData};
 use crate::menu::icons::CustomMenuIcon;
-use super::{*, items::{CustomMenuItem, *}};
+use super::{CustomAssetMenu, items::{CustomMenuItem, *}};
 
 pub static CUSTOM_ASSET_MENU_ITEM: OnceLock<&'static Il2CppClass> = OnceLock::new();
 
+#[unity2::inject(
+	namespace = "App",
+	name = "CustomAssetMenuItem",
+	parent= AccessoryMenuItem
+)]
+pub struct CustomAssetMenuItem3 {
+	pub menu_item_v: i32,
+	// pub menu_item_kind: CustomAssetMenuItemKind,    // 128
+	pub value: i32,
+	pub value2: i32,
+	pub is_original: bool,
+}
+impl CustomAssetMenuItem3 {
+	pub fn set_menu_item_kind(self, v: CustomAssetMenuItemKind){
+		self.set_menu_item_v(v.to_index());
+	}
+	pub fn menu_item_kind(self) -> CustomAssetMenuItemKind {
+		CustomAssetMenuItemKind::from_index(self.menu_item_v())
+	}
+	pub fn new(menu_item_type: CustomAssetMenuItemKind) -> Self {
+		let item = Self::instantiate().unwrap();
+		IBasicMenuItemMethods::ctor(item);
+		item.set_menu_item_kind(menu_item_type);
+		item
+	}
+	pub fn new_menu(menu_type: CustomAssetMenuKind, name: unity2::Il2CppString) -> Self {
+		let item = Self::instantiate().unwrap();
+		IBasicMenuItemMethods::ctor(item);
+		if !name.is_null() { IBasicMenuItemMethods::set_name(item, name); }
+		item.set_menu_item_kind(Menu(menu_type));
+		item
+	}
+	pub fn new_asset(kind: AssetType, hash: i32, name: unity2::Il2CppString, decided: bool, original: bool) -> Self {
+		let item = Self::instantiate().unwrap();
+		IBasicMenuItemMethods::ctor(item);
+		IBasicMenuItemMethods::set_name(item, name);
+		item.set_m_decided(decided);
+		item.set_is_original(original);
+		item.set_menu_item_kind(Asset(kind));
+		item.set_value(hash);
+		item
+	}
+	pub fn new_asset2(asset: &AssetItem, label: &str) -> Self {
+		let item = Self::instantiate().unwrap();
+		IBasicMenuItemMethods::ctor(item);
+		let kind = asset.kind;
+		item.set_m_decided(UnitAssetMenuData::get_current_unit_hash(asset.kind) == asset.hash);
+		item.set_value(asset.hash);
+		IBasicMenuItemMethods::set_name(item,  asset.get_name(label));
+		item.set_menu_item_kind(Asset(asset.kind));
+		let preview = UnitAssetMenuData::get_preview();
+		let original =
+			match kind {
+				AssetType::Body => preview.original_assets[0],
+				AssetType::Head => preview.original_assets[1],
+				AssetType::Hair => preview.original_assets[2],
+				AssetType::Acc(slot) => preview.original_assets[5+slot as usize],
+				AssetType::AOC(slot) => preview.original_assets[10 + slot as usize],
+				AssetType::Mount(slot) => preview.preview_data.mount[slot as usize],
+				AssetType::Voice => preview.original_assets[14],
+				AssetType::Rig => preview.original_assets[15],
+				AssetType::ColorPreset(kind) => {
+					let mut original = 0;
+					for x in 0..3 { original += (preview.original_color[4*kind as usize + x] << 8*x) as i32; }
+					original
+				}
+			};
+		let is_original = original == asset.hash;
+		item.set_is_original(is_original);
+		if is_original {
+			let yellow = engage_il2cpp::unity_engine::Color{ r: 1.0, g: 1.0, b: 0.0, a: 1.0};
+			item.set_cursor_color(yellow);
+			item.set_m_inactive_text_color(yellow);
+			item.set_m_active_text_color(yellow);
+		}
+		item
+	}
+	pub fn new_asset3(other: &OtherAssetItem, labels: &AssetLabelTable, is_body: bool) -> Self {
+		let item = Self::new_asset2(&other.asset, other.label.as_str());
+		if !other.is_mess { IBasicMenuItemMethods::set_name(item, other.get_name(labels, is_body)); }
+		item
+	}
+	pub fn as_basic_menu_item(self) -> BasicMenuItem { unsafe { self.cast() } }
+	pub fn get_asset_menu(self) -> CustomAssetMenu { unsafe { IBasicMenuItemMethods::get_menu(self).cast() } }
+	pub fn get_color(self) -> Option<engage_il2cpp::unity_engine::Color> {
+		let kind = self.menu_item_kind();
+		match kind {
+			Asset(AssetType::ColorPreset(_))|ResetColor(_)|RGBA(_) => {
+				let value = self.value();
+				if value == 0 { None }
+				else {
+					let r = (value & 255) as f32 / 255.0;
+					let g = ((value >> 8) & 255) as f32 / 255.0;
+					let b = ((value >> 16) & 255) as f32 / 255.0;
+					if r + g + b < 0.30 { None }
+					else { Some(engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0}) }
+				}
+			}
+			_ => {
+				if self.is_original() { Some(engage_il2cpp::unity_engine::Color{r: 1.0, g: 1.0, b: 0.0, a: 1.0}) }
+				else { None }
+			}
+		}
+	}
+	pub fn get_item_content(self) -> Option<engage_il2cpp::app::AccessoryMenuItemContent> {
+		let content = IBasicMenuItemMethods::get_menu_item_content(self);
+		if !content.is_null() { content.try_cast() } else { None }
+	}
+	pub fn rebuild_text(self) {
+		self.on_build_menu_item_content();
+		if let Some(content) = self.get_item_content() {
+			let menu_item_kind = self.menu_item_kind();
+			content.m_name_text().set_m_text(menu_item_kind.get_name(self));
+		}
+		self.set_icon();
+	}
+	pub fn set_icon(self) {
+		let is_decided = self.get_m_decided();
+		let menu_kind = self.menu_item_kind();
+		let mut idx = menu_kind.to_index();
+		if let Some(content) = self.get_item_content() {
+			content.m_fixed_cursor_object().set_active(is_decided);
+			let icon = menu_kind.get_icon(self);
+			if icon == CustomMenuIcon::Color {
+				let mut rgb: Option<(u8, u8, u8)> = None;
+				let preview = UnitAssetMenuData::get_preview();
+				content.m_kind_icon_image().set_sprite(engage_il2cpp::unity_engine::Sprite::null());
+				if idx >= 1140 {
+					let kind = (idx - 1140) % 16;
+					if preview.preview_data.colors[kind as usize].has_color() { idx = 100 + kind; }
+					else { idx = 30 + kind; }
+				}
+				if idx >= 30 && idx < 46 {	// Default Color
+					let k = (idx - 30) as usize;
+					rgb = Some((preview.original_color[4 * k] , preview.original_color[4 * k + 1], preview.original_color[4 * k + 2]));
+				}
+				else if idx >= 100 && idx < 116 {	// Preview Color / Set Color
+					let k = (idx - 100) as usize;
+					rgb = Some((preview.color_preview[4 * k], preview.color_preview[4 * k + 1], preview.color_preview[4 * k + 2]));
+				}
+				else if idx >= 80 && idx < 96 {	// Color Preset
+					let v = self.value();
+					rgb = Some(((v & 255) as u8, ((v >> 8) & 255) as u8, ((v >> 16) & 255) as u8));
+				}
+				if let Some((r, g, b)) = rgb.filter(|(r, g, b)| *r > 0 || *g > 0 || *b > 0) {
+					content.m_kind_icon_object().set_active(true);
+					content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color{r: r as f32 / 255.0, g: g as f32 / 255.0, b: b as f32 / 255.0, a: 1.0});
+				}
+				else { content.m_kind_icon_object().set_active(false); }
+			}
+			else {
+				content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
+				if let Some(icon) = icon.get_icon() {
+					content.m_kind_icon_image().set_sprite(icon);
+					content.m_kind_icon_object().set_active(true);
+				}
+			}
+		}
+	}
+}
+#[unity2::injected_methods]
+impl CustomAssetMenuItem3 {
+	#[override_virtual(name = "GetName")]
+	pub fn get_name(self) -> unity2::Il2CppString { unity2::Il2CppString::null() }
+
+	#[override_virtual(name = "BuildAttribute")]
+	pub fn build_attribute(self) -> BasicMenuItem_Attribute { self.menu_item_kind().build_attribute() }
+
+	#[override_virtual(name = "OnSelect")]
+	pub fn on_select(self) {
+		IBasicMenuItemMethods::on_select(self);
+		self.menu_item_kind().on_select(self);
+		if let Some(c) = self.get_color() { self.set_cursor_color(c); }
+	}
+
+	#[override_virtual(name = "OnDeselect")]
+	pub fn on_deselect(self) {
+		IBasicMenuItemMethods::on_deselect(self);
+		if let Some(c) = self.get_color() { IBasicMenuItemMethods::set_cursor_color(self, c); }
+	}
+	#[override_virtual(name = "ACall")] pub fn a_call(self) -> BasicMenu_Result { self.menu_item_kind().a_call(self) }
+	#[override_virtual(name = "XCall")] pub fn x_call(self) -> BasicMenu_Result { self.menu_item_kind().x_call(self) }
+	#[override_virtual(name = "MinusCall")] pub fn minus_call(self) -> BasicMenu_Result { self.menu_item_kind().minus_call(self) }
+	#[override_virtual(name = "CustomCall")] pub fn custom_call(self) -> BasicMenu_Result { self.menu_item_kind().custom_call(self) }
+
+	#[override_virtual(name = "OnBuildMenuItemContent")]
+	pub fn on_build_menu_item_content(self) { self.set_icon(); }
+}
+/*
 #[unity::class("App", "AccessoryMenuItem")]
 pub struct CustomAssetMenuItem {
 	pub menu: &'static mut CustomAssetMenu,	//0
@@ -29,41 +224,18 @@ pub struct CustomAssetMenuItem {
 	pub hash: i32,	//84
 	pub accessory_data: Option<&'static AccessoryData>,	//88
 	pub kind: i32,	//96
-	pub decided: bool,
-	pub is_asset: bool,
-	pub is_menu: bool,	// Type: 0 - Asset, 1 - Menu, 2 - Accessory
-	pub original: bool,
+	pub decided: bool,	// 100
+	pub is_asset: bool,	// 101
+	pub is_menu: bool,	// 102
+	pub original: bool,	// 103
 	pub sub_kind: i32,	// 104
 	pub padding: i32,	//	108
-	pub select_event_handler: Option<&'static mut AccessoryMenuItemSelectHandler>,
-	pub decide_event_handler:  Option<&'static mut AccessoryMenuItemDecideHandler>,
-	pub menu_kind: CustomAssetMenuItemKind,
+	pub select_event_handler: Option<&'static mut AccessoryMenuItemSelectHandler>,	// 112
+	pub decide_event_handler:  Option<&'static mut AccessoryMenuItemDecideHandler>,	// 120
+	pub menu_kind: CustomAssetMenuItemKind,	// 128
 }
-impl MenuItem for CustomAssetMenuItem {}
+
 impl CustomAssetMenuItem {
-	pub fn create_class() -> &'static mut Il2CppClass {
-		let accessory_klass = Il2CppClass::from_name("App", "AccessoryMenuItem").unwrap().clone();
-		accessory_klass._2.instance_size = size_of::<CustomAssetMenuItem>() as u32;
-		accessory_klass._2.actual_size = size_of::<CustomAssetMenuItem>() as u32;
-		let vtable = accessory_klass.get_vtable_mut();
-		vtable[4].method_ptr = Self::get_name as _;
-		vtable[8].method_ptr = Self::build_attribute as _;
-		// 10 OnBuild
-		vtable[11].method_ptr = Self::on_build_menu_item_content as _;
-		vtable[12].method_ptr = Self::on_select as _;
-		vtable[13].method_ptr = Self::on_deselect as _;
-		vtable[18].method_ptr = Self::a_call as _;
-		// 19 BCall
-		vtable[20].method_ptr = Self::x_call as _;
-		// 21 Y Call
-		// 22 L
-		// 23 R
-		// 24 PlusCall
-		vtable[25].method_ptr = Self::minus_call as _;
-		vtable[26].method_ptr = Self::custom_call as _;
-		accessory_klass
-	}
-	pub fn get_custom_class() -> &'static Il2CppClass { CUSTOM_ASSET_MENU_ITEM.get_or_init(|| Self::create_class() ) }
 	pub fn new_menu2(menu_type: CustomAssetMenuKind) -> &'static mut CustomAssetMenuItem {
 		let item = Self::new(0, 0);
 		item.menu_kind = Menu(menu_type);
@@ -154,32 +326,22 @@ impl CustomAssetMenuItem {
 		}
 		item
 	}
-	pub fn new(kind: i32, sub: i32) -> &'static mut CustomAssetMenuItem {
-		let item2 = Self::get_custom_class().instantiate_as::<CustomAssetMenuItem>().unwrap();
-		item2.ctor_base();
-		item2.kind = kind;
-		item2.sub_kind = sub;
-		item2.is_menu = true;
-		item2.is_asset = false;
-		if let Some(game_color) = GameColor::get() { item2.cursor_color = game_color.default_color; }
-		item2
-	}
-	pub fn get_name(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> &'static Il2CppString {
+	pub fn get_name(this: &CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> &'static Il2CppString {
 		this.menu_kind.get_name(this)
 	}
-	pub fn x_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
+	pub fn x_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.x_call(this)
 	}
-	pub fn minus_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
+	pub fn minus_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.minus_call(this)
 	}
-	pub fn custom_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
+	pub fn custom_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.custom_call(this)
 	}
-	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
 		this.on_select_base();
 		let rgb: Option<(u8, u8, u8)>;
 		match this.menu_kind {
@@ -213,7 +375,7 @@ impl CustomAssetMenuItem {
 		this.menu_kind.on_select(this);
 		this.set_color();
 	}
-	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
+	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
 	pub fn rebuild_text(&mut self) {
 		Self::on_build_menu_item_content(self, None);
 		let menu_kind = self.menu_kind.clone();
@@ -228,7 +390,7 @@ impl CustomAssetMenuItem {
 		if decided { ami.set_decide(); } else { ami.unset_decide(); }
 		self.set_color();
 	}
-	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
 		let original = this.original;
 		let kind = this.menu_kind.clone();
 		if let Some(game_color) = GameColor::get() {
@@ -285,11 +447,11 @@ impl CustomAssetMenuItem {
 			}
 		}
 	}
-	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) -> BasicMenuResult {
+	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
 	}
-	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: OptionalMethod) {
+	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
 		let idx = this.hash;
 		let kind = this.menu_kind.clone();
 		let kind_idx = kind.to_index();
@@ -351,15 +513,19 @@ impl CustomAssetMenuItem {
 		}
 	}
 }
-pub fn accessory_menu_item_content_build_text(this: &AccessoryMenuItemContent, _: OptionalMethod) {
-	this.build_text_();
+ */
+pub fn accessory_menu_item_content_build_text(this: engage_il2cpp::app::AccessoryMenuItemContent, _: unity2::OptionalMethod) {
+	IAccessoryMenuItemContentMethods::build_text(this);
 	if !UnitAssetMenuData::get().is_preview { return; }
-	let custom_item = unsafe { std::mem::transmute::<&BasicMenuItem, &CustomAssetMenuItem>(this.parent.menu_item) };
-	this.name_text.set_text(custom_item.menu_kind.get_name(custom_item), true);
-	this.fixed_cursor_object.set_active(custom_item.decided);
-	if let Some(game_color) = GameColor::get() {
-		if custom_item.original { this.name_text.set_color(game_color.yellow_text); }
-		else { this.name_text.set_color(game_color.default_color); }
+	let custom_item = this.get_menu_item();
+	if !custom_item.is_null() {
+		let custom_item = unsafe { custom_item.cast::<CustomAssetMenuItem3>() };
+		let kind = custom_item.menu_item_kind();
+		this.m_name_text().set_m_text(kind.get_name(custom_item));
+		let decided = custom_item.get_m_decided();
+		this.m_fixed_cursor_object().set_active(decided);
+		if custom_item.is_original() { this.m_name_text().set_m_color(engage_il2cpp::unity_engine::Color{r:1.0, g:1.0, b:0.0, a: 1.0}); }
+		else { this.m_name_text().set_m_color(engage_il2cpp::unity_engine::Color{r:1.0, g:1.0, b:1.0, a: 1.0}); }
 	}
 	return;
 }

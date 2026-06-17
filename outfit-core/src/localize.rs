@@ -1,6 +1,6 @@
 use std::{fmt::{Display, Formatter}, collections::HashMap, sync::{OnceLock, RwLock}};
 use engage::{language::{Language, LanguageLangs}, mess::Mess};
-use unity::prelude::Il2CppString;
+use engage_il2cpp::app::Mess_IconCategory;
 
 pub static LOCAL_TEXT: OnceLock<RwLock<MenuText>> = OnceLock::new();
 
@@ -95,51 +95,52 @@ impl Display for MenuTextCommand {
 }
 
 impl MenuTextCommand {
-    pub fn on_off(on: bool) -> &'static Il2CppString { if on { Self::On } else { Self::Off }.get() }
-    pub fn to_right(self, other: Self) -> &'static Il2CppString {
+    pub fn on_off(on: bool) -> unity2::Il2CppString { if on { Self::On } else { Self::Off }.get() }
+    pub fn to_right(self, other: Self) -> unity2::Il2CppString {
         format!("{}{}", self.get(), other.get()).into()
     }
-    pub fn insert_right<T: Display>(self, str: T) -> &'static Il2CppString {
+    pub fn insert_right<T: Display>(self, str: T) -> unity2::Il2CppString {
         format!("{} {}", self.get(), str).into()
     }
-    pub fn insert_left<T: Display>(self, str: T) -> &'static Il2CppString {
+    pub fn insert_left<T: Display>(self, str: T) -> unity2::Il2CppString {
         format!("{} {}", str, self.get()).into()
     }
-    pub fn get_with_sys_sprite(self, sys: &str) -> &'static Il2CppString {
+    pub fn get_with_sys_sprite(self, sys: &str) -> unity2::Il2CppString{
         format!("{}{}", Mess::create_sprite_tag_str(2, sys), self.get()).into()
     }
-    pub fn get_with_value<T: Display>(self, value: T) -> &'static Il2CppString {
+    pub fn get_with_value<T: Display>(self, value: T) -> unity2::Il2CppString {
         format!("{}: {}", self.get(), value).into()
     }
-    pub fn get(&self) -> &'static Il2CppString {
+    pub fn get(&self) -> unity2::Il2CppString {
         let index = *self as usize;
         match index {
-            0..38 => { Mess::get(MIDS[index]) }
+            0..38 => { engage_il2cpp::app::Mess::get(MIDS[index]) }
             50..60 => { ADDED[index - 50].into() }
-            200..214 => { Mess::create_sprite_tag_str(2, KEY[index-200]) }
+            200..214 => {
+                engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), KEY[index-200]) }
             214 => {
                 format!("{}{}",
-                        Mess::create_sprite_tag_str(2, "Left"),
-                        Mess::create_sprite_tag_str(2, "Right")
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
                 ).into()
             }
             215 => {
                 format!("{}{}",
-                        Mess::create_sprite_tag_str(2, "L"),
-                        Mess::create_sprite_tag_str(2, "R")
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "L"),
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "R")
                 ).into()
             }
             216 => {
                 format!("{}{}",
-                        Mess::create_sprite_tag_str(2, "ZL"),
-                        Mess::create_sprite_tag_str(2, "ZR")
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZL"),
+                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZR")
                 ).into()
             }
             _ => { format!("C{}", index).into() }
         }
     }
-    pub fn get_from_index(index: i32) -> &'static mut Il2CppString {
-        if index < MIDS.len() as i32 { Mess::get(MIDS[index as usize]) }
+    pub fn get_from_index(index: i32) -> unity2::Il2CppString {
+        if index < MIDS.len() as i32 { engage_il2cpp::app::Mess::get(MIDS[index as usize]) }
         else { format!("C {}", index).into() }
     }
     pub fn get_gender(is_female: bool) -> Self {
@@ -152,7 +153,7 @@ pub struct MenuText {
     pub command: HashMap<i32, &'static str>,
 }
 impl MenuText {
-    pub fn get_help(id: i32) -> Option<&'static Il2CppString> {
+    pub fn get_help(id: i32) -> Option<unity2::Il2CppString> {
         let texts = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok()?;
         texts.help.get(&id)
             .map(|s| {
@@ -165,7 +166,7 @@ impl MenuText {
                 str.into()
             })
     }
-    pub fn get_help_with_arg<T: Display>(id: i32, arg: T) -> Option<&'static Il2CppString> {
+    pub fn get_help_with_arg<T: Display>(id: i32, arg: T) -> Option<unity2::Il2CppString> {
         let texts = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok()?;
         texts.help.get(&id)
             .map(|s| {
@@ -184,15 +185,15 @@ impl MenuText {
         let command = Self::parse_to_map(Self::get_command_text());
         Self { help, command }
     }
-    pub fn get_command(id: i32) -> &'static Il2CppString {
+    pub fn get_command(id: i32) -> unity2::Il2CppString {
         let id = if id >= 1140 { 1140 + ((id - 1140) % 16) } else { id };
         if let Some(texts) = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok(){
             let alt = (id / 10) * 10;
             if let Some(c) = texts.command.get(&id){
-                return c.into();
+                return (*c).into();
             }
             else if let Some(c) = texts.command.get(&alt){
-                return c.into();
+                return (*c).into();
             }
         }
         format!("C-{}", id).into()

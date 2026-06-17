@@ -26,7 +26,7 @@ pub fn is_monster_class(unit: &Unit) -> bool {
     if unit.person.bmap_size > 1 || unit.person.gender == 0 { false }
     else { MONSTERS.iter().any(|&monster| monster == jid)  }
 }
-pub fn has_enemy_tiki(unit: &Unit) -> bool {
+pub fn has_enemy_tiki(unit: engage_il2cpp::app::Unit) -> bool {
     if let Some(god_unit) = unit.god_unit { god_unit.data.gid.to_string().contains("敵チキ") }
     else if let Some(god_unit) = unit.god_link { god_unit.data.gid.to_string().contains("敵チキ") }
     else { unit.person.pid.to_string().contains("チキ") }
@@ -37,7 +37,7 @@ pub fn is_tiki_engage(unit: &Unit) -> bool {
 }
 
 #[skyline::hook(offset=0x029285f0)]
-pub fn change_dragon2(this: &mut CombatRecord, calc_side: BattleSideType, param_3: &CombatRecordDisplayClass85, method_info: OptionalMethod) {
+pub fn change_dragon2(this: &mut CombatRecord, calc_side: BattleSideType, param_3: &CombatRecordDisplayClass85, method_info: unity2::OptionalMethod) {
     call_original!(this, calc_side, param_3, method_info);
     let side = CombatSide::convert_from(calc_side, this.is_enemy_attack != 0);
     if side < 0 { return; }
@@ -74,7 +74,7 @@ pub fn change_dragon2(this: &mut CombatRecord, calc_side: BattleSideType, param_
 }
 
 #[skyline::hook(offset=0x02928bc0)]
-pub fn transformation_chain_atk(this: &mut CombatRecord, calc_side: i32, param_3: &CombatRecordDisplayClass87, method_info: OptionalMethod) {
+pub fn transformation_chain_atk(this: &mut CombatRecord, calc_side: i32, param_3: &CombatRecordDisplayClass87, method_info: unity2::OptionalMethod) {
     let chain_atk_index = this.chain_attack_count as usize;
     call_original!(this, calc_side, param_3, method_info);
     let count = this.chain_attack_count as usize;

@@ -1,21 +1,23 @@
 use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
+use engage_il2cpp::app::{IRandom_2Methods, Mess_IconCategory, Random_2};
 use unity::{il2cpp::class::VirtualInvoke, prelude::*};
+use unity2::ClassIdentity;
 use unity2::system::string::IIl2CppStringMethods;
 use crate::assets::new_asset_table_accessory;
 pub trait Randomizer<T> {
-    fn get_random_element(&self, rng: &Random) -> Option<&T>;
-    fn get_remove(&mut self, rng: &Random) -> Option<T>;
+    fn get_random_element(&self, rng: Random_2) -> Option<&T>;
+    fn get_remove(&mut self, rng: Random_2) -> Option<T>;
 }
 
 impl<T> Randomizer<T> for Vec<T> {
-    fn get_random_element(&self, rng: &Random) -> Option<&T> {
+    fn get_random_element(&self, rng: Random_2) -> Option<&T> {
         let len = self.len();
-        if len > 1 { self.get(rng.get_value( len as i32) as usize) }
+        if len > 1 { self.get(rng.get_value_2( len as i32) as usize) }
         else { None }
     }
-    fn get_remove(&mut self, rng: &Random) -> Option<T> {
+    fn get_remove(&mut self, rng:  Random_2) -> Option<T> {
         let len = self.len();
-        let selection = if len > 1 { rng.get_value( len as i32) as usize } else { 0 };
+        let selection = if len > 1 { rng.get_value_2( len as i32) as usize } else { 0 };
         if len > 0 { Some(self.swap_remove(selection)) }
         else { None }
     }
@@ -53,19 +55,6 @@ pub fn get_nested_virtual_methods_mut(namespace: &str, class_name: &str, nested_
     }
     else { None }
 }
-pub fn apply_hair(hair: &String, result: &mut AssetTableResult) {
-    if hair.contains("spine") {
-        let accessory = new_asset_table_accessory(hair.to_string().as_str(), "c_spine1_jnt");
-        result.commit_accessory(&accessory);
-        result.hair_model = "uHair_null".into();
-    }
-    else {
-        let accessory = new_asset_table_accessory("null", "c_spine1_jnt");
-        result.commit_accessory(&accessory);
-        result.hair_model = hair.into();
-    }
-    result.replace(2);
-}
 pub fn r_l_press(is_l: bool, is_r: bool, trigger: bool) -> bool {
     let pad = get_instance::<engage::pad::Pad>();
     if trigger && ( pad.old_buttons.right() || pad.old_buttons.left() ) { false }
@@ -76,8 +65,17 @@ pub fn is_up_down_press() -> bool {
     pad.old_buttons.up() || pad.old_buttons.down() || pad.npad_state.buttons.up() || pad.npad_state.buttons.down()
 }
 
-pub fn left_right_enclose(string: &String) -> &'static Il2CppString {
-    format!("{}{}{}", Mess::create_sprite_tag_str(2, "Left"), string, Mess::create_sprite_tag_str(2, "Right")).into()
+pub fn left_right_enclose(string: &String) -> unity2::Il2CppString {
+    format!("{}{}{}",
+            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
+            string,
+            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left")
+    ).into()
+}
+pub fn get_default_asset_conditions() -> unity2::Array::<unity2::Il2CppString> {
+    let array = unity2::Array::new(unity2::Il2CppString::class().raw(), 1).unwrap();
+    array.set(0, "".into());
+    array
 }
 pub fn capitalize_first(s: &str) -> String {
     let mut chars = s.chars();

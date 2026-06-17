@@ -1,11 +1,6 @@
 use std::{collections::HashSet, io::{Cursor, Read}};
 use std::collections::HashMap;
 pub use engage::{
-    gamedata::{
-        accessory::AccessoryData, Gamedata, GodData, JobData, PersonData,
-        assettable::*
-    }, 
-    mess::Mess, resourcemanager::*,
     gamevariable::GameVariableManager,
     random::Random
 };
@@ -20,6 +15,7 @@ use engage_il2cpp::{
     app::assettable::prelude::IList_1Methods,
     system::collections::generic::IList_1
 };
+use engage_il2cpp::app::{IAccessoryDataMethods, IPersonDataMethods, IRandom_2Methods};
 use unity2::{Cast, system::string::IIl2CppStringMethods};
 pub use super::*;
 
@@ -47,7 +43,7 @@ pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_hea
 const ASSET_FILENAME: [&str; 5] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig"];
 pub struct OutfitData {
     pub hashes: OutfitHashes,
-    pub accessory_conditions: AccessoryConditions,
+    // pub accessory_conditions: AccessoryConditions,
     pub dress: DressData,
     pub item: Vec<ItemAsset>,
     pub anims: AnimData,
@@ -60,7 +56,7 @@ impl OutfitData {
         let new_labels = AssetLabelTable::new();
         let mut new_list = OutfitLists::new();
         let mut hashes = OutfitHashes::new();
-        engage_il2cpp::app::AssetTable::get_list().iter().for_each(|e|{
+        AssetTable::get_list().iter().for_each(|e|{
             let voice = e.get_voice();
             if !voice.is_null() {
                 let hash = voice.get_hash_code();
@@ -179,7 +175,7 @@ impl OutfitData {
                 .iter()
                 .filter(|(x, _)| !x.is_null())
                 .map(|(x, i)| (i, x.to_rust_string())).collect();
-
+        println!("Sorting Added Assets");
         assets.iter().enumerate()
             .filter(|(_, (_, s))|{
                 let lower = s.to_lowercase();
@@ -187,6 +183,7 @@ impl OutfitData {
             })
             .for_each(|(_, (hash, asset))| {
                 if let Some(item) = AssetItem::new(asset, 0) {
+                    println!("Asset: {}", asset);
                     match item.kind {
                         AssetType::Body => {
                             let mut o_hash = None;
@@ -230,6 +227,7 @@ impl OutfitData {
                         }
                         AssetType::Hair => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind, &dic_map) {
+                                println!("Found Condition: {}", condition);
                                 if let Some(cond_idx) = get_condition_index(condition.as_str()) {
                                     hashes.add_hair(asset.as_str());
                                     if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
@@ -248,7 +246,7 @@ impl OutfitData {
                         AssetType::Mount(_) => {
                             if let Some((condition, _)) = find_condition(2, asset, false, item.kind, &dic_map) {
                                 let name = get_condition_label(&condition);
-                                hashes.add_ride_model(asset);
+                                hashes.add_ride_model(asset.as_str());
                                 new_list.add(asset, false, name, 1 << 28, false);
                             }
                         }
@@ -256,17 +254,21 @@ impl OutfitData {
                     }
                 }
             });
+        println!("Finished with Assets");
         let dress = DressData::init(&mut hashes);
+        println!("Finished with DressData");
         let anims = AnimData::init(&mut assets);
+        println!("Finished with AnimData");
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
+        println!("Finished OutfitData");
         Self {
             dress, anims, hashes,
             list: new_list,
             labels: new_labels,
             item: ItemAsset::init(),
-            accessory_conditions: AccessoryConditions::new(),
+            // accessory_conditions: AccessoryConditions::new(),
         }
     }
     pub fn is_monster_class(&self, unit: engage_il2cpp::app::Unit) -> bool {
@@ -322,7 +324,7 @@ impl OutfitData {
                     let hash = data.profile[0].mount[if dress_gender == engage_il2cpp::app::Gender::female() { 1 } else { 0 } as usize];
                     if conditions.mode == 2 {
                         if let Some(body) = self.try_get_asset(AssetType::Body, hash) {
-                            set_result_dress_body_model(result, conditions.mode, body);
+                            set_result_dress_body_model(result, conditions.mode, body.as_str());
                             return;
                         }
                     } 
@@ -334,7 +336,7 @@ impl OutfitData {
                     }
                 }
             }
-            if let Some(data) = conditions.engaged.as_ref().and_then(|eid| self.dress.get_engaged_dress(eid.into())){
+            if let Some(data) = conditions.engaged.as_ref().and_then(|eid| self.dress.get_engaged_dress(eid.as_str().into())){
                 if data.asset_id == "リュール" {
                     if !unit.is_hero() { data.apply(result, conditions.mode, dress_gender); }
                     else {
@@ -425,10 +427,7 @@ impl OutfitData {
             if !result.get_body_model().is_null() && !result.get_head_model().is_null(){
                 let body = result.get_body_model().to_rust_string();
                 let head = result.get_head_model().to_rust_string();
-                if body.contains("AF_c051") && head.contains("h050") {
-                    // Female Dragon Child Head Adjustment
-                    result.set_head_model("oHair_h051");
-                }
+                if body.contains("AF_c051") && head.contains("h050") { result.set_head_model("oHair_h051"); }
             }
         }
     }
@@ -480,7 +479,8 @@ impl OutfitData {
                 let god_unit = unit.get_god_unit();
                 if !god_unit.is_null() {
                     if unit.get_person().hash() == 258677212 {
-                        if let Some(god) = god_unit.as_ref().and_then(|d| self.dress.get_engaged_dress(d.data.asset_id)) { god.apply(result, 2, dress_gender); }
+                        let asset_id = god_unit.m_data().get_asset_id();
+                        if let Some(god) = self.dress.get_engaged_dress(asset_id) { god.apply(result, 2, dress_gender); }
                     }
                     if no_engaged_anim {
                         if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || ((unit.get_job().hash() == 499211320) && conditions.kind > 0){
@@ -508,25 +508,25 @@ impl OutfitData {
         let head = self.hashes.head.len();
         let index = rng.get_value(head as i32);
         if let Some(head) = self.hashes.head.iter().nth(index as usize) {
-            result.set_head_model(head.1);
+            result.set_head_model(head.1.as_str());
             if let Some(skin) = self.list.skin.get(head.0) { skin.set_result_color(result, 2); }
         }
         let index = rng.get_value( self.hashes.hair.len() as i32);
         if let Some(hair) = self.hashes.hair.iter().nth(index as usize) { apply_result_hair(hair.1, result); }
     }
-    pub fn random_body(&self, result: AssetTable_Result, mode: i32, rng: &Random, female: bool) {
+    pub fn random_body(&self, result: AssetTable_Result, mode: i32, rng: engage_il2cpp::app::Random_2, female: bool) {
         let hub = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value == 4;
         if hub {
             let set = if female { &self.hashes.female_u } else { &self.hashes.male_u };
             if let Some(body) = set.get_random_element(rng).and_then(|v| self.hashes.body.get(v)) {
-                result.set_dress_model(body);
+                result.set_dress_model(body.as_str());
             }
         }
         else {
             let set = if female { &self.hashes.female_ou } else { &self.hashes.male_ou};
-            let index = rng.get_value(set.len() as i32) as usize;
+            let index = rng.get_value_2(set.len() as i32) as usize;
             if let Some(body) = if mode == 2 { self.hashes.body.get(&set[index].0) } else { self.hashes.o_body.get(&set[index].1) } {
-                set_result_dress_body_model(result, mode, body);
+                set_result_dress_body_model(result, mode, body.as_str());
             }
         }
     }
@@ -593,42 +593,53 @@ impl OutfitData {
     }
 }
 
-pub fn get_remove(data: &mut Vec<String>, asset: &str) -> Option<String> {
-    data.iter().position(|s| s.contains(asset)).map(|x| data.remove(x)).map(|str| str.split('/').last().unwrap().to_string() )
-}
-
 pub fn get_asset_name(condition: &String, gender: engage_il2cpp::app::Gender) -> Option<String> {
-    AccessoryData::get(condition.as_str()).map(|a| {
-        if a.condition_gender == 1 && gender == engage_il2cpp::app::Gender::male() && a.name_m.is_some() { a.name_m.unwrap().to_string() }
-        else if a.condition_gender == 2 && gender == engage_il2cpp::app::Gender::female() && a.name_f.is_some() { a.name_f.unwrap().to_string() }
-        else { a.name.to_string() }
-    })
-        .or_else(|| PersonData::get(condition.as_str()).and_then(|p| p.name.as_ref() ).map(|name| name.to_string()))
-        .or_else(|| JobData::get(condition.as_str()).map(|j| j.name.to_string()))
-        .or_else(|| GodData::get(condition.as_str()).map(|g| g.mid.to_string()))
+    let accessory = engage_il2cpp::app::AccessoryData::get(condition.as_str().into());
+    if !accessory.is_null() {
+        if accessory.get_condtion_gender().value == 1 && gender.value == 1 && !accessory.get_name_m().is_null() { Some(accessory.get_name_m().to_string()) }
+        else if accessory.get_condtion_gender().value == 2 && gender.value == 2 && !accessory.get_name_f().is_null() { Some(accessory.get_name_f().to_string()) }
+        else { Some(accessory.get_name().to_string()) }
+    }
+    else {
+        let person = engage_il2cpp::app::PersonData::get(condition.as_str().into());
+        if !person.is_null() {
+            if !person.get_name().is_null() { Some(person.get_name().to_string()) }
+            else { None }
+        }
+        else {
+            let job_data = engage_il2cpp::app::JobData::get(condition.as_str().into());
+            if !job_data.is_null() { Some(job_data.get_name().to_string()) }
+            else {
+                let god_data = engage_il2cpp::app::GodData::get(condition.as_str().into());
+                if !god_data.is_null() { Some(god_data.get_mid().to_string()) } else { None }
+            }
+        }
+
+    }
 }
 fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, map: &HashMap<i32, String>) -> Option<(String, engage_il2cpp::app::Gender)> {
     match kind {
         AssetType::Body => {
-            let filter = |e: AssetTable, a: &str| e.dress_model.is_some_and(|s| s.to_string() == a);
+            let filter = |e: AssetTable, a: &str| il2str(e.get_dress_model()).is_some_and(|s| s == a);
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Head => {
-            let filter = |e: AssetTable, a: &str| e.head_model.is_some_and(|s| s.to_string() == a);
+            let filter = |e: AssetTable, a: &str| il2str(e.get_head_model()).is_some_and(|s| s == a);
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Hair => {
             let filter =
-                if model.contains("uHair") { |e: AssetTable, a: &str| e.hair_model.is_some_and(|s| s.str_contains(a)) }
-                else { |e: AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a))) };
+                if model.contains("uHair") { |e: AssetTable, a: &str| il2str(e.get_hair_model()).is_some_and(|s| s == a) }
+                else { |e: AssetTable, a: &str| try_find_acc_model_in_entry(e, a).is_some() };
+
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Acc(_) => {
-            let filter =  |e: AssetTable, a: &str| e.accessory_list.list.iter().any(|ac| ac.model.is_some_and(|m| m.str_contains(a)));
+            let filter =  |e: AssetTable, a: &str| try_find_acc_model_in_entry(e, a).is_some();
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         AssetType::Mount(_) => {
-            let filter = |e: AssetTable, a: &str| e.ride_dress_model.is_some_and(|s| s.str_contains(a));
+            let filter = |e: AssetTable, a: &str| il2str(e.get_ride_dress_model()).is_some_and(|s| s == a);
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
         }
         _ => { None }

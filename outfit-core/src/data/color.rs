@@ -84,14 +84,14 @@ impl ColorPreset {
         color.g = (((value >> 8) & 255) as f32) / 255.0;
         color.b = (((value >> 16) & 255) as f32) / 255.0;
     }
-    pub fn get_name(&self) -> &'static Il2CppString {
-        let s =  Mess::get(self.label.as_str());
+    pub fn get_name(&self) -> unity2::Il2CppString {
+        let s =  engage_il2cpp::app::Mess::get(self.label.as_str());
         if self.engaged { format!("{} {}", MenuTextCommand::Engage, s).into() } else { s }
     }
 }
 pub struct EyePreset { pub color: i32, pub label: AssetLabel, pub count: i32, }
 impl EyePreset {
-    pub fn get_name(&self) -> &'static Il2CppString {
+    pub fn get_name(&self) -> unity2::Il2CppString {
         if self.count == 0 { self.label.get() }
         else { format!("{} {}", self.label.get(), self.count+1).into() }
     }

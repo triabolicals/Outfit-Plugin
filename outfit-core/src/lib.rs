@@ -4,8 +4,8 @@ use engage::{
     spriteatlasmanager::FaceThumbnailStaticFields, gamedata::GamedataArray,
     keyhelp::KeyHelpData, proc::ProcInst,
 };
-use engage::combat::{CharacterAppearance, Kaneko};
-use engage::ut::Ut;
+use engage_il2cpp::unity_engine::{IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2Methods, SkinnedMeshRenderer};
+use unity2::Cast;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -16,7 +16,7 @@ use engage::ut::Ut;
 #[allow(static_mut_refs)] mod output;
 #[allow(static_mut_refs)] mod shop;
 #[allow(static_mut_refs)] mod unitasset;
-mod photo;
+// mod photo;
 mod localize;
 mod capture;
 
@@ -29,10 +29,9 @@ pub use utils::*;
 pub use menu::*;
 pub use shop::*;
 pub use assets::*;
-pub use assets::new_result_get_hash_code;
 pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
-pub const VERSION: &'static str = "2.7.3c";
+pub const VERSION: &'static str = "2.7.3d";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -45,24 +44,10 @@ pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
 pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| {OutfitData::init()}) }
 
-#[unity::class("App", "StructTemplate`1")]
-pub struct StructTemplate {}
-
-#[unity::class("App", "StructDictionary`1")]
-pub struct StructDictionary {
-    pub key_list: &'static mut List<Il2CppString>,
-    pub index_key: &'static mut Dictionary<'static, &'static Il2CppString, i32>,
-    pub hash_key: &'static mut Dictionary<'static, i32, i32>,
-}
-#[repr(C)]
-pub struct StructTemplateStaticFields{
-    header: u64,
-    pub dictionary: &'static mut StructDictionary,
-}
-fn photo_off(_proc: &ProcInst, _optional_method: OptionalMethod) {
+fn photo_off(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::Inactive;
 }
-fn photo_on(_proc: &ProcInst, _optional_method: OptionalMethod) {
+fn photo_on(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::PhotoGraph;
     UnitAssetMenuData::init_photo_profiles();
 }
@@ -92,23 +77,28 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     vtable[4].method_ptr = game_user_data_version as _;
     vtable[12].method_ptr = game_user_data_on_deserialize as _;
     vtable[11].method_ptr = game_user_data_on_serialize as _;
-    get_nested_virtual_methods_mut("App", "AssetTable", "Result", "GetHashCode")
+
+    /*
+        get_nested_virtual_methods_mut("App", "AssetTable", "Result", "GetHashCode")
         .map(|method|{ method.method_ptr = new_result_get_hash_code as _; });
-    if let Some(class) = Il2CppClass::from_name("App", "PhotographTopSequence").ok() {
-        if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = photo_off as _; }
-        if let Some(method) = class.get_virtual_method_mut("OnBind") { method.method_ptr = photo_on as _; }
-    }
-    if let Some(class) = Il2CppClass::from_name("App", "HubAccessoryRoom").ok() {
-        if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = room::CustomHubAccessoryRoom::on_dispose as _; }
-    }
+if let Some(class) = Il2CppClass::from_name("App", "PhotographTopSequence").ok() {
+    if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = photo_off as _; }
+    if let Some(method) = class.get_virtual_method_mut("OnBind") { method.method_ptr = photo_on as _; }
+}
+
+if let Some(class) = Il2CppClass::from_name("App", "HubAccessoryRoom").ok() {
+    if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = room::CustomHubAccessoryRoom::on_dispose as _; }
+}
+if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").ok() {
+    if let Some(method) = class.get_virtual_method_mut("YCall") { method.method_ptr = photo::photograph_edit_dispos_menu_minus as _; }
+}
+ */
     if let Some(method) = Il2CppClass::from_name("App", "ShopUnitSelectMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("Build"))
     {
         method.method_ptr = unitselect::shop_unit_select_menu_item_content_build as _;
     }
-    if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").ok() {
-        if let Some(method) = class.get_virtual_method_mut("YCall") { method.method_ptr = photo::photograph_edit_dispos_menu_minus as _; }
-    }
+
     if let Some(method) = Il2CppClass::from_name("App", "AccessoryMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("BuildText"))
     {
@@ -116,14 +106,17 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     }
     get_nested_virtual_methods_mut("App", "SortieUnitSelect", "UnitMenuItem", "YCall").map(|method| method.method_ptr = unit_item_y_call as _);
     get_nested_virtual_methods_mut("App", "MapUnitCommandMenu", "ItemMenuItem", "XCall").map(|method| method.method_ptr = unit_item_y_call as _);
+    /*
     if let Some(klass) = Il2CppClass::from_name("App", "AccessoryShopChangeMenu").ok() {
         klass._2.actual_size = size_of::<CustomAssetMenu>() as u32;
         klass._2.instance_size = size_of::<CustomAssetMenu>() as u32;
     }
 
+     */
+
     skyline::patching::Patch::in_text(0x2173ba4).bytes(&[0x40, 0x01, 0x80, 0x52]).unwrap();
-    skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
-    skyline::patching::Patch::in_text(0x27b66d4).bytes(&[0x08, 0x01, 0x80, 0x52]).unwrap();
+    // skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
+    // skyline::patching::Patch::in_text(0x27b66d4).bytes(&[0x08, 0x01, 0x80, 0x52]).unwrap();
     skyline::patching::Patch::in_text(0x2166454).bytes(&[0x01, 0x20, 0x80, 0x52]).unwrap(); //Combat HierachyCache to 256
     sortie_menu_x_call_edit();
     UnitAssetMenuData::get().is_loaded = false;
@@ -148,7 +141,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     });
     init
 }
-pub fn get_head_hair_colors(go: &GameObject) {
+pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
     if go.is_null() { return; }
     let data = UnitAssetMenuData::get();
     if data.is_preview {
@@ -158,26 +151,27 @@ pub fn get_head_hair_colors(go: &GameObject) {
             if update & 1 != 0 {
                 data.preview.has_hair_acc = false;
                 for x in 0..4 { data.preview.original_color[x] = 0; }
-                if let Some(hair_go) = Kaneko::find_in_children(go.get_transform(), "c_spine1_jnt".into())
-                    .or_else(|| Kaneko::find_in_children(go.get_transform(), "meshHairGP".into()))
-                    .and_then(|m| m.get_game_object())
-                {
-                    if let Some(mt_hair) = get_material_from_object(hair_go, "MtHair ") {
-                        let color = mt_hair.get_color(colors[0]);
-                        data.preview.original_color[0] = (color.r * 255.0) as u8;
-                        data.preview.original_color[1] = (color.g * 255.0) as u8;
-                        data.preview.original_color[2] = (color.b * 255.0) as u8;
-                        data.preview.original_color[3] = 1;
-                    }
-                    data.preview.has_hair_acc =
-                        hair_go.get_components_in_children::<SkinnedMeshRenderer>(true).iter()
-                            .any(|r| {
-                                let name = r.get_name().to_string();
+                for hair in ["c_spine1_jnt", "meshHairGP"]{
+                    let h = engage_il2cpp::combat::Kaneko::find_in_children(go.get_transform(), hair);
+                    if !h.is_null() {
+                        let go = h.get_game_object();
+                        data.preview.has_hair_acc = go.get_components_in_children_3::<SkinnedMeshRenderer>(true).iter().
+                            any(|r|{
+                                let name = r.get_name().to_rust_string();
                                 (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc")
                             });
+                        if let Some(mt_hair) = get_material_from_go(go, "MtHair") {
+                            let color = mt_hair.get_color_2(colors[0]);
+                            data.preview.original_color[0] = (color.r * 255.0) as u8;
+                            data.preview.original_color[1] = (color.g * 255.0) as u8;
+                            data.preview.original_color[2] = (color.b * 255.0) as u8;
+                            data.preview.original_color[3] = 1;
+                            break;
+                        }
+                    }
                 }
-                if let Some(m) = get_material_from_object(go, "MtHair2").or_else(|| get_material_from_object(go, "MtOdd")) {
-                    let color = m.get_color(colors[0]);
+                if let Some(m) = get_material_from_go(go, "MtHair2").or_else(|| get_material_from_go(go, "MtOdd")) {
+                    let color = m.get_color_2(colors[0]);
                     data.preview.original_color[56] = (color.r * 255.0) as u8;
                     data.preview.original_color[56+1] = (color.g * 255.0) as u8;
                     data.preview.original_color[56+2] = (color.b * 255.0) as u8;
@@ -187,9 +181,9 @@ pub fn get_head_hair_colors(go: &GameObject) {
             }
             if update & 2 != 0 {
                 for i in 0..24 { data.preview.original_color[32+i] =0; }
-                if let Some(m) = get_material_from_object(go, "MtEye") {
+                if let Some(m) = get_material_from_go(go, "MtEye") {
                     for x in 0..6 {
-                        let color = m.get_color(colors[x]);
+                        let color = m.get_color_2(colors[x]);
                         data.preview.original_color[(8+x)*4] = (color.r * 255.0) as u8;
                         data.preview.original_color[(8+x)*4+1] = (color.g * 255.0) as u8;
                         data.preview.original_color[(8+x)*4+2] = (color.b * 255.0) as u8;
@@ -201,7 +195,7 @@ pub fn get_head_hair_colors(go: &GameObject) {
     }
 }
 
-pub fn apply_preview_head_hair_color(this: &mut CharacterAppearance, go: &GameObject) {
+pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppearance, go: engage_il2cpp::unity_engine::GameObject) {
     if go.is_null() { return; }
     let data = UnitAssetMenuData::get();
     let mut rgb: Option<[u8; 3]> = None;
@@ -209,8 +203,8 @@ pub fn apply_preview_head_hair_color(this: &mut CharacterAppearance, go: &GameOb
     let data2 =
         if data.is_preview { Some(data.preview.preview_data.clone()) }
         else {
-            UnitAssetMenuData::get_by_person_data(this.person_hash, false)
-                .and_then(|p| p.profile.get(p.profile_index(false) as usize).cloned())
+            let hash = unity2::field_get_value_at_offset::<i32>(this, 0xd4);
+            UnitAssetMenuData::get_by_person_data(hash, false).and_then(|p| p.profile.get(p.profile_index(false) as usize).cloned())
         };
 
     if let Some(data2) = data2 {
@@ -230,21 +224,23 @@ pub fn apply_preview_head_hair_color(this: &mut CharacterAppearance, go: &GameOb
                 let g = rgb[1] as f32 / 255.0;
                 let b = rgb[2] as f32 / 255.0;
                 if j >= 8 &&  j < 14  {
-                    if let Some(m) = get_mt_eye(go) { m.set_color(colors[j-8], Color::new(r, g, b, 1.0)); }
+                    if let Some(m) = get_mt_eye(go) {
+                        m.set_color_2(colors[j-8], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
+                    }
                 }
                 else if j == 2 {
-                    go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|re|{
-                        Ut::get_instance_materials2(re).iter().for_each(|m|{
-                            if m.get_name().str_contains("MtSkin") {
+                    go.get_components_in_children_3::<SkinnedMeshRenderer>(true).iter().for_each(|smr| {
+                        engage_il2cpp::app::Ut::get_instance_materials(smr).iter().for_each(|m| {
+                            if m.get_name().to_rust_string().contains("MtSkin") {
                                 m.set_float("_Makeup", 0.0);
-                                m.set_color(colors[0], Color::new(r, g, b, 1.0));
+                                m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
                             }
                         });
                     });
                 }
                 else if j == 14 {
-                    if let Some(m) = get_material_from_object(go, "MtHair2").or_else(|| get_material_from_object(go, "MtOdd")){
-                        m.set_color(colors[0], Color::new(r, g, b, 1.0));
+                    if let Some(m) = get_material_from_go(go, "MtHair2").or_else(|| get_material_from_go(go, "MtOdd")){
+                        m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
                     }
                 }
             }
@@ -254,19 +250,13 @@ pub fn apply_preview_head_hair_color(this: &mut CharacterAppearance, go: &GameOb
         room::hair_acc(go, flag & 16 != 0);
     }
 }
-fn get_mt_eye(go: &GameObject) -> Option<&'static &'static Material2> {
-    go.get_component_in_children::<SkinnedMeshRenderer>(true).iter()
-        .flat_map(|smr| Ut::get_instance_materials2(smr).iter())
-        .find(|v| v.get_name().to_string().starts_with("MtEye"))
+fn get_mt_eye(go: engage_il2cpp::unity_engine::GameObject) -> Option<engage_il2cpp::unity_engine::Material>{
+    get_material_from_go(go, "MtEye")
 }
 
-fn get_material_from_object(go: &GameObject, name: &str) -> Option<&'static &'static Material2> {
-    go.get_components_in_children::<Renderer>(true).iter()
-        .flat_map(|smr| Ut::get_instance_materials(smr).iter())
-        .find(|v| v.get_name().to_string().contains(name))
-        .or_else(||
-            go.get_components_in_children::<SkinnedMeshRenderer>(true).iter()
-                .flat_map(|smr| Ut::get_instance_materials2(smr).iter())
-                .find(|v| v.get_name().to_string().contains(name))
-        )
+fn get_material_from_go(go: engage_il2cpp::unity_engine::GameObject, name: &str) -> Option<engage_il2cpp::unity_engine::Material> {
+    go.get_components_in_children_3::<engage_il2cpp::unity_engine::Renderer>(true).iter()
+        .flat_map(|r| engage_il2cpp::app::Ut::get_instance_materials(r).iter())
+        .find(|m| m.get_name().to_rust_string().contains(name))
+
 }

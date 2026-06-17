@@ -1,16 +1,11 @@
-use engage::{
-    unit::Gender,
-    menu::BasicMenuItemAttribute, mess::Mess,
-    sequence::photograph::*, titlebar::KeyHelpButton,
+use engage::{titlebar::KeyHelpButton, };
+use engage_il2cpp::{
+    app::{IAccessoryMenuItemMethods, IBasicMenuItem, IBasicMenuItemMethods},
+    List_1Ext,
+    prelude::List_1,
+    system::collections::generic::IList_1Methods
 };
-use unity::prelude::Il2CppString;
-use crate::{
-    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
-    AssetType, CustomAssetMenu, CustomAssetMenuItem, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
-    data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result},
-    menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand},
-    room::ReloadType,
-};
+use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result}, menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand}, room::ReloadType, CustomAssetMenuItem3};
 use super::*;
 
 #[repr(C)]
@@ -247,18 +242,18 @@ impl CustomAssetMenuKind {
             _ => { None }
         }
     }
-    pub fn get_menu_item_name(&self) -> Option<&'static Il2CppString> {
+    pub fn get_menu_item_name(&self) -> Option<unity2::Il2CppString> {
         let idx = self.to_index() + 1000;
         match self {
             ProfileSettings => { Some(MenuTextCommand::Settings.get()) }
-            ShopBody((0, _))  => { Some(Mess::get("MID_Hub_amiibo_Accessory_Trade")) }
+            ShopBody((0, _))  => { Some(engage_il2cpp::app::Mess::get("MID_Hub_amiibo_Accessory_Trade")) }
             ShopBody((1, _)) => { Some(MenuTextCommand::Class.get()) }
             EngagedBody(_) => { Some(MenuTextCommand::Engage.get()) }
             ShopBody((2, _)) => { Some(MenuTextCommand::Engage.get())}
-            ShopBody((3, _)) => { Some(Mess::get("MID_ProfileCard_Stamp_Others")) }
+            ShopBody((3, _)) => { Some(engage_il2cpp::app::Mess::get("MID_ProfileCard_Stamp_Others")) }
             ShopBody((4, _)) => Some("Added/Unsorted".into()),
-            Head|HeadEdit => { Some(Mess::get("MID_Hub_Mascot_Accessories_Head")) }
-            ShopAcc(0) => { Some(Mess::get("MID_Hub_Mascot_Accessories_Parts")) }
+            Head|HeadEdit => { Some(engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Head")) }
+            ShopAcc(0) => { Some(engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Parts")) }
             VoiceSelection => { Some(MenuTextCommand::Voice.get()) }
             ItemList => { Some(MenuTextCommand::Weapons.get()) }
             ColorPresets(page, _) => {
@@ -293,81 +288,64 @@ impl CustomAssetMenuKind {
             _ => { None }
         }
     }
-    pub fn create_menu_items(&self, this: &mut CustomAssetMenu) {
+    pub fn add_menu_items(&self, list: List_1<engage_il2cpp::app::BasicMenuItem>) {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
         let female = UnitAssetMenuData::get_gender(false) == 2;
         match self {
-            LoadData => {
-                let item = CustomAssetMenuItem::new_type(CurrentData);
-                item.name = MenuText::get_command(7);
-                this.full_menu_item_list.add(item);
-                UnitAssetMenuData::get().loaded_data.loaded_data.iter().for_each(|x|{
-                    let item = CustomAssetMenuItem::new_type(OutfitDataFile);
-                    item.name = x.get_filename().into();
-                    this.full_menu_item_list.add(item);
-                });
-            }
-            FaceSelection => {
-                UnitAssetMenuData::get().loaded_data.load_face.iter().for_each(|x|{
-                    let item = CustomAssetMenuItem::new_type(FaceThumb);
-                    item.name = x.file_name.as_str().into();
-                    item.hash = x.index as i32;
-                    this.full_menu_item_list.add(item);
-                });
-            }
             MainShop => {
+                /*
                 if UnitAssetMenuData::is_photo_graph() {
                     for x in [ShopBody((0, false)), Head, Hair, Rig, ShopAcc(0), ColorKindSelection, ScaleMenu, PresetAppearanceMenu(false)]{
-                        this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(x));
+                        list.add(CustomAssetMenuItem3::new_menu(x, unity2::Il2CppString::null()).as_basic_menu_item());
                     }
                     if let Some(p) = PhotographTopSequence::get_photograph_sequence() {
-                       if p.dispos_manager.current_dispos_info.weapon_data_list.len() > 1 {
-                           this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ItemList));
-                       }
-                       if p.dispos_manager.current_dispos_info.pause_data_list.len() > 1 {
-                           this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(PauseList));
-                       }
-                   }
+                        if p.dispos_manager.current_dispos_info.weapon_data_list.len() > 1 {
+                            list.add(CustomAssetMenuItem3::new_menu(ItemList, unity2::Il2CppString::null()).as_basic_menu_item());
+                        }
+                        if p.dispos_manager.current_dispos_info.pause_data_list.len() > 1 {
+                            list.add(CustomAssetMenuItem3::new_menu(PauseList, unity2::Il2CppString::null()).as_basic_menu_item());
+                        }
+                    }
                 }
                 else {
-                    this.full_menu_item_list.add(CustomAssetMenuItem::new_type(CurrentProfile));
+
+                 */
+                    list.add(CustomAssetMenuItem3::new(CurrentProfile).as_basic_menu_item());
                     for x in [
                         ProfileSelection, ProfileSettings, ShopBody((0, false)), EngagedBody(false), Head, Hair, Rig,
                         ShopAcc(0), VoiceSelection, ShopAoc(0), ShopMount(0), ColorKindSelection, ScaleMenu, PresetAppearanceMenu(false)]
                     {
-                        this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(x));
+                        list.add(CustomAssetMenuItem3::new_menu(x, unity2::Il2CppString::null()).as_basic_menu_item());
                     }
-                    if !UnitAssetMenuData::get().god_mode { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(UnitName)); }
-                }
+                    if !UnitAssetMenuData::get().god_mode {
+                        list.add(CustomAssetMenuItem3::new(UnitName).as_basic_menu_item());
+                    }
+               // }
             }
-            PauseList => {
-                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p|&p.dispos_manager.current_dispos_info) {
-                    let mid = info.current_pause_data.map(|v|{ v.mid.to_string() });
-                    info.pause_data_list.iter().for_each(|x|{
-                        let item = CustomAssetMenuItem::new_type(Pause);
-                        item.name = x.get_name();
-                        item.decided = Some(x.mid.to_string()) == mid;
-                        this.full_menu_item_list.add(item);
-                    });
-                }
-                if this.full_menu_item_list.len() < 2 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
+            LoadData => {
+                let item = CustomAssetMenuItem3::new(CurrentData);
+                IBasicMenuItemMethods::set_name(item, MenuText::get_command(7));
+                list.add(item.as_basic_menu_item());
+                UnitAssetMenuData::get().loaded_data.loaded_data.iter().for_each(|x|{
+                    let item = CustomAssetMenuItem3::new(OutfitDataFile);
+                    item.set_m_name(x.get_filename().into());
+                    list.add(item.as_basic_menu_item());
+                });
             }
-            ItemList => {
-                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p| &p.dispos_manager.current_dispos_info) {
-                    let hash = info.weapon_data.map(|v| v.parent.hash).unwrap_or(0);
-                    info.weapon_data_list.iter().for_each(|x|{
-                        let item = CustomAssetMenuItem::new_type(Item);
-                        item.name = x.get_name();
-                        item.decided = hash == x.parent.hash;
-                        this.full_menu_item_list.add(item);
-                    });
-                }
-                if this.full_menu_item_list.len() < 2 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
+            FaceSelection => {
+                UnitAssetMenuData::get().loaded_data.load_face.iter().for_each(|x|{
+                    let item = CustomAssetMenuItem3::new(FaceThumb);
+                    item.set_name(x.file_name.as_str());
+                    item.set_value(x.index as i32);
+                    list.add(item.as_basic_menu_item());
+                });
             }
             ProfileSelection => {
                 if let Some(data) = UnitAssetMenuData::get_current_asset_data() {
-                    for x in 0..3 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ProfileItem(Profile::from_index(data.set_profile[x])))); }
+                    for x in 0..3 {
+                        list.add(CustomAssetMenuItem3::new(ProfileItem(Profile::from_index(data.set_profile[x]))).as_basic_menu_item());
+                    }
                 }
             }
             PresetAppearanceMenu(cross) => {
@@ -377,24 +355,24 @@ impl CustomAssetMenuKind {
                     .filter(|(_, d)| female == d.is_female && ((!d.morph == photo) || !photo))
                     .for_each(|(i, d)|{
                         if !d.morph {
-                            let item =  CustomAssetMenuItem::new_type(PresetAppearance);
-                            item.hash = i as i32;
+                            let item =  CustomAssetMenuItem3::new(PresetAppearance);
+                            item.set_value(i as i32);
                             let index = (d.index & 0xFFFFFF) << 1;
-                            item.padding = if d.emblem { 1 } else { 0 } | index;
-                            item.name = d.get_menu_name();
-                            this.full_menu_item_list.add(item);
+                            item.set_value2( if d.emblem { 1 } else { 0 } | index);
+                            item.set_name(d.get_menu_name());
+                            list.add(item.as_basic_menu_item());
                         }
                     });
             }
             ProfileSettings => {
-                [   FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing), 
+                [   FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing),
                     FlagMenuItem(AssetFlag::EngagedAnimation), FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail),
                     Data(AssetDataMode::Export), Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
-                ].into_iter().for_each(|v|{ this.full_menu_item_list.add(CustomAssetMenuItem::new_type(v)); });
+                ].into_iter().for_each(|v|{ list.add(CustomAssetMenuItem3::new(v).as_basic_menu_item()); });
             }
             ShopBody((0, alt)) => {    // Unit (Same Gender)
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                db.list.add_menu_items(AssetType::Body, female, true, false, &db.labels, this.full_menu_item_list);
+                db.list.add_menu_items(AssetType::Body, female, true, false, &db.labels, list);
             }
             EngagedBody(female) => {
                 let selected = if *female { preview.preview_data.mount[1] } else { preview.preview_data.mount[0] };
@@ -403,8 +381,8 @@ impl CustomAssetMenuKind {
                     .for_each(|v|{
                         if let Some(body) = db.hashes.body.get(&v.0) {
                             let name = body.trim_start_matches("uBody_");
-                            let item = CustomAssetMenuItem::new_asset(AssetType::Body, v.0, name.into(), selected == v.0, false);
-                            this.full_menu_item_list.add(item);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::Body, v.0, name.into(), selected == v.0, false);
+                            list.add(item.as_basic_menu_item());
                         }
                     });
             }
@@ -413,14 +391,14 @@ impl CustomAssetMenuKind {
                 let class_count = if female { db.list.job_count.1 } else { db.list.job_count.0 } as usize;
                 let set = if female { &db.list.job_f } else { &db.list.job_m };
                 for x in 0..class_count{
-                    let s = Mess::get(set[x].label);
+                    let s = engage_il2cpp::app::Mess::get(set[x].label);
                     let item =
-                    if s.to_string().len() > 0 { CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)), s) }
-                    else {
-                        let new_label = format!("MJID_{}", set[x].label);
-                        CustomAssetMenuItem::new_menu3(ClassBodySelection((x as u8, *alt)), Mess::get(new_label))
-                    };
-                    this.full_menu_item_list.add(item);
+                        if s.to_string().len() > 0 { CustomAssetMenuItem3::new_menu(ClassBodySelection((x as u8, *alt)), s) }
+                        else {
+                            let new_label = format!("MJID_{}", set[x].label);
+                            CustomAssetMenuItem3::new_menu(ClassBodySelection((x as u8, *alt)), engage_il2cpp::app::Mess::get(new_label))
+                        };
+                    list.add(item.as_basic_menu_item());
                 }
             }
             ClassBodySelection((class, alt)) => {
@@ -433,53 +411,47 @@ impl CustomAssetMenuKind {
                         .for_each(|a|{
                             if let Some(body) = db.hashes.body.get(&a.hash){
                                 let name = db.labels.get_suffix_name(body.as_str()).unwrap_or(body.to_string().trim_start_matches("uBody_").into());
-                                let item = CustomAssetMenuItem::new_asset(AssetType::Body, a.hash, name, current == a.hash, preview.original_assets[0] == a.hash);
-                                this.full_menu_item_list.add(item);
+                                let item = CustomAssetMenuItem3::new_asset(AssetType::Body, a.hash, name, current == a.hash, preview.original_assets[0] == a.hash);
+                                list.add(item.as_basic_menu_item());
                             }
                         });
                 }
-                if this.full_menu_item_list.is_empty() { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
             }
             ShopBody((2, alt))  => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.engaged.iter()
                     .filter(|x| x.female == female)
                     .for_each(|a|{
-                        let item = CustomAssetMenuItem::new_asset3(&a, &db.labels, true);
-                        item.name = a.get_name(&db.labels, true);
-                        this.full_menu_item_list.add(item);
+                        let item = CustomAssetMenuItem3::new_asset3(&a, &db.labels, true);
+                        item.set_name(a.get_name(&db.labels, true));
+                        list.add(item.as_basic_menu_item());
                     });
             }
-            ShopBody((3, alt)) => {
-                let female = UnitAssetMenuData::get_gender(*alt) == 2;
-                db.list.add_menu_items(AssetType::Body, female, false, true, &db.labels, this.full_menu_item_list);
-            }
+            ShopBody((3, alt)) => { db.list.add_menu_items(AssetType::Body, UnitAssetMenuData::get_gender(*alt) == 2, false, true, &db.labels, list); }
             ShopBody((4, alt)) => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.added.iter()
                     .filter(|x| x.female == female && x.asset.kind == AssetType::Body)
-                    .for_each(|a|{this.full_menu_item_list.add(CustomAssetMenuItem::new_asset3(&a, &db.labels, false)); });
+                    .for_each(|a| { list.add(CustomAssetMenuItem3::new_asset3(&a, &db.labels, false).as_basic_menu_item()); });
             }
-            Head => {
-                db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, this.full_menu_item_list);
-            }
-            Hair => { db.list.add_menu_items(AssetType::Hair, female,true, true, &db.labels, this.full_menu_item_list); }
+            Head => { db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, list); }
+            Hair => { db.list.add_menu_items(AssetType::Hair, female,true, true, &db.labels, list); }
+            ShopMount(mount) => { db.list.add_menu_items(AssetType::Mount(*mount), false, true, true, &db.labels, list); }
+            VoiceSelection => { db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, list); }
+            ColorKindSelection => { for x in 0..8 { list.add(CustomAssetMenuItem3::new_menu(ColorSelection(x), unity2::Il2CppString::null()).as_basic_menu_item()); } }
             Rig => {
                 let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Rig);
                 let original = preview.original_assets[15];
                 db.hashes.rigs.iter().for_each(|(h, n)|{
                     let name = n.trim_start_matches("uRig_").into();
-                    let item = CustomAssetMenuItem::new_asset(AssetType::Rig, *h, name, current == *h, original == *h);
-                    this.full_menu_item_list.add(item);
+                    let item = CustomAssetMenuItem3::new_asset(AssetType::Rig, *h, name, current == *h, original == *h);
+                    list.add(item.as_basic_menu_item());
                 });
             }
-            ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, this.full_menu_item_list); }
+            ShopAcc(kind) => { db.list.add_menu_items(AssetType::Acc(*kind), false, true, true, &db.labels, list); }
             ShopAoc(page) => {
                 let female = db.get_dress_gender_hash(preview.preview_data.ubody).map(|v| v == engage_il2cpp::app::Gender::female()).unwrap_or(female);
-                db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, this.full_menu_item_list);
-            }
-            ShopMount(mount) => {
-                db.list.add_menu_items(AssetType::Mount(*mount), false, true, true, &db.labels, this.full_menu_item_list);
+                db.list.add_menu_items(AssetType::AOC(*page), female, true, true, &db.labels, list);
             }
             ScaleMenu => {
                 let preview = UnitAssetMenuData::get_preview();
@@ -491,102 +463,138 @@ impl CustomAssetMenuKind {
                         else { preview.scale_preview[x] = v; }
                     }
                     preview.scale_preview[x] &= 1023;
-                    let item = CustomAssetMenuItem::new_type(ScaleMenuItem(x as u8));
-                    item.decided = enable;
-                    item.hash = preview.original_scaling[x] as i32;
-                    item.padding = preview.scale_preview[x] as i32;
-                    this.full_menu_item_list.add(item);
+                    let item = CustomAssetMenuItem3::new(ScaleMenuItem(x as u8));
+                    item.set_m_decided(enable);
+                    item.set_value(preview.original_scaling[x] as i32);
+                    item.set_value2(preview.scale_preview[x] as i32);
+                    list.add(item.as_basic_menu_item());
                 }
-            }
-            ColorKindSelection => {
-                for x in 0..8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x))); }
             }
             ColorSelection(page) => {
                 let k = (*page % 16) as usize;
-                let enable_item = CustomAssetMenuItem::new_type(EnableColor(k as u8));
-                enable_item.decided = preview.preview_data.colors[k].values[3] != 0;
-                this.full_menu_item_list.add(enable_item);
-                if k < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(k as u8))); }
+                let enable_item = CustomAssetMenuItem3::new(EnableColor(k as u8));
+                enable_item.set_m_decided(preview.preview_data.colors[k].values[3] != 0);
+                list.add(enable_item.as_basic_menu_item());
+                if k < 8 { list.add(CustomAssetMenuItem3::new(ResetColor(k as u8)).as_basic_menu_item()); }
                 UnitAssetMenuData::get_preview().color_preview[4*k+3] = 1;
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(RGBA(k as u8)));
-                for x in 0..10 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorPresets(x, *page))); }
+                list.add(CustomAssetMenuItem3::new(RGBA(k as u8)).as_basic_menu_item());
+                for x in 0..10 {
+                    list.add(CustomAssetMenuItem3::new_menu(ColorPresets(x, *page), unity2::Il2CppString::null()).as_basic_menu_item());
+                }
                 if preview.preview_data.colors[k].has_color() {
                     for x in 0..3 { preview.color_preview[4*k+ x] = preview.preview_data.colors[k].values[x]; }
                 }
                 else { for x in 0..3 { preview.color_preview[4*k+ x] = preview.original_color[4*k+x]; } }
             }
             HairEdit => {
-                if preview.original_color[3] != 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::DisableHairAcc))); }
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(16)));
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(17)));
-                if preview.original_color[59] != 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(14))); }
+                if preview.original_color[3] != 0 { list.add(CustomAssetMenuItem3::new(FlagMenuItem(AssetFlag::DisableHairAcc)).as_basic_menu_item()); }
+                list.add(CustomAssetMenuItem3::new_menu(ColorSelection(16), unity2::Il2CppString::null()).as_basic_menu_item());
+                list.add(CustomAssetMenuItem3::new_menu(ColorSelection(17), unity2::Il2CppString::null()).as_basic_menu_item());
+                if preview.original_color[59] != 0 {
+                    list.add(CustomAssetMenuItem3::new_menu(ColorSelection(14), unity2::Il2CppString::null()).as_basic_menu_item());
+                }
             }
             HeadEdit => {
-                this.full_menu_item_list.add(CustomAssetMenuItem::new_type(FlagMenuItem(AssetFlag::DisableHeadAcc)));
-                for x in 0..6 { this.full_menu_item_list.add(CustomAssetMenuItem::new_menu2(ColorSelection(x+8))); }
-                for x in 0..4 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(Expression(x as u8))); }
+                list.add(CustomAssetMenuItem3::new(FlagMenuItem(AssetFlag::DisableHeadAcc)).as_basic_menu_item());
+                for x in 0..6 { list.add(CustomAssetMenuItem3::new_menu(ColorSelection(x+8), unity2::Il2CppString::null()).as_basic_menu_item()); }
+                for x in 0..4 { list.add(CustomAssetMenuItem3::new(Expression(x as u8)).as_basic_menu_item()); }
             }
             ColorPresets(preset_kind, color_kind) => {
                 let kind = *preset_kind;
                 let kind2 = *color_kind;
                 let preview = UnitAssetMenuData::get_preview();
                 let k2 = kind2 % 16;
-                if k2 < 8 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(ResetColor(k2))); }
+                if k2 < 8 { list.add(CustomAssetMenuItem3::new(ResetColor(k2)).as_basic_menu_item()); }
                 if kind < 8 {
                     db.list.color_presets.iter()
-                        .filter(|x| x.colors[kind as usize ] != 0)
+                        .filter(|x| x.colors[kind as usize] != 0)
                         .for_each(|x| {
                             let hash = x.colors[kind as usize];
                             let mut selected = true;
                             let mut original = kind2 < 8;
                             for x in 0..3 {
-                                let r = ((hash >> 8*x) & 255) as u8;
+                                let r = ((hash >> 8 * x) & 255) as u8;
                                 if preview.preview_data.colors[k2 as usize].values[x] != r { selected = false; }
                                 if kind2 < 8 {
-                                    if preview.original_color[4*k2 as usize + x] != r { original = false; }
+                                    if preview.original_color[4 * k2 as usize + x] != r { original = false; }
                                 }
                             }
                             let name = x.get_name();
-                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), x.colors[kind as usize], name, selected, original);
-                            item.padding = k2 as i32;
-                            this.full_menu_item_list.add(item);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), x.colors[kind as usize], name, selected, original);
+                            item.set_value2(k2 as i32);
+                            list.add(item.as_basic_menu_item());
                         });
                 }
                 else if kind == 8 {
-                    db.list.eye_colors.iter().for_each(|x|{
+                    db.list.eye_colors.iter().for_each(|x| {
                         let name = x.get_name();
-                        let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), x.color, name, false, false);
-                        item.padding = kind2 as i32;
-                        this.full_menu_item_list.add(item);
+                        let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), x.color, name, false, false);
+                        item.set_value2(k2 as i32);
+                        list.add(item.as_basic_menu_item());
                     });
-                }
-                else {
+                } else {
                     let mut used_colors = vec![];
-                    let mut color: i32  = 0;
+                    let mut color: i32 = 0;
                     for x in 0..15 {
                         color = 0;
-                        for i in 0..3 { color |= (preview.color_preview[4*x as usize+i] as i32)  << (i*8); }
+                        for i in 0..3 { color |= (preview.color_preview[4 * x as usize + i] as i32) << (i * 8); }
                         if k2 != x && color != 0 && !used_colors.contains(&color) {
-                            let name = format!("{} [Current]", MenuText::get_command(1140+x as i32));
-                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
-                            item.padding = kind2 as i32;
-                            this.full_menu_item_list.add(item);
+                            let name = format!("{} [Current]", MenuText::get_command(1140 + x as i32));
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            item.set_value2(k2 as i32);
+                            list.add(item.as_basic_menu_item());
                             used_colors.push(color);
                         }
                     }
                     for x in 0..15 {
                         color = 0;
-                        for i in 0..3 { color |= (preview.original_color[4*x as usize+i] as i32)  << (i*8); }
+                        for i in 0..3 { color |= (preview.original_color[4 * x as usize + i] as i32) << (i * 8); }
                         if k2 != x && color != 0 && !used_colors.contains(&color) {
-                            let name = format!("{} [Original]", MenuText::get_command(1140+x as i32));
-                            let item = CustomAssetMenuItem::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
-                            item.padding = kind2 as i32;
-                            this.full_menu_item_list.add(item);
+                            let name = format!("{} [Original]", MenuText::get_command(1140 + x as i32));
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            item.set_value2(k2 as i32);
+                            list.add(item.as_basic_menu_item());
                             used_colors.push(color);
                         }
                     }
                 }
             }
+            _ => {}
+        }
+        if list.count() == 0 { list.add(CustomAssetMenuItem3::new(NoItem).as_basic_menu_item()); }
+    }
+    /*
+    pub fn create_menu_items(&self, this: &mut CustomAssetMenu) {
+        let db = get_outfit_data();
+        let preview = UnitAssetMenuData::get_preview();
+        let female = UnitAssetMenuData::get_gender(false) == 2;
+        match self {
+            /*
+            PauseList => {
+                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p|&p.dispos_manager.current_dispos_info) {
+                    let mid = info.current_pause_data.map(|v|{ v.mid.to_string() });
+                    info.pause_data_list.iter().for_each(|x|{
+                        let item = CustomAssetMenuItem3::new(Pause);
+                        item.name = x.get_name();
+                        item.decided = Some(x.mid.to_string()) == mid;
+                        list.add(item);
+                    });
+                }
+                if this.full_menu_item_list.len() < 2 { list.add(CustomAssetMenuItem3::new(NoItem)); }
+            }
+            ItemList => {
+                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p| &p.dispos_manager.current_dispos_info) {
+                    let hash = info.weapon_data.map(|v| v.parent.hash).unwrap_or(0);
+                    info.weapon_data_list.iter().for_each(|x|{
+                        let item = CustomAssetMenuItem3::new(Item);
+                        item.name = x.get_name();
+                        item.decided = hash == x.parent.hash;
+                        list.add(item);
+                    });
+                }
+                if this.full_menu_item_list.len() < 2 { list.add(CustomAssetMenuItem3::new(NoItem)); }
+            }
+            */
             VoiceSelection => { db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list); }
             /*
             AnimPreview(hub) => {
@@ -595,25 +603,25 @@ impl CustomAssetMenuKind {
                 hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(1.0));
                 if *hub > 1 {
                     db.list.aoc_state[2].iter().for_each(|x|{
-                        let item = CustomAssetMenuItem::new_type(Anim(*hub));
+                        let item = CustomAssetMenuItem3::new(Anim(*hub));
                         item.name = x.into();
                         item.hash = Animator::string_to_hash(x);
-                        this.full_menu_item_list.add(item);
+                        list.add(item);
                     });
                 }
                 let i = if *hub < 2 { *hub as usize } else { *hub as usize + 1 };
                 db.list.aoc_state[i].iter().for_each(|x|{
-                    let item = CustomAssetMenuItem::new_type(Anim(*hub));
+                    let item = CustomAssetMenuItem3::new(Anim(*hub));
                     item.name = x.into();
                     item.hash = Animator::string_to_hash(x);
-                    this.full_menu_item_list.add(item);
+                    list.add(item);
                 });
             }
 
              */
-            _ => { this.full_menu_item_list.add(CustomAssetMenuItem::new(-1, -1)); }
+            _ => { list.add(CustomAssetMenuItem3::new(-1, -1)); }
         }
-        if this.full_menu_item_list.len() == 0 { this.full_menu_item_list.add(CustomAssetMenuItem::new_type(NoItem)); }
+        if this.full_menu_item_list.len() == 0 { list.add(CustomAssetMenuItem3::new(NoItem)); }
         else {
             if let Some(index) = self.get_save_select_index(){
                 if this.selects[index].index == 0 {
@@ -627,6 +635,8 @@ impl CustomAssetMenuKind {
             }
         }
     }
+
+     */
     pub fn b_call(&self) {
         let reload_type =
             match self {
@@ -644,7 +654,7 @@ impl CustomAssetMenuKind {
                     return;
                 }
                 FaceSelection => {
-                    CustomAssetMenu::toggle_ui();
+                    // CustomAssetMenu::toggle_ui();
                     disable_key_help(KeyHelpButton::Minus);
                     UnitAssetMenuData::get().loaded_data.release_faces();
                     return;
@@ -666,24 +676,17 @@ impl CustomAssetMenuKind {
             };
        hub_room_set_by_result(None, reload_type );
     }
-    pub fn build_attribute(&self, emblem: bool) -> BasicMenuItemAttribute {
-        match self {
-            EngagedBody(_) => if !emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
-            ShopMount(_)|ShopAoc(_)|PresetAppearanceMenu(_) => if emblem { BasicMenuItemAttribute::Hide } else { BasicMenuItemAttribute::Enable },
-            _ => BasicMenuItemAttribute::Enable,
-        }
-    }
     pub fn key_help_update(&self, ui_hide: bool) {
         if UnitAssetMenuData::is_shop() { return; }
         let idx = self.to_index();
         if self.get_right().is_some() && self.get_left().is_some() { add_key_help(KeyHelpButton::LeftRight, "Change Page"); }
         else { disable_key_help(KeyHelpButton::LeftRight); }
-        if !ui_hide { add_key_help(KeyHelpButton::Plus, Mess::get("MID_ProfileCard_ShowStamp_Hide").to_string().as_str()); }
-        else { add_key_help(KeyHelpButton::Plus, Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str()); }
+        if !ui_hide { add_key_help(KeyHelpButton::Plus, engage_il2cpp::app::Mess::get("MID_ProfileCard_ShowStamp_Hide").to_string().as_str()); }
+        else { add_key_help(KeyHelpButton::Plus, engage_il2cpp::app::Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str()); }
 
         if UnitAssetMenuData::is_unit_info() {
             if ui_hide {
-                add_key_help(KeyHelpButton::Minus, Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str());
+                add_key_help(KeyHelpButton::Minus, engage_il2cpp::app::Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str());
                 if idx == 15 { disable_key_help(KeyHelpButton::Minus); }
             }
             else {
@@ -692,7 +695,7 @@ impl CustomAssetMenuKind {
                     add_key_help(KeyHelpButton::Minus, help);
                 }
                 else if idx == 15 || idx == 11 {
-                    add_key_help(KeyHelpButton::Minus, Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
+                    add_key_help(KeyHelpButton::Minus, engage_il2cpp::app::Mess::get("MID_MAINMENU_SAVEDATA_DELETE").to_string());
                 }
                 else { disable_key_help(KeyHelpButton::Minus); }
             }
@@ -700,7 +703,7 @@ impl CustomAssetMenuKind {
     }
 }
 impl CustomMenuItem for CustomAssetMenuKind {
-    fn get_icon(&self, _menu_item: &CustomAssetMenuItem) -> CustomMenuIcon {
+    fn get_icon(&self, _menu_item: CustomAssetMenuItem3) -> CustomMenuIcon {
         match self{
             MainShop|ProfileSelection => CustomMenuIcon::KeyItem,
             ProfileSettings => CustomMenuIcon::TimeCrystal,
@@ -722,7 +725,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
             EngagedBody(_) => { CustomMenuIcon::EngageCommon }
         }
     }
-    fn get_equipment_box_type(&self, _menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode {
+    fn get_equipment_box_type(&self, _menu_item: CustomAssetMenuItem3) -> EquipmentBoxMode {
         match self{
             Rig|ShopBody(_)|ClassBodySelection(_)|Hair|Head => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets),
             ShopAcc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
@@ -735,31 +738,32 @@ impl CustomMenuItem for CustomAssetMenuKind {
         }
     }
 
-    fn get_name(&self, menuitem: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_name(&self, menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
         match self {
             ProfileSettings => { MenuTextCommand::Settings.get() }
-            ShopBody(_)  => { Mess::get("MID_Hub_amiibo_Accessory_Trade") }
-            ClassBodySelection((_, _)) => { menuitem.name }
-            ShopAcc(_) => { Mess::get("MID_Hub_Mascot_Accessories_Parts") }
+            ShopBody(_)  => { engage_il2cpp::app::Mess::get("MID_Hub_amiibo_Accessory_Trade") }
+            ClassBodySelection((_, _)) => { IBasicMenuItemMethods::get_name(menuitem) }
+            ShopAcc(_) => { engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Parts") }
             VoiceSelection => { MenuTextCommand::Voice.get() }
-            Head => { Mess::get("MID_Hub_Mascot_Accessories_Head") }
+            Head => { engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Head") }
             _ => { self.get_menu_item_name().unwrap() }
         }
     }
-    fn get_detail_box_name(&self, _menu_item: &CustomAssetMenuItem) -> Option<&'static Il2CppString> {
+    fn get_detail_box_name(&self, _menu_item: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
         match self {
             ProfileSelection => { Some(get_current_profile_name()) }
             _ => { Some(self.get_name(_menu_item)) }
         }
     }
-    fn get_help(&self, _menuitem: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_help(&self, _menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
         let idx = self.get_help_index(true);
         MenuText::get_help(self.get_help_index(true)).unwrap_or(format!("Menu Help #{}", idx).into())
     }
-    fn get_body(&self, menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_body(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         match self {
-            // AnimPreview(_) => { "Anim Preview".into() }
-            LoadData => { menu_item.menu_kind.get_body(menu_item) }
+            LoadData => { 
+                menu_item.get_asset_menu().menu_kind().get_body(menu_item)
+            }
             ClassBodySelection((_, alt)) => {
                 let page = if *alt { 6 } else { 2 };
                 let count = if UnitAssetMenuData::get_flag() & 128 != 0 { 8 } else { 4 };
@@ -785,9 +789,9 @@ impl CustomMenuItem for CustomAssetMenuKind {
                     match kind {
                         1 => { MenuTextCommand::Class.get() }
                         2 => { MenuTextCommand::Engage.get() }
-                        3 => { Mess::get("MID_ProfileCard_Stamp_Others") }
+                        3 => { engage_il2cpp::app::Mess::get("MID_ProfileCard_Stamp_Others") }
                         4 => { "Added".into() }
-                        _ => { Mess::get("MID_ProfileCard_Stamp_Unit") }
+                        _ => { engage_il2cpp::app::Mess::get("MID_ProfileCard_Stamp_Unit") }
                     }.to_string();
                 if UnitAssetMenuData::get_flag() & 128 != 0 {
                     if UnitAssetMenuData::get_gender(*alt) == 2 { name.push_str(" (Female)"); }
@@ -799,7 +803,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
                 let db = get_outfit_data();
                 let mut body = format!("{} ({})",
                    MenuText::get_command(80 + *kind as i32),
-                   MenuTextCommand::get_gender(db.get_aoc_gender_hash(*kind as i32, menu_item.hash) == Some(engage_il2cpp::app::Gender::female()))
+                   MenuTextCommand::get_gender(db.get_aoc_gender_hash(*kind as i32, menu_item.value()) == Some(engage_il2cpp::app::Gender::female()))
                 );
                 body.push_str(&format!(" [{}/4]", *kind +1).as_str());
                 left_right_enclose(&body)
@@ -809,7 +813,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
                     left_right_enclose(&format!("{} ({})", MenuTextCommand::Data, MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2)))
                 }
                 else {
-                    if menu_item.padding & 1 != 0 { MenuTextCommand::Emblem.get() }
+                    if menu_item.value2() & 1 != 0 { MenuTextCommand::Emblem.get() }
                     else { MenuTextCommand::Units.get() }
                 }
             }
@@ -824,7 +828,7 @@ impl CustomMenuItem for CustomAssetMenuKind {
             Head => { make_body_asset_body_label(Head.get_name(menu_item), 2, 0) }
             Hair => { make_body_asset_body_label(Hair.get_name(menu_item), 2, 0) }
             HeadEdit|HairEdit => {
-                if menu_item.index < 7 { make_body_asset_body_label("Parameters".into(), 2, 1) }
+                if menu_item.get_index() < 7 { make_body_asset_body_label("Parameters".into(), 2, 1) }
                 else { "Parameters [2/2]".into() }
             }
             MainShop => "".into(),

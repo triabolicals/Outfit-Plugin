@@ -1,39 +1,42 @@
 use unity::prelude::*;
-use engage::{unit::*, gamedata::{assettable::*, item::ItemData, skill::*, *}};
-pub mod transform;
+use engage::{gamedata::{assettable::*, skill::*, *}};
+use engage_il2cpp::app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase};
+use engage_il2cpp::unity_engine::resource_management::async_operations::asyncoperationhandle_1::IAsyncOperationHandle_1Methods;
+use unity2::Cast;
+// pub mod transform;
 pub mod dress;
-
 use outfit_core::*;
 use outfit_core::room::CharacterEffect;
-use crate::enums::PIDS;
 
 #[skyline::hook(offset=0x1bb4180)]
 pub fn asset_table_setup_person_outfit(
-    this: &mut AssetTableResult,
+    this: AssetTable_Result,
     mode: i32,
-    person: Option<&PersonData>,
-    conditions: &mut Array<&'static Il2CppString>,
-    method_info: OptionalMethod) -> &'static mut AssetTableResult
+    person: engage_il2cpp::app::PersonData,
+    conditions: unity2::Array<unity2::Il2CppString>,
+    method_info: unity2::OptionalMethod) -> AssetTable_Result
 {
     let result = call_original!(this, mode, person, conditions, method_info);
     if is_tiki_engage(result) { return result;}
-    if let Some(v) = person.and_then(|p| UnitAssetMenuData::get_by_person_data(p.parent.hash, false)){
-        v.set_result(result, mode, false, false);
+    if !person.is_null() {
+        if let Some(v) = UnitAssetMenuData::get_by_person_data(person.hash(), false){
+            v.set_result(result, mode, false, false);
+        }
     }
     result
 }
 #[skyline::hook(offset=0x01bb2430)]
 pub fn asset_table_result_setup_hook_outfit(
-    this: &mut AssetTableResult,
+    this: AssetTable_Result,
     mode: i32,
-    unit: &mut Unit,
-    equipped: Option<&ItemData>,
-    conds: &mut Array<&'static Il2CppString>,
-    method_info: OptionalMethod
-) -> &'static mut AssetTableResult
+    unit: engage_il2cpp::app::Unit,
+    equipped: engage_il2cpp::app::ItemData,
+    conds: unity2::Array<unity2::Il2CppString>,
+    method_info: unity2::OptionalMethod
+) -> AssetTable_Result
 {
     let result = call_original!(this, mode, unit, equipped, conds, method_info);
-    let mut conditions = AssetConditions::new(None, mode, equipped);
+    let mut conditions = AssetConditions::new(unit, mode, equipped);
 
     dress::commit_for_unit_dress(result, mode, unit, equipped, conds, &mut conditions);
     result
@@ -41,53 +44,41 @@ pub fn asset_table_result_setup_hook_outfit(
 
 #[skyline::hook(offset=0x01bb2d80)]
 pub fn asset_table_result_god_setup_outfit(
-    this: &mut AssetTableResult,
+    this: AssetTable_Result,
     mode: i32,
-    god_data: Option<&GodData>,
+    god_data: engage_il2cpp::app::GodData,
     is_darkness: bool,
-    conditions: &mut Array<&'static Il2CppString>,
-    method_info: OptionalMethod
-) -> &'static mut AssetTableResult
+    conds: unity2::Array<unity2::Il2CppString>,
+    method_info: unity2::OptionalMethod
+) -> AssetTable_Result
 {
-    let result = call_original!(this, mode, god_data, is_darkness, conditions, method_info);
-    if let Some(god) = god_data {
+    let result = call_original!(this, mode, god_data, is_darkness, conds, method_info);
+    if !god_data.is_null() {
         let menu_data = UnitAssetMenuData::get();
         if menu_data.is_preview { menu_data.preview.preview_data.set_result(result, 2, is_darkness, false); }
-        else { UnitAssetMenuData::set_god_assets(result, mode, god, is_darkness); }
+        else { UnitAssetMenuData::set_god_assets(result, mode, god_data, is_darkness); }
     }
     result
 }
-pub fn unit_dress_gender(unit: &Unit) -> i32 {
-    if unit.person.pid.to_string() == PIDS[0] || unit.person.flag.value & 128 != 0 {  if unit.edit.is_enabled() { return unit.edit.gender; }  }
-    unit.person.get_dress_gender() as i32
+
+pub fn is_tiki_engage(this: AssetTable_Result) -> bool {
+    let dress = this.get_dress_model();
+    if !dress.is_null() { if dress.to_rust_string().contains("Tik1AT") { return true; } }
+    let dress = this.get_body_model();
+    if !dress.is_null() { if dress.to_rust_string().contains("Tik1AT") { return true;} }
+    false
 }
 
-pub fn is_sword_fighter_outfit(this: &mut AssetTableResult) -> bool {
-    if !this.dress_model.is_null() {
-        let dress_model = this.dress_model.to_string();
-        dress_model.contains("Swd0A") && !dress_model.contains("c251")
-    }
-    else if !this.body_model.is_null() {
-        let body_model = this.body_model.to_string();
-        body_model.contains("Swd0A")  && !body_model.contains("c251")
-    }
-    else { false }
-}
-
-pub fn is_tiki_engage(this: &mut AssetTableResult) -> bool {
-    if !this.dress_model.is_null() { this.dress_model.to_string().contains("Tik1AT") }
-    else if !this.body_model.is_null() { this.body_model.to_string().contains("Tik1AT") }
-    else { false }
-}
-
-pub fn is_monster_body(this: &mut AssetTableResult) -> bool {
-    if !this.dress_model.is_null() { this.dress_model.to_string().contains("T_c") }
-    else if !this.body_model.is_null() { this.body_model.to_string().contains("T_c") }
-    else { false }
+pub fn is_monster_body(this: AssetTable_Result) -> bool {
+    let dress = this.get_dress_model();
+    if !dress.is_null() { if dress.to_rust_string().contains("T_c") { return true; } }
+    let dress = this.get_body_model();
+    if !dress.is_null() { if dress.to_rust_string().contains("T_c") { return true;} }
+    false
 }
 
 #[unity::hook("Combat", "CharacterEffect", "CreateBreak")]
-pub fn create_break_effect_hook(this: &mut CharacterEffect, method_info: OptionalMethod) {
+pub fn create_break_effect_hook(this: &mut CharacterEffect, method_info: unity2::OptionalMethod) {
     call_original!(this, method_info);
     outfit_core::room::break_effect(this);
 }

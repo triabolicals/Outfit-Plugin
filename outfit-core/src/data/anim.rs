@@ -1,18 +1,16 @@
 use engage::{
     gamedata::{Gamedata, JobData, StructBaseFields},
     gamedata::assettable::*,
-    unit::{Gender, Unit}
 };
 use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, IAssetTableMethods, IAssetTable_Result, IAssetTable_ResultMethods, IGodDataMethods, IJobDataMethods, ISkillData, IStructBase, IStructData_1Methods, IUnitMethods};
 use engage_il2cpp::List_1Ext;
 use engage_il2cpp::system::collections::generic::IList_1Methods;
 use unity::{
-    get_generic_class,
     macro_context::Il2CppClassData,
     prelude::Il2CppString
 };
 use unity2::Cast;
-use crate::{get_condition_index, has_condition_index, il2str, Mount, StructTemplate, StructTemplateStaticFields};
+use crate::{get_condition_index, has_condition_index, il2str, Mount};
 use crate::assets::{new_asset_table_accessory};
 
 pub const ANIM_KIND: [&str; 11] = ["No1", "Sw1", "Lc1", "Ax1", "Bw1", "Dg1", "Mg1", "Rd1", "Ft1", "No2", "Mg2"];
@@ -60,11 +58,11 @@ impl JobAnimSet {
         }
         else {
             if let Some(body) = self.mode_1.as_ref() {
-                result.set_body_anim(body);
-                body_anims.add(body.into());
+                result.set_body_anim(body.as_str());
+                body_anims.add(body.as_str().into());
                 r = true;
             }
-            if let Some(ride) = self.mode_1r.as_ref() { result.set_ride_anim(ride); }
+            if let Some(ride) = self.mode_1r.as_ref() { result.set_ride_anim(ride.as_str()); }
             else { result.set_ride_anim(unity2::Il2CppString::null()); }
         }
         r
@@ -95,27 +93,25 @@ impl EngageAnim {
             else { Some(engage_il2cpp::app::SkillData::get(god_data.get_engage_attack_link())) };
 
         if let Some(linked) = linked{ sid_hash.extend(linked.m_style_skills().iter().map(|s| s.hash())); }
-
-        let asset = [get_condition_index(god_data.get_asset_id()).unwrap(), get_condition_index("エンゲージ技").unwrap()];
+        let asset = [get_condition_index(god_data.get_asset_id()), get_condition_index("エンゲージ技")];
         let male = get_condition_index("男装").unwrap();
         let female = get_condition_index("女装").unwrap();
         let search_list = engage_il2cpp::app::AssetTable::s_search_lists();
-
         let male_index =
         search_list.get(2).iter()
-            .find(|x| has_condition_index(*x, asset[0]) && has_condition_index(*x, asset[1]) && has_condition_index(*x, male))
+            .find(|x| asset[0].is_none_or(|v| has_condition_index(*x, v)) && asset[1].is_none_or(|v| has_condition_index(*x, v)) && has_condition_index(*x, male))
             .map(|x| x.index());
         let female_index =
         search_list.get(2).iter()
-            .find(|x| has_condition_index(*x, asset[0]) && has_condition_index(*x, asset[1]) && has_condition_index(*x, female))
+            .find(|x| asset[0].is_none_or(|v| has_condition_index(*x, v)) && asset[1].is_none_or(|v| has_condition_index(*x, v))  && has_condition_index(*x, female))
             .map(|x| x.index());
 
         Some(Self { sid_hash, male_index, female_index})
     }
     pub fn get(&self, gender: engage_il2cpp::app::Gender) -> Option<engage_il2cpp::app::AssetTable> {
-        match gender {
-            engage_il2cpp::app::Gender::male() => self.male_index.and_then(|v| engage_il2cpp::app::AssetTable::try_get_2(*v)),
-            engage_il2cpp::app::Gender::female() => self.female_index.and_then(|v| engage_il2cpp::app::AssetTable::try_get_2(*v)),
+        match gender.value {
+            1 => self.male_index.map(|v| engage_il2cpp::app::AssetTable::try_get_2(v)),
+            2 => self.female_index.map(|v| engage_il2cpp::app::AssetTable::try_get_2(v)),
             _ => None,
         }
     }
@@ -127,6 +123,7 @@ impl AnimData {
         let mut job_anims = Vec::with_capacity(JobData::get_count() as usize);
         let uas = files.extract_if(.., |(_, x)| x.contains("UAS_")).map(|(_, x)| x).collect::<Vec<_>>();
         let anim_str_list: Vec<String> = list.iter().map(|v| v.name.to_string()).collect();
+        /*
         if let Some(klass) = get_generic_class!(StructTemplate<AnimSetDB>).ok() {
             let sf = klass.get_static_fields_mut::<StructTemplateStaticFields>();
             for xx in ["Wng0E", "Wng1F", "Wng2D", "Cav0B", "Cav1B"] {
@@ -144,125 +141,129 @@ impl AnimData {
                         });
                 }
             }
-            let mut section = 0;
-            include_str!("../../data/anim.txt").lines()
-                .map(|l| l.split_whitespace().collect::<Vec<&str>>())
-                .filter(|l| !l.is_empty())
-                .for_each(|l| {
-                    if l.len() == 1 { if l[0] == "END" { section += 1; } }
-                    else {
-                        match section {
-                            /*
-                            0 => {  // New from 2 Sets
-                                if l.len() >= 2 {
-                                    if let Some(new) = create_anim_from_copy(l[0], l[1], l.get(2).map(|v| *v)){
-                                        new.parent.index = count;
-                                        sf.dictionary.key_list.add(new.parent.key);
-                                        sf.dictionary.index_key.add(new.parent.key, count);
-                                        list.add(new);
-                                        count += 1;
-                                    }
+            */
+        let mut section = 0;
+        include_str!("../../data/anim.txt").lines()
+            .map(|l| l.split_whitespace().collect::<Vec<&str>>())
+            .filter(|l| !l.is_empty())
+            .for_each(|l| {
+                if l.len() == 1 { if l[0] == "END" { section += 1; } } else {
+                    match section {
+                        /*
+                        0 => {  // New from 2 Sets
+                            if l.len() >= 2 {
+                                if let Some(new) = create_anim_from_copy(l[0], l[1], l.get(2).map(|v| *v)){
+                                    new.parent.index = count;
+                                    sf.dictionary.key_list.add(new.parent.key);
+                                    sf.dictionary.index_key.add(new.parent.key, count);
+                                    list.add(new);
+                                    count += 1;
                                 }
                             }
-                            1 => {  // New from Existing Set for Kinds
-                                if l.len() >= 3 {
-                                    let mut iter = l.iter();
-                                    let new_prefix = iter.next().unwrap();
-                                    let old_prefix = iter.next().unwrap();
-                                    while let Some(kind) = iter.next(){
-                                        anim_str_list.iter().filter(|x| x.starts_with(old_prefix) && x.contains(kind))
-                                            .for_each(|x|{
-                                                let new_anim = x.replace(old_prefix, new_prefix);
-                                                if let Some(new) = create_anim_from_copy(&new_anim, x, None){
-                                                    new.parent.index = count;
-                                                    sf.dictionary.key_list.add(new.parent.key);
-                                                    sf.dictionary.index_key.add(new.parent.key, count);
-                                                    list.add(new);
-                                                    count += 1;
+                        }
+                        1 => {  // New from Existing Set for Kinds
+                            if l.len() >= 3 {
+                                let mut iter = l.iter();
+                                let new_prefix = iter.next().unwrap();
+                                let old_prefix = iter.next().unwrap();
+                                while let Some(kind) = iter.next(){
+                                    anim_str_list.iter().filter(|x| x.starts_with(old_prefix) && x.contains(kind))
+                                        .for_each(|x|{
+                                            let new_anim = x.replace(old_prefix, new_prefix);
+                                            if let Some(new) = create_anim_from_copy(&new_anim, x, None){
+                                                new.parent.index = count;
+                                                sf.dictionary.key_list.add(new.parent.key);
+                                                sf.dictionary.index_key.add(new.parent.key, count);
+                                                list.add(new);
+                                                count += 1;
+                                            }
+                                        });
+                                }
+                            }
+                        }
+                         */
+                        2 => {
+                            let no_magic_tome = l.iter().any(|x| *x == "no_tome");
+                            let ride = l.iter().find(|x| x.starts_with("ride=")).map(|x| x.replace("ride=", "UAS_"));
+                            let mut iter = l.iter();
+                            if let Some(hashes) = iter.next()
+                                .map(|jid| if jid.contains(",") { jid.split(",").collect::<Vec<&str>>() } else { vec![*jid] })
+                                .map(|jids| jids.iter().flat_map(|jid| JobData::get(jid).map(|job| job.parent.hash)).collect::<Vec<i32>>())
+                                .filter(|x| x.len() > 0)
+                            {
+                                if let Some(arg) = iter.next() {
+                                    if arg.ends_with("*") {
+                                        let mount = Mount::from(arg);
+                                        for gender in [(engage_il2cpp::app::Gender::male(), "M"), (engage_il2cpp::app::Gender::female(), "F")] {
+                                            let search = arg.replace("*", gender.1);
+                                            let mode_1 = uas.iter().find(|x| x.contains(search.as_str()));
+                                            let set = arg.replace("*", gender.1);
+                                            if let Some(anim) = get_kind_anims(set.as_str(), &anim_str_list, false)
+                                                .or_else(|| get_kind_anims(set.as_str(), &anim_str_list, false))
+                                            {
+                                                let morph = get_kind_anims(set.as_str(), &anim_str_list, true);
+                                                hashes.iter().for_each(|&hash| {
+                                                    job_anims.push(JobAnimSet { hash, gender: gender.0, no_magic_tome, mount, anim: anim.clone(), mode_1: mode_1.cloned(), mode_1r: ride.clone(), morph: morph.clone() });
+                                                });
+                                            }
+                                        }
+                                    } else if arg.contains("#") && arg.len() == 6 && hashes.len() == 1 {
+                                        let uas1 = arg.replace("#", "1");
+                                        let mode_1 = uas.iter().find(|x| x.contains(uas1.as_str()));
+                                        let jid = JobData::try_get_hash(hashes[0]).map(|j| j.jid.to_string()).unwrap();
+                                        if let Some((mount, gender)) = Mount::determine_gender(arg) {
+                                            [("", "1"), ("下級", "0"), ("_E", "1")].iter().for_each(|x| {
+                                                if let Some(job) = JobData::get(format!("{}{}", jid, x.0).as_str()) {
+                                                    let hash = job.parent.hash;
+                                                    let mut anim_set = arg.replace("#", x.1);
+                                                    anim_set.push_str("-#");
+                                                    if let Some(anim) = get_kind_anims(anim_set.as_str(), &anim_str_list, false) {
+                                                        let morph = get_kind_anims(anim_set.as_str(), &anim_str_list, true);
+                                                        job_anims.push(JobAnimSet { hash, gender, no_magic_tome, mount, anim, mode_1: mode_1.cloned(), mode_1r: ride.clone(), morph });
+                                                    }
                                                 }
                                             });
-                                    }
-                                }
-                            }
-                             */
-                            2 => {
-                                let no_magic_tome = l.iter().any(|x| *x == "no_tome");
-                                let ride = l.iter().find(|x| x.starts_with("ride=")).map(|x| x.replace("ride=", "UAS_"));
-                                let mut iter = l.iter();
-                                if let Some(hashes) = iter.next()
-                                    .map(|jid| if jid.contains(",") { jid.split(",").collect::<Vec<&str>>() } else { vec![*jid] })
-                                    .map(|jids| jids.iter().flat_map(|jid| JobData::get(jid).map(|job| job.parent.hash)).collect::<Vec<i32>>())
-                                    .filter(|x| x.len() > 0)
-                                {
-                                    if let Some(arg) = iter.next() {
-                                        if arg.ends_with("*") {
-                                            let mount = Mount::from(arg);
-                                            for gender in [(engage_il2cpp::app::Gender::male(), "M"), (engage_il2cpp::app::Gender::female(),"F")]{
-                                                let search = arg.replace("*", gender.1);
-                                                let mode_1 = uas.iter().find(|x| x.contains(search.as_str()));
-                                                let set = arg.replace("*", gender.1);
-                                                if let Some(anim) = get_kind_anims(set.as_str(), &anim_str_list, false)
-                                                    .or_else(|| get_kind_anims(set.as_str(), &anim_str_list, false))
-                                                {
-                                                    let morph = get_kind_anims(set.as_str(), &anim_str_list, true);
-                                                    hashes.iter().for_each(|&hash|{
-                                                        job_anims.push(JobAnimSet { hash, gender: gender.0, no_magic_tome, mount, anim: anim.clone(), mode_1: mode_1.cloned(), mode_1r: ride.clone(), morph: morph.clone() });
-                                                    });
-                                                }
-                                            }
                                         }
-                                        else if arg.contains("#") && arg.len() == 6 && hashes.len() == 1 {
-                                            let uas1 = arg.replace("#", "1");
-                                            let mode_1 = uas.iter().find(|x| x.contains(uas1.as_str()));
-                                            let jid = JobData::try_get_hash(hashes[0]).map(|j| j.jid.to_string()).unwrap();
-                                            if let Some((mount, gender)) = Mount::determine_gender(arg){
-                                                [("", "1"), ("下級", "0"), ("_E", "1")].iter().for_each(|x| {
-                                                    if let Some(job) = JobData::get(format!("{}{}", jid, x.0).as_str()) {
-                                                        let hash = job.parent.hash;
-                                                        let mut anim_set = arg.replace("#", x.1);
-                                                        anim_set.push_str("-#");
-                                                        if let Some(anim) = get_kind_anims(anim_set.as_str(), &anim_str_list, false){
-                                                            let morph = get_kind_anims(anim_set.as_str(), &anim_str_list, true);
-                                                            job_anims.push(JobAnimSet { hash, gender, no_magic_tome, mount, anim, mode_1: mode_1.cloned(), mode_1r: ride.clone(), morph });
+                                    } else {
+                                        let mut search = arg.to_string();
+                                        if search.len() > 6 { search.truncate(6); }
+                                        let mode_1 = uas.iter().find(|x| x.contains(search.as_str()))
+                                            .or_else(|| {
+                                                if search.contains("1") { uas.iter().find(|x| x.contains(search.replace("1", "0").as_str())) } else if search.contains("0") { uas.iter().find(|x| x.contains(search.replace("0", "1").as_str())) } else { None }
+                                            });
+                                        if let Some((mount, gender)) = Mount::determine_gender(arg) {
+                                            let mut anim_search = arg.to_string();
+                                            if anim_search.len() == 6 { anim_search.push_str("-#"); }
+                                            if let Some(anim) = get_kind_anims(anim_search.as_str(), &anim_str_list, false) {
+                                                let morph = get_kind_anims(anim_search.as_str(), &anim_str_list, true);
+                                                hashes.iter().for_each(|&hash| {
+                                                    job_anims.push(
+                                                        JobAnimSet {
+                                                            hash,
+                                                            gender,
+                                                            no_magic_tome,
+                                                            mount,
+                                                            anim: anim.clone(),
+                                                            mode_1: mode_1.cloned(),
+                                                            mode_1r: ride.clone(),
+                                                            morph: morph.clone()
                                                         }
-                                                    }
+                                                    );
                                                 });
-                                            }
-                                        }
-                                        else  {
-                                            let mut search = arg.to_string();
-                                            if search.len() > 6 { search.truncate(6); }
-                                            let mode_1 = uas.iter().find(|x| x.contains(search.as_str()))
-                                                .or_else(||{
-                                                    if search.contains("1") { uas.iter().find(|x| x.contains(search.replace("1", "0").as_str())) }
-                                                    else if search.contains("0") { uas.iter().find(|x| x.contains(search.replace("0", "1").as_str())) }
-                                                    else { None }
-                                                });
-                                            if let Some((mount, gender)) = Mount::determine_gender(arg) {
-                                                let mut anim_search =  arg.to_string();
-                                                    if anim_search.len() == 6 { anim_search.push_str("-#"); }
-                                                if let Some(anim) = get_kind_anims(anim_search.as_str(), &anim_str_list, false){
-                                                    let morph = get_kind_anims(anim_search.as_str(), &anim_str_list, true);
-                                                    hashes.iter().for_each(|&hash| {
-                                                        job_anims.push(
-                                                            JobAnimSet {
-                                                                hash, gender, no_magic_tome, mount, anim: anim.clone(), mode_1: mode_1.cloned(), mode_1r: ride.clone(), morph: morph.clone() }
-                                                        );
-                                                    });
-                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-                            _ => {}
                         }
+                        _ => {}
                     }
-                });
-        }
+                    //  }
+                }
+            });
         let engage_atk_anim = engage_il2cpp::app::GodData::get_list().iter()
-            .filter(|x| !x.get_engage_attack().is_null() )
-            .flat_map(|x| EngageAnim::new(x)).collect::<Vec<_>>();
+        .filter( | x| ! x.get_engage_attack().is_null() )
+        .flat_map( | x| EngageAnim::new(x)).collect::<Vec<_ > > ();
 
         if let Some((dnc0af, male)) = AnimSetDB::get_mut("Dnc0AF-No1_c000_N").zip(AnimSetDB::get_mut("Dnc0AM-No1_c000_N")){
             dnc0af.atks[0] = Some("Enb0AF-No1_c000_Attack1".into());
@@ -270,7 +271,6 @@ impl AnimData {
                 if male.atks[x].is_none() { dnc0af.atks[x] = None; }
                 else if male.atks[x].is_some_and(|x| x.to_string() == "null") { dnc0af.atks[x] = Some("null".into()); }
             }
-
             for x in 0..male.other.len() {
                 if male.other[x].is_none() { dnc0af.other[x] = None; }
                 else if male.other[x].is_some_and(|x| x.to_string() == "null") { dnc0af.other[x] = Some("null".into()); }
@@ -512,17 +512,17 @@ impl AnimData {
         body_anim.clear();
         result.set_map_scale_all(if mount != Mount::None { 2.1 } else { 2.6 });
         result.set_map_scale_head(1.1);
-        body_anim.add(Self::add_uas_gen_str("UAS_oBody_A", dress_gender).into());
+        body_anim.add(Self::add_uas_gen_str("UAS_oBody_A", dress_gender));
         match mount {
             Mount::Pegasus | Mount::Wyvern | Mount::Griffin => {
-                body_anim.add(Self::add_uas_gen_str("UAS_oBody_F", dress_gender).into());
+                body_anim.add(Self::add_uas_gen_str("UAS_oBody_F", dress_gender));
                 result.set_map_scale_wing(if mount == Mount::Wyvern { 0.5 } else { 0.6 });
             }
             Mount::Cav | Mount::Wolf => {
-                body_anim.add(Self::add_uas_gen_str("UAS_oBody_B", dress_gender).into());
+                body_anim.add(Self::add_uas_gen_str("UAS_oBody_B", dress_gender));
                 result.set_map_scale_all(2.4);
             }
-            _ => { result.set_body_anim(Self::add_uas_gen_str("UAS_oBody_A", dress_gender).into()); }
+            _ => { result.set_body_anim(Self::add_uas_gen_str("UAS_oBody_A", dress_gender)); }
         }
         let ride_model = il2str(result.get_ride_model());
         if mount != Mount::None && ride_model.is_none_or(|ride| Mount::from(ride.as_str()) != mount){
@@ -548,16 +548,15 @@ impl AnimData {
         result.set_magic("RD_Dance");
         Self::remove(result, true, true);
         let body_anims = result.get_body_anims();
-        match dress_gender {
-            engage_il2cpp::app::Gender::female() => {
-                if body_anims.iter().find(|s|{ s.str_contains("AF-No1") && AnimSetDB::get(s.to_string().as_str()).is_some_and(|set| set.atks[0].is_some()) }).is_none() {
+        match dress_gender.value {
+            2 => {
+                if body_anims.iter().find(|s|{ s.to_rust_string().contains("AF-No1") && AnimSetDB::get(s.to_string().as_str()).is_some_and(|set| set.atks[0].is_some()) }).is_none() {
                     body_anims.add("Dnc0AF-No1_c000_N".into());
                     result.set_body_anim("Dnc0AF-No1_c000_N");
                 }
             }
-            engage_il2cpp::app::Gender::male() => { body_anims.add("Dnc0AM-No1_c000_N".into()); }
-            engage_il2cpp::app::Gender::Other => { body_anims.add("Ent0AT-Ft3_c000_N".into()); }
-            _ => {}
+            1 => { body_anims.add("Dnc0AM-No1_c000_N".into()); }
+            _ => { body_anims.add("Ent0AT-Ft3_c000_N".into()); }
         }
     }
     pub fn set_vision_anims(&self, result: AssetTable_Result, dress_gender: engage_il2cpp::app::Gender, mode: i32) {
@@ -603,12 +602,17 @@ impl AnimData {
         }
         else { body_anims.add(if gender == engage_il2cpp::app::Gender::male() { "Sds0AM-No2_c049_N" } else { "Sds0AF-No2_c099_N" }.into()); }
     }
-    pub fn add_uas_gen_str(set: &str, gender: engage_il2cpp::app::Gender) -> &'static Il2CppString {
+    pub fn add_uas_gen_str(set: &str, gender: engage_il2cpp::app::Gender) -> unity2::Il2CppString {
         let mut s = set.to_string();
         s.push( if gender == engage_il2cpp::app::Gender::male() { 'M' } else { 'F' });
         s.into()
     }
-    pub fn adjust_engage_atk(result: &mut AssetTableResult, gender: engage_il2cpp::app::Gender) {
+    pub fn adjust_engage_atk(result: AssetTable_Result, gender: engage_il2cpp::app::Gender) {
+        /*
+        let body_anims = result.get_body_anims();
+        body_anims.iter().for_each(|anim| {
+
+        })
         result.body_anims.iter_mut()
             .filter(|x| AnimSetDB::get(x.to_string().as_str()).is_some_and(|x| x.other[25].is_some_and(|x| x.to_string() == "=")))
             .for_each(|x| {
@@ -616,6 +620,8 @@ impl AnimData {
                 if anim.contains("F-") && gender == engage_il2cpp::app::Gender::male() { *x = anim.replace("F-", "M-").into() }
                 else if anim.contains("M-") && gender == engage_il2cpp::app::Gender::female() { *x = anim.replace("M-", "F-").into() }
             });
+
+         */
     }
 }
 fn create_anim_from_copy<S: AsRef<str>>(new_anim_name: S, copy_anim_name_1: S, copy_anim_name_2: Option<S>) -> Option<&'static mut AnimSetDB> {

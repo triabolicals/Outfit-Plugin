@@ -1,4 +1,4 @@
-use engage::{gamemessage::GameMessage, mess::Mess};
+use engage_il2cpp::app::IBasicMenuItemMethods;
 use crate::{LoadResult, UnitAssetMenuData, localize::MenuText};
 use super::*;
 #[derive(PartialEq, Copy, Clone)]
@@ -9,27 +9,27 @@ pub enum AssetDataMode {
 }
 
 impl CustomMenuItem for AssetDataMode {
-    fn get_icon(&self, _menu_item: &CustomAssetMenuItem) -> CustomMenuIcon { CustomMenuIcon::Satchel }
-    fn get_equipment_box_type(&self, _menu_item: &CustomAssetMenuItem) -> EquipmentBoxMode { EquipmentBoxMode::CurrentProfile }
-    fn get_name(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_icon(&self, _: CustomAssetMenuItem3) -> CustomMenuIcon { CustomMenuIcon::Satchel }
+    fn get_equipment_box_type(&self, _: CustomAssetMenuItem3) -> EquipmentBoxMode { EquipmentBoxMode::CurrentProfile }
+    fn get_name(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         self.get_detail_box_name(_menu_item).unwrap()
     }
-    fn get_detail_box_name(&self, _menu_item: &CustomAssetMenuItem) -> Option<&'static Il2CppString> {
+    fn get_detail_box_name(&self, _menu_item: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
         match self {
-            Self::Import => Some(Mess::get("MID_SAVEDATA_LOAD_YES")),
-            Self::Export => Some(Mess::get("MID_SAVEDATA_SAVE_TITLE")),
-            Self::ExportPreview => Some(format!("{} [Preview]", Mess::get("MID_SAVEDATA_SAVE_TITLE")).into())
+            Self::Import => Some(engage_il2cpp::app::Mess::get("MID_SAVEDATA_LOAD_YES")),
+            Self::Export => Some(engage_il2cpp::app::Mess::get("MID_SAVEDATA_SAVE_TITLE")),
+            Self::ExportPreview => Some(format!("{} [Preview]", engage_il2cpp::app::Mess::get("MID_SAVEDATA_SAVE_TITLE")).into())
         }
     }
-    fn get_help(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString {
+    fn get_help(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         match self {
             Self::Export => MenuText::get_help(5).unwrap(),
             Self::Import => MenuText::get_help(6).unwrap(),
             Self::ExportPreview => MenuText::get_help(9).unwrap(),
         }
     }
-    fn get_body(&self, _menu_item: &CustomAssetMenuItem) -> &'static Il2CppString { "Data".into() }
-    fn a_call(&self, menu_item: &mut CustomAssetMenuItem) -> BasicMenuResult {
+    fn get_body(&self, _menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString { "Data".into() }
+    fn a_call(&self, menu_item: CustomAssetMenuItem3) -> BasicMenu_Result {
         match self {
             Self::Import => {
                 let gender =
@@ -38,21 +38,17 @@ impl CustomMenuItem for AssetDataMode {
                     else { engage_il2cpp::app::Gender::male() };
                 match UnitAssetMenuData::get().loaded_data.load_files(gender){
                     LoadResult::Success => {
-                        menu_item.menu.kind = 1;
-                        menu_item.menu.full_menu_item_list.clear();
-                        menu_item.menu.save_current_select();
-                        menu_item.menu.menu_kind = LoadData;
-                        LoadData.create_menu_items(menu_item.menu);
-                        menu_item.menu.rebuild_menu();
-                        BasicMenuResult::se_decide()
+                        let menu = menu_item.get_asset_menu();
+                        menu.rebuild_menu(LoadData, true);
+                        BasicMenu_Result::se_decide()
                     }
                     LoadResult::NoFiles => {
-                        GameMessage::create_key_wait(menu_item.menu, format!("No valid data found in\n{}", crate::INPUT_DIR).as_str());
-                        BasicMenuResult::se_miss()
+                        engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(), format!("No valid data found in\n{}", crate::INPUT_DIR));
+                        BasicMenu_Result::se_miss()
                     }
                     LoadResult::MissingDirectory => {
-                        GameMessage::create_key_wait(menu_item.menu, format!("Missing input directory:\n{}", crate::INPUT_DIR).as_str());
-                        BasicMenuResult::se_miss()
+                        engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(), format!("Missing input directory:\n{}", crate::INPUT_DIR).as_str());
+                        BasicMenu_Result::se_miss()
                     }
                 }
             }
@@ -61,15 +57,15 @@ impl CustomMenuItem for AssetDataMode {
         }
     }
 }
-fn output(menu_item: &mut CustomAssetMenuItem, preview: bool) -> BasicMenuResult {
+fn output(menu_item: CustomAssetMenuItem3, preview: bool) -> BasicMenu_Result {
     let (filename, data, saved) = crate::output_unit_result(preview);
     if saved {
-        GameMessage::create_key_wait(menu_item.menu, format!("Saved\nResult: {}\nData: {}",filename, data).as_str());
-        BasicMenuResult::se_cursor()
+        engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(), format!("Saved\nResult: {}\nData: {}",filename, data).as_str());
+        BasicMenu_Result::se_cursor()
     }
     else {
-        GameMessage::create_key_wait(menu_item.menu, "Failed to export data/result.") ;
-        BasicMenuResult::se_miss()
+        engage_il2cpp::app::GameMessage::create_key_wait(menu_item.get_menu(),"Failed to export data/result.") ;
+        BasicMenu_Result::se_miss()
     }
 }
 

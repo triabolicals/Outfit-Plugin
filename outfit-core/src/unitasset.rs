@@ -2,20 +2,24 @@ use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
     unit::*,
     gamedata::{Gamedata, PersonData},
-    gameuserdata::GameUserData, sortie::SortieSelectionUnitManager,
-    util::try_get_instance,
 };
 use engage_il2cpp::{
-    app::{AssetTable_Modes, AssetTable_Result, IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_ConditionIndexesMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGameUserDataMethods, IPersonDataMethods, ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods},
+    app::{
+        AssetTable_Modes, AssetTable_Result,
+        IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods,
+        IAssetTable_ConditionIndexesMethods, IAssetTable_Result, IAssetTable_ResultMethods,
+        IBitField32, IGameUserDataMethods, IPersonDataMethods, ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods
+    },
     List_1Ext,
     system::collections::generic::IList_1
 };
+use engage_il2cpp::app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager};
 use unity2::Cast;
 pub use crate::playerdata::*;
 use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
     room::hub_room_set_by_result,
     unitselect::{UnitSelect, UnitSelectList}
-}, anim::AnimData, room::ReloadType, get_result_color_u8, set_result_scale_u16, set_color_by_u8_slice, set_color_by_i32, il2str, get_result_scale_u16, try_get_il2cpp_hash, try_find_accessory_model};
+}, anim::AnimData, room::ReloadType, get_result_color_u8, set_result_scale_u16, set_color_by_u8_slice, set_color_by_i32, il2str, get_result_scale_u16, try_get_il2cpp_hash};
 
 mod load;
 pub use load::*;
@@ -165,14 +169,26 @@ impl UnitAssetMenuData {
         if !alt { gender } else if gender == 2 { 1 } else { 2 }
     }
     pub fn get() -> &'static mut UnitAssetMenuData { unsafe { &mut UNIT_ASSET } }
-    pub fn get_unit() -> Option<&'static mut Unit> {
-        if Self::is_shop(){ PersonData::try_get_hash(Self::get().preview.person).and_then(|p| UnitPool::get_from_person(p, false)) }
+    pub fn get_unit() -> Option<engage_il2cpp::app::Unit>{
+        if Self::is_shop() {
+            let person = engage_il2cpp::app::PersonData::try_get_from_hash(Self::get().preview.person);
+            if !person.is_null() {
+                let unit = engage_il2cpp::app::UnitPool::get_from_person(person, false);
+                if !unit.is_null() { Some(unit) } else { None }
+            }
+            else { None }
+        }
         else {
-            if GameUserData::get_sequence() != 3 {
-                if try_get_instance::<SortieSelectionUnitManager>().is_some_and(|v| v.unit.is_some()) { Some(SortieSelectionUnitManager::get_unit()) }
+            let map_mind = engage_il2cpp::app::MapMind::get_instance();
+            if !map_mind.is_null() { Some(map_mind.get_unit()) }
+            else{
+                let sortie = engage_il2cpp::app::SortieSelectionUnitManager::get_instance();
+                if !sortie.is_null() {
+                    let unit = sortie.m_unit();
+                    if !unit.is_null() { Some(unit) } else { None }
+                }
                 else { None }
             }
-            else { engage::map::mind::MapMind::get_unit() }
         }
     }
     pub fn get_current_profile(hash: i32) -> Option<&'static PlayerOutfitData> {
@@ -287,13 +303,19 @@ impl UnitAssetMenuData {
                     else { if person_data.get_gender().value == 2 { 2 } else { 1 } };
             }
         }
-        else if let Some(god) =  engage_il2cpp::app::GodData::try_get_from_hash(person) {
-            menu.god_mode = true;
-            gender =
-                if god.is_hero() { UnitPool::get_hero(false).map(|u| unit_dress_gender(u)).unwrap_or(god.female + 1) }
-                else { god.female + 1 };
+        else {
+            let god = engage_il2cpp::app::GodData::try_get_from_hash(person);
+            if !god.is_null() {
+                let female = god.get_female() as i32;
+                menu.god_mode = true;
+                gender = 
+                    if god.is_hero() { 
+                        let hero = engage_il2cpp::app::UnitPool::get_hero(false);
+                        unit_dress_gender(hero)
+                    } else { female + 1 };
+            }
+            else { return false; }
         }
-        else { return false; }
         let s = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
         if photo {
             if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == person).cloned(){ menu.preview.preview_data = data; }
@@ -623,7 +645,7 @@ impl UnitAssetMenuData {
                     }
                     if let Some(rig) = try_get_il2cpp_hash(e.get_body_model()).filter(|g| db.hashes.rigs.contains_key(g)) { menu.original_assets[15] = rig; }
                 }
-                if let Some((ride, hash)) = il2str(e.get_ride_dress_model()).zip(try_get_il2cpp_hash(e.get_ride_dress_model())){
+                if let Some(ride) = il2str(e.get_ride_dress_model()){
                     let mount = Mount::from(ride.as_str()) as i32 - 1;
                     if menu.original_assets[16] < 0 && mount >= 0 { menu.original_assets[16] = mount; }
                 }

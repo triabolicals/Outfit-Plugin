@@ -42,7 +42,7 @@ bitflags! {
     }
 }
 impl AssetItemFlags {
-    pub fn modify_name(&self, value: &String, count: i32) -> &'static Il2CppString {
+    pub fn modify_name(&self, value: &String, count: i32) -> unity2::Il2CppString {
         let mut s = value.clone();
         s = capitalize_first(s.as_str());
         if self.contains(AssetItemFlags::Male) { add_str(&mut s, "M"); }
@@ -64,12 +64,12 @@ impl AssetItemFlags {
         }
         if count > 0 { add_str(&mut s, (count+1).to_string()); }
         if self.contains(AssetItemFlags::Morph) {
-            Mess::set_argument(0, s);
-            Mess::get("MPID_Morph_Prefix")
+            engage_il2cpp::app::Mess::set_argument_2(0, s);
+            engage_il2cpp::app::Mess::get("MPID_Morph_Prefix")
         }
         else if self.contains(AssetItemFlags::God) {
-            Mess::set_argument(0, s);
-            Mess::get("MPID_God_Prefix")
+            engage_il2cpp::app::Mess::set_argument_2(0, s);
+            engage_il2cpp::app::Mess::get("MPID_God_Prefix")
         }
         else { s.into() }
     }
@@ -91,7 +91,7 @@ impl OtherAssetItem {
 
         Some(Self{ label, female, is_mess, asset })
     }
-    pub fn get_name(&self, labels: &AssetLabelTable, body_first: bool) -> &'static Il2CppString {
+    pub fn get_name(&self, labels: &AssetLabelTable, body_first: bool) -> unity2::Il2CppString {
         if self.is_mess { self.asset.get_name(self.label.as_str()) }
         else {
             let s1 = labels.get_suffix_name(self.label.as_str());
@@ -118,7 +118,7 @@ impl AssetLabel {
             flag: AssetItemFlags::from_bits(flags).unwrap_or(AssetItemFlags::empty()),
         }
     }
-    pub fn get(&self) -> &'static Il2CppString {
+    pub fn get(&self) -> unity2::Il2CppString {
         if self.is_mess { self.flag.modify_name(&Mess::get(self.label.as_str()).to_string(), 0)  }
         else { self.flag.modify_name(&self.label, 0) }
     }
@@ -160,7 +160,7 @@ impl AssetItem {
         let flags = AssetItemFlags::from_bits(flags)?;
         Some(Self { hash, count: 0, kind, flags, })
     }
-    pub fn get_name(&self, mid: impl AsRef<str>) -> &'static Il2CppString {
+    pub fn get_name(&self, mid: impl AsRef<str>) -> unity2::Il2CppString {
         let label =
             if self.flags.contains(AssetItemFlags::AccessoryShop) || self.flags.contains(AssetItemFlags::MAID) { format!("MAID_{}", mid.as_ref()) }
             else if self.flags.contains(AssetItemFlags::MPID) { format!("MPID_{}", mid.as_ref()) }
