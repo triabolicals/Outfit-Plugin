@@ -7,20 +7,76 @@ pub use engage::{
 	unityengine::*,
 	util::{get_instance, try_get_instance},
 };
-use engage_il2cpp::app::IUnitMethods;
-use engage::{proc::ProcInst};
+use engage_il2cpp::{
+	app::{
+		BasicMenuItem_Attribute,
+		IUnitMethods, IPersonDataMethods,
+		ISingletonProcInst_1Methods, ISingletonMonoBehaviourList_1Methods,
+		accessoryshopchangemenu::*,
+		AccessoryDetailInfoWindow,
+		AccessoryEquipmentInfo,
+		AccessoryShopChangeMenuContent,
+		AccessoryShopChangeRoot,
+		BasicMenuContent,
+		BasicMenu_Result,
+		IAccessoryShopChangeRoot,
+		IBasicMenuMethods,
+		IBasicMenuSelectMethods,
+		IGameUserDataMethods,
+		IProcInstMethods,
+		ISingletonClass_1Methods,
+		ISortieSequenceUnitSelect,
+		ResourceManager_2,
+		IUnitInfo,
+		IUnitInfo_Window,
+		IUnitInfoWindowCharaModel,
+		UnitInfoCharaImageMaskOffset,
+		IUnitInfoCharaImageMaskOffset,
+		IUnitInfoCharaImageMaskOffsetMethods,
+		UnitInfo_Side,
+		BackgroundManager,
+		UnitInfo,
+		ISortieSequenceUnitSelectMethods,
+		ISortieSelectionUnitManager,
+		UnitSelectMenu,
+		IUnitSelectMenuMethods,
+		IBasicMenuItemMethods,
+		IBasicMenuItem,
+		SortieSelectionUnitManager,
+		IMapMindMethods,
+		IBasicMenu,
+		AssetTable_Result,
+		IAssetTable_ResultMethods,
+		IStructData_1Methods,
+		IStructBase,
+		SortieUtil,
+		IAssetTable_Result,
+		IPad
+	},
+	List_1Ext,
+	nn::hid::NpadButton,
+	prelude::List_1,
+	system::{
+		collections::generic::IList_1Methods,
+		self,
+		IObjectMethods
+	},
+	tm_pro::ITMP_TextMethods,
+	unity_engine::{
+		IAnimatorMethods,
+		IComponentMethods,
+		IGameObjectMethods,
+		IMaterialMethods,
+		IObject_2,
+		IRectTransformMethods,
+		IRenderTextureMethods,
+		ITransformMethods,
+		RectTransform
+	}
+};
 use engage::gamesound::GameSound;
 use engage::titlebar::TitleBar;
-use engage::tmpro::TextMeshProUGUI;
-use engage_il2cpp::app::{ISingletonProcInst_1Methods, ISingletonMonoBehaviourList_1Methods, accessoryshopchangemenu::*, AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, AccessoryShopChangeRoot, BasicMenuContent, BasicMenu_Result, IAccessoryShopChangeRoot, IBasicMenuMethods, IBasicMenuSelectMethods, IGameUserDataMethods, IProcInstMethods, ISingletonClass_1Methods, ISortieSequenceUnitSelect, ResourceManager_2, IUnitInfo, IUnitInfo_Window, IUnitInfoWindowCharaModel, UnitInfoCharaImageMaskOffset, IUnitInfoCharaImageMaskOffset, IUnitInfoCharaImageMaskOffsetMethods, UnitInfo_Side, BackgroundManager, UnitInfo, ISortieSequenceUnitSelectMethods, ISortieSelectionUnitManager, UnitSelectMenu, IUnitSelectMenuMethods, IBasicMenuItemMethods, IBasicMenuItem, SortieSelectionUnitManager, IMapMindMethods, IBasicMenu, AssetTable_Result, IAssetTable_ResultMethods, IStructData_1Methods, IStructBase, SortieUtil, IAssetTable_Result, IPad};
-use engage_il2cpp::{system, List_1Ext};
-use engage_il2cpp::nn::hid::NpadButton;
-use engage_il2cpp::prelude::List_1;
-use engage_il2cpp::system::collections::generic::IList_1Methods;
-use engage_il2cpp::system::IObjectMethods;
-use engage_il2cpp::tm_pro::ITMP_TextMethods;
-use engage_il2cpp::unity_engine::{IAnimatorMethods, IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods};
-use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull};
+use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull, SystemType};
 use unity::prelude::*;
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
@@ -48,10 +104,25 @@ pub struct CustomAssetMenu {
 	pub next_menu_kind_v: i32,
 	pub pause: bool,
 }
-
-// impl IBasicMenu for CustomAssetMenu {}
-// impl IAccessoryShopChangeMenuMethods for CustomAssetMenu {}
 impl CustomAssetMenu {
+	pub fn set_vtable(self) {
+		let klass = self.get_class().raw_mut();
+		let vtable = klass.get_vtable_mut();
+		vtable[10].method_ptr = Self::on_dispose as _;
+		vtable[24].method_ptr = Self::on_build as _;
+		vtable[39].method_ptr = Self::tick_input as _;
+		vtable[42].method_ptr = Self::key_left as _;
+		vtable[43].method_ptr = Self::key_right as _;
+		vtable[51].method_ptr = Self::b_call as _;
+		vtable[56].method_ptr = Self::plus_call as _;
+	}
+	pub fn get_menu_item_kind(self) -> CustomAssetMenuItemKind {
+		let item = self.get_menu_item(self.m_select_index());
+		if !item.is_null() {
+			unsafe { item.cast::<CustomAssetMenuItem3>().menu_item_kind()}
+		}
+		else { CustomAssetMenuItemKind::NoItem }
+	}
 	pub fn menu_kind(self) -> CustomAssetMenuKind { CustomAssetMenuKind::from_index(self.menu_kind_v()) }
 	pub fn set_menu_kind(self, menu_kind_v: CustomAssetMenuKind)  { self.set_menu_kind_v(menu_kind_v.to_index()); }
 	pub fn next(self) -> Option<CustomAssetMenuKind> {
@@ -65,36 +136,39 @@ impl CustomAssetMenu {
 	pub fn create_bind_unit_info(proc: impl Into<engage_il2cpp::app::ProcInst>, unit: engage_il2cpp::app::Unit){
 		let menu_data = UnitAssetMenuData::get();
 		if let Some(root) = Self::get_root() {
-			let content = root.get_component_2::<AccessoryShopChangeMenuContent>();
+			let content: AccessoryShopChangeMenuContent = unsafe { root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() };
 			if content.is_null() { return; }
+			let equipment = root.get_component_in_children_3::<AccessoryEquipmentInfo>();
+			let detail_box = root.get_component_in_children_3::<AccessoryDetailInfoWindow>();
+			menu_data.is_preview = true;
+			menu_data.mode = MenuMode::UnitInfo;
 			UnitAssetMenuData::set_unit(unit);
 			let menu = Self::new(content);
-
-			if !root.m_accessory_detail_info_window().is_null() { menu.set_detail_box(root.m_accessory_detail_info_window()); }
-			if !root.m_unit_name().is_null() { menu.set_unit_name(root.m_unit_name()); }
+			let x_max = menu.m_menu_content().get_transform().get_position().x - 280.0;
+			let mut x_min = 320.0;
+			if !equipment.is_null() {
+				let rect = equipment.get_component_2::<RectTransform>();
+				x_min = rect.get_size_delta().x + rect.get_position().x + 100.0;
+				menu.set_equipment(equipment);
+				build_equipment_window(equipment, false);
+			}
+			if !detail_box.is_null() { menu.set_detail_box(detail_box); }
+			let name = root.m_unit_name();
+			if !name.is_null() {
+				name.set_text_2(unit.get_name(), true);
+				menu.set_unit_name(name);
+			}
 			BackgroundManager::bind_2();
 			let descs = menu.create_default_desc();
 			menu.create_bind(proc, descs, "OutfitMenu");
-			menu_data.is_preview = true;
-			menu_data.mode = MenuMode::UnitInfo;
-			let mut x_min = 400.0;
-			let x_max = content.get_transform().get_position().x - 280.0;
-			let equipment = root.m_accessory_equipment_info_window();
-			if !equipment.is_null() {
-				x_min = equipment.get_transform().get_position().x;
-				menu.set_equipment(equipment);
-				// Build Equipment Box Here
-			}
+			menu_data.control.initialize(MenuMode::UnitInfo);
 			UnitInfo::chara_only_on(false);
-
+			if engage_il2cpp::app::GameUserData::get_instance().get_sequence().value != 3 { engage_il2cpp::app::UnitStatus::close(); }
 			let sortie: engage_il2cpp::app::SortieSequenceUnitSelect = engage_il2cpp::app::SortieSequenceUnitSelect::get_instance();
-			if !sortie.is_null() { sortie.m_window().get_game_object().set_active(false); }
-
-			if engage_il2cpp::app::GameUserData::get_instance().get_sequence().value != 3 {
-				engage_il2cpp::app::UnitStatus::close();
-			}
+			if !sortie.is_null() { sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(false); }
 			let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
-			UnitInfoCharaImageMaskOffset::get_instance().iter().for_each(|mask|{
+			start_key_help(OutfitMenuKind::UnitInfo);
+			UnitInfoCharaImageMaskOffset::get_instance().iter().for_each(|mask| {
 				if mask.m_texture().equals(render_texture) && mask.is_visible() {
 					let mut pos = mask.m_rect_transform().get_position();
 					if menu_data.menu_adj == 0.0 { menu_data.menu_adj = pos.x; }
@@ -103,7 +177,32 @@ impl CustomAssetMenu {
 					mask.m_rect_transform().set_position(pos);
 				}
 			});
-			menu_data.control.initialize(MenuMode::UnitInfo);
+		}
+	}
+	pub fn create_photo_graph_bind(proc: impl Into<engage_il2cpp::app::ProcInst>) {
+		let menu_data = UnitAssetMenuData::get();
+		UnitAssetMenuData::init_photo_profiles();
+		if let Some(root) = Self::get_root() {
+			let content =  root.get_component_in_children_3::<AccessoryShopChangeMenuContent>();
+			if content.is_null() { return; }
+			let equipment = root.get_component_in_children_3::<AccessoryEquipmentInfo>();
+			let detail_box = root.get_component_in_children_3::<AccessoryDetailInfoWindow>();
+			if !equipment.is_null() {
+				let go = equipment.get_game_object();
+				engage_il2cpp::unity_engine::Object_2::destroy_2(go);
+			}
+			if !detail_box.is_null() {
+				let go = detail_box.get_game_object();
+				engage_il2cpp::unity_engine::Object_2::destroy_2(go);
+			}
+			let menu = Self::new(content);
+			menu_data.mode = MenuMode::PhotoGraph;
+			menu_data.is_preview = true;
+			menu_data.is_shop_combat = false;
+			let descs = menu.create_default_desc();
+			menu_data.control.initialize(MenuMode::PhotoGraph);
+			start_key_help(OutfitMenuKind::Photo);
+			menu.create_bind(proc, descs, "OutfitPhotographMenu");
 		}
 	}
 	pub fn get_root() -> Option<AccessoryShopChangeRoot> {
@@ -112,13 +211,15 @@ impl CustomAssetMenu {
 		let canvas = BasicMenuContent::get_canvas();
 		let obj = ResourceManager_2::instantiate_2("UI/Hub/Shop/Prefabs/ShopAccChangeRoot", canvas.get_transform());
 		if !obj.is_null() {
-			let obj = obj.get_component::<AccessoryShopChangeRoot>();
-			if !obj.is_null() { Some(obj) } else { None }
+			let obj: AccessoryShopChangeRoot = obj.get_component_in_children_3();
+			if !obj.is_null() { Some(obj) }
+			else { None }
 		}
 		else { None }
 	}
 	pub fn new(menu_content: AccessoryShopChangeMenuContent) -> Self {
 		let menu = Self::instantiate().unwrap();
+		menu.set_vtable();
 		let items = List_1::<engage_il2cpp::app::BasicMenuItem>::new();
 		MainShop.add_menu_items(items);
 		IBasicMenuMethods::ctor(menu, items, menu_content);
@@ -128,6 +229,8 @@ impl CustomAssetMenu {
 		menu.set_menu_kind(MainShop);
 		menu.set_next(None);
 		menu.set_pause(false);
+		menu.set_m_reserved_show_row_num(12);
+		menu.set_m_show_row_num(12);
 		menu
 	}
 	pub fn save_select(self) {
@@ -143,6 +246,7 @@ impl CustomAssetMenu {
 		let items = self.m_full_menu_item_list();
 		items.clear();
 		menu.add_menu_items(items);
+
 		if save_select { self.save_select(); }
 		else {
 			self.m_selects().iter()
@@ -160,11 +264,11 @@ impl CustomAssetMenu {
 				s.set_index(0);
 				s
 			});
-		self.rebuild_instant_2(select);
-		engage_il2cpp::app::IBasicMenuMethods::after_build(self);
-		self.restore_select(select);
-		// Post Build Menu Kind
 		self.set_menu_kind(menu);
+		self.rebuild_instant_2(select);
+		IBasicMenuMethods::after_build(self);
+		self.restore_select(select);
+		if menu == FaceSelection { self.toggle_ui(); }
 	}
 	pub fn toggle_ui(self) {
 		if !self.unit_name().is_null() { Self::toggle_animator_open_close_state(self.unit_name().get_game_object()); }
@@ -207,10 +311,65 @@ impl CustomAssetMenu {
 		result.set_body_anim(result.m_hub_anim());
 		hub_room_set_by_result(Some(result), ReloadType::All);
 		EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets).update();
-		if !self.unit_name().is_null() {
-			self.unit_name().set_text(next.get_name());
-		}
+		if !self.unit_name().is_null() { self.unit_name().set_text(next.get_name()); }
 		GameSound::post_event("Chara_Change", None);
+	}
+	pub fn tick_input(self) -> bool {
+		let left = engage_il2cpp::app::Pad::is_trigger(NpadButton::left());
+		let right = engage_il2cpp::app::Pad::is_trigger(NpadButton::right());
+		let unit_info = UnitAssetMenuData::is_unit_info();
+		if (left || right) && left != right {
+			if self.pause() {    // add facial
+				hub_room_set_by_result(None, ReloadType::Facial(right));
+				GameSound::post_event("Category_Change", None);
+			}
+		}
+		let menu = UnitAssetMenuData::get();
+		if !UnitAssetMenuData::is_shop() {
+			let menu_item_index = self.get_menu_item_kind().to_index();
+			let rgb = menu_item_index >= 100 && menu_item_index < 120;
+			let stick = model_camera_control(rgb);
+			let trigger = engage_il2cpp::app::Pad::is_trigger(NpadButton::plus());
+			let menu_kind = self.menu_kind();
+			if self.pause() {
+				if engage_il2cpp::app::Pad::is_trigger(NpadButton::minus()) && unit_info {
+					crate::capture::capture_unit_info(self, false, false);
+				}
+				if trigger {
+					self.m_menu_content().get_game_object().set_active(true);
+					self.toggle_ui();
+					self.set_pause(false);
+					TitleBar::show_header();
+					menu_kind.key_help_update(false);
+				} else if engage_il2cpp::app::Pad::is_trigger(NpadButton::x()) {
+					let title = TitleBar::get_instance();
+					if title.is_show_header { TitleBar::hide_header(); } else { TitleBar::show_header(); }
+				}
+				return true;
+			}
+			else if engage_il2cpp::app::Pad::is_trigger(NpadButton::plus()) {
+				self.toggle_ui();
+				self.m_menu_content().get_game_object().set_active(false);
+				self.set_pause(true);
+				menu_kind.key_help_update(true);
+				return true;
+			}
+			if stick { return true; }
+			if menu_kind == MainShop && unit_info {
+				let l = engage_il2cpp::app::Pad::is_trigger(NpadButton::l());
+				let r = engage_il2cpp::app::Pad::is_trigger(NpadButton::r());
+				if (l || r) && l != r { self.lr_base(r); }
+			}
+		}
+		if let Some(next) = self.next() {
+			self.rebuild_menu(next, true);
+			self.set_next(None);
+		}
+		else if let Some(reload) = menu.reload_type{
+			if !engage_il2cpp::app::Pad::is_button(NpadButton::up()) && !engage_il2cpp::app::Pad::is_button(NpadButton::down()) { menu.reload_delay = false; }
+			if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
+		}
+		unsafe { tick_input_base(self, None) }
 	}
 }
 #[unity2::injected_methods]
@@ -218,8 +377,8 @@ impl CustomAssetMenu{
 	#[override_virtual(name = "BCall")]
 	pub fn b_call(self) -> BasicMenu_Result {
 		let menu_kind = self.menu_kind();
-		menu_kind.b_call();
 		if let Some(previous) = menu_kind.get_previous() {
+			menu_kind.b_call();
 			self.rebuild_menu(previous, true);
 			BasicMenu_Result::se_cursor()
 		}
@@ -229,7 +388,7 @@ impl CustomAssetMenu{
 				let request_close = self.m_request_close_event_handler();
 				if !request_close.is_null() { request_close.invoke(); }
 			}
-			BasicMenu_Result{value: 513 }
+			BasicMenu_Result{value: 512}
 		}
 	}
 	#[override_virtual(name = "PlusCall")]
@@ -238,7 +397,7 @@ impl CustomAssetMenu{
 			self.toggle_ui();
 			BasicMenu_Result::se_cursor()
 		}
-		else { BasicMenu_Result::do_nothing() }
+		else { BasicMenu_Result::pass() }
 	}
 	#[override_virtual(name = "OnDispose")]
 	pub fn on_dispose(self){
@@ -270,15 +429,12 @@ impl CustomAssetMenu{
 				}
 				AccessoryShopChangeRoot::unload_prefab();
 				UnitInfo::chara_only_off();
-				UnitInfo::set_unit(
-					UnitInfo_Side::left(),
-					engage_il2cpp::app::Unit::null(), false, false, false,
-					engage_il2cpp::system::Action::null()
-				);
+				UnitInfo::set_unit(UnitInfo_Side::left(), engage_il2cpp::app::Unit::null(), false, false, false, system::Action::null());
 				let sortie = engage_il2cpp::app::SortieSequenceUnitSelect::get_instance();
 				if !sortie.is_null() {
-					sortie.disp_all();
 					sortie.m_window().get_game_object().set_active(true);
+					sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(true);
+					sortie.disp_all();
 					let unit_manager = SortieSelectionUnitManager::get_instance();
 					if !unit_manager.is_null() {
 						let unit = unit_manager.m_unit();
@@ -295,16 +451,12 @@ impl CustomAssetMenu{
 						sortie_unit_select_menu.adjust_scroll_index();
 						sortie_unit_select_menu.scroll_instant();
 						sortie_unit_select_menu.open_anime_all();
-						UnitInfo::set_unit(
-							UnitInfo_Side::left(), unit, false, false, false,
-							engage_il2cpp::system::Action::null()
-						);
+						UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, system::Action::null());
 					}
 				}
 				BackgroundManager::unbind();
 			}
 			_ => {}
-
 		}
 	}
 	#[override_virtual(name = "OnBuild")]
@@ -320,76 +472,12 @@ impl CustomAssetMenu{
 
 	#[override_virtual(name = "KeyRight")]
 	pub fn key_right(self, trigger: bool) { self.key_base(trigger, true) }
-
-	#[override_virtual(name = "TickInput")]
-	pub fn tick_input(self) -> bool  {
-		let left = engage_il2cpp::app::Pad::is_trigger(NpadButton::left());
-		let right = engage_il2cpp::app::Pad::is_trigger(NpadButton::right());
-		let unit_info = UnitAssetMenuData::is_unit_info();
-		if (left || right) && left != right {
-			if self.pause() {	// add facial
-				hub_room_set_by_result(None, ReloadType::Facial(right));
-				GameSound::post_event("Category_Change", None);
-			}
-		}
-		let menu = UnitAssetMenuData::get();
-		if !UnitAssetMenuData::is_shop() {
-			let stick = model_camera_control();
-			let trigger = engage_il2cpp::app::Pad::is_trigger(NpadButton::plus());
-			let menu_kind = self.menu_kind();
-			if self.pause() {
-				if  engage_il2cpp::app::Pad::is_trigger(NpadButton::minus()) && unit_info {
-					crate::capture::capture_unit_info(self, false, false);
-				}
-				if trigger {
-					self.m_menu_content().get_game_object().set_active(true);
-					self.toggle_ui();
-					self.set_pause(false);
-					TitleBar::show_header();
-					menu_kind.key_help_update(false);
-				}
-				else if engage_il2cpp::app::Pad::is_trigger(NpadButton::x()) {
-					let title = TitleBar::get_instance();
-					if title.is_show_header { TitleBar::hide_header(); }
-					else { TitleBar::show_header(); }
-				}
-				return true;
-			}
-			else if engage_il2cpp::app::Pad::is_trigger(NpadButton::plus()){
-				self.toggle_ui();
-				self.m_menu_content().get_game_object().set_active(false);
-				self.set_pause(true);
-				menu_kind.key_help_update(true);
-				return true;
-			}
-			if stick { return true; }
-
-			if menu_kind == MainShop && unit_info {
-				let l = engage_il2cpp::app::Pad::is_trigger(NpadButton::l());
-				let r = engage_il2cpp::app::Pad::is_trigger(NpadButton::r());
-				if (l || r) && l != r {
-					self.lr_base(r);
-				}
-			}
-		}
-
-		if let Some(next) = self.next() {
-			self.rebuild_menu(next, true);
-			self.set_next(None);
-		}
-		else if let Some(reload) = menu.reload_type{
-			if !engage_il2cpp::app::Pad::is_button(NpadButton::up()) && !engage_il2cpp::app::Pad::is_button(NpadButton::down()) {
-				menu.reload_delay = false;
-			}
-			if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
-		}
-		IBasicMenuMethods::tick_input(self)
-	}
-
 }
+#[skyline::from_offset(0x245ed80)]
+fn tick_input_base(custom: CustomAssetMenu, optional_method: OptionalMethod) -> bool;
 pub fn is_button_pressed(button: i64, check: NpadButton) -> bool { button & check.value != 0 }
 
-fn model_camera_control() -> bool {
+fn model_camera_control(rgb: bool) -> bool {
 	let menu_data = UnitAssetMenuData::get();
 	let pad = engage_il2cpp::app::Pad::get_instance();
 	let buttons = pad.m_npad_state().buttons.value;
@@ -409,7 +497,6 @@ fn model_camera_control() -> bool {
 
 	if is_button_pressed(buttons, NpadButton::stick_l_down()) { translation_change[1] = -1; }
 	else if is_button_pressed(buttons, NpadButton::stick_l_up())  { translation_change[1] = 1; }
-
 	if fast { for x in 0..3 { translation_change[x] *= 3; } }
 	if r_stick {
 		menu_data.control.reset_character_position();
@@ -424,13 +511,13 @@ fn model_camera_control() -> bool {
 			menu_data.control.character_rotation(rot_x, rotation_y, rot_z);
 		}
 		MenuMode::PhotoGraph => {
-			// if !(menu_item_idx >= 100 && menu_item_idx < 116) {
+			if !rgb {
 				if engage_il2cpp::app::Pad::is_button(NpadButton::zl()) { rot_x = -1.25; }
 				else if engage_il2cpp::app::Pad::is_button(NpadButton::zr()) { rot_x = 1.25; }
 
 				if engage_il2cpp::app::Pad::is_button(NpadButton::l()) { rot_z = -1.25; }
 				else if engage_il2cpp::app::Pad::is_button(NpadButton::r()) { rot_z = 1.25; }
-			//}
+			}
 			if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
 			if rotation_y != 0.0 { menu_data.control.character_rotation(0.0, rotation_y, 0.0); }
 			if r_stick {
@@ -444,16 +531,6 @@ fn model_camera_control() -> bool {
 	}
 	rl_stick
 }
-
-
-#[unity::class("App", "UnitSelectRoot")]
-pub struct UnitSelectRoot {
-	parent: u64,
-	pub unit_list_root: &'static GameObject,
-	pub god_image_object: &'static GameObject,
-	pub unit: &'static Unit,
-}
-
 pub fn unit_item_y_call(this: engage_il2cpp::app::BasicMenuItem, _: unity2::OptionalMethod) -> BasicMenu_Result {
 	let sortie = SortieSelectionUnitManager::get_instance();
 	if !sortie.is_null() {
@@ -472,7 +549,7 @@ pub fn unit_item_y_call(this: engage_il2cpp::app::BasicMenuItem, _: unity2::Opti
 	BasicMenu_Result::se_miss()
 }
 
-pub fn add_sub_unit_menu_item(proc: &mut ProcInst) {
+pub fn add_sub_unit_menu_item(proc: engage_il2cpp::app::ProcInst) {
 	/*
 	let menu = proc.cast_mut::<BasicMenu<CustomAssetMenuItem>>();
 	menu.full_menu_item_list.add(CustomAssetMenuItem::new_type(UnitInventorySubMenuItem));
@@ -510,11 +587,16 @@ pub fn change_selected_profile() -> bool {
 }
 #[skyline::hook(offset= 0x2b0ed80)]
 pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32, o: unity2::OptionalMethod) -> engage_il2cpp::combat::CharacterAppearance {
-	let appearance = call_original!(this, map_distance, o);
-	if !this.get_pid().is_null() {
-		let person = engage_il2cpp::app::PersonData::get(this.get_pid());
-		if !person.is_null() { unity2::field_set_value_at_offset(appearance, 0xd4, person.hash()); }
+	let appearance:  engage_il2cpp::combat::CharacterAppearance = call_original!(this, map_distance, o);
+	if !appearance.is_null() {
+		if !this.get_pid().is_null() {
+			let person = engage_il2cpp::app::PersonData::get(this.get_pid());
+			if !person.is_null() {
+				unity2::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash());
+			}
+		}
 	}
+
 	appearance
 }
 fn unit_info_char_mask_setup(mask: UnitInfoCharaImageMaskOffset, revert: bool) {

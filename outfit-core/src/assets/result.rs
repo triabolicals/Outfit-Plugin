@@ -70,13 +70,13 @@ pub fn set_result_dress_body_model(result: AssetTable_Result,  mode: i32, model:
 pub fn apply_result_hair(hair: &String, result: AssetTable_Result) {
     if hair.contains("spine") {
         let accessory = new_asset_table_accessory(hair.as_str(), "c_spine1_jnt");
-        result.set_head_model("uHair_null");
+        result.set_hair_model("uHair_null");
         result.commit_8(accessory);
     }
     else {
         let accessory = new_asset_table_accessory("null", "c_spine1_jnt");
         result.commit_8(accessory);
-        result.set_head_model(hair.as_str());
+        result.set_hair_model(hair.as_str());
     }
     result.replace(AssetTable_Modes::combat());
 }

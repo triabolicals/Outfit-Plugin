@@ -69,6 +69,18 @@ impl UnitAssetPreview {
             has_hair_acc: false,
         }
     }
+    pub fn get_original_asset_hash(&self, asset_type: AssetType) -> i32 {
+        match asset_type {
+            AssetType::Body => self.original_assets[0],
+            AssetType::Head => self.original_assets[1],
+            AssetType::Hair => self.original_assets[2],
+            AssetType::AOC(k) =>self.original_assets[10+k as usize],
+            AssetType::Acc(k) => self.original_assets[5+k as usize],
+            AssetType::Voice => self.original_assets[14],
+            AssetType::Rig => self.original_assets[15],
+            _ => 0,
+        }
+    }
 }
 
 
@@ -138,30 +150,31 @@ impl UnitAssetMenuData {
     }
     pub fn get_result() -> AssetTable_Result {
         let data = Self::get();
-        let hub = data.mode != MenuMode::UnitInfo;
+        let result =
         match data.mode {
-            MenuMode::Shop => { data.unit_select.get_result(hub) }
+            MenuMode::Shop => {
+                data.unit_select.get_result(!data.is_shop_combat)
+            }
             _ => {
-                let select = UnitSelect {
+                UnitSelect {
                     hash: data.preview.person,
                     god: data.god_mode,
                     recruited: false,
                     female: data.preview.gender == 2
-                };
-                let result = select.get_result(hub);
-                if data.mode == MenuMode::UnitInfo {
-                    AnimData::remove(result, true, true);
-                    result.set_body_anim(result.m_hub_anim());
-                    result.set_m_demo_anim(unity2::Il2CppString::null());
-                    result.set_m_talk_anim(unity2::Il2CppString::null());
-                    result.set_m_hub_anim(unity2::Il2CppString::null());
-                    result.set_left_hand("null");
-                    result.set_right_hand("null");
-                    result.replace(AssetTable_Modes::combat());
-                }
-                result
+                }.get_result(!data.is_shop_combat)
             }
+        };
+        if data.mode != MenuMode::PhotoGraph {
+            AnimData::remove(result, true, true);
+            result.set_body_anim(result.m_hub_anim());
+            result.set_m_demo_anim(unity2::Il2CppString::null());
+            result.set_m_talk_anim(unity2::Il2CppString::null());
+            result.set_m_hub_anim(unity2::Il2CppString::null());
+            result.set_left_hand("null");
+            result.set_right_hand("null");
+            result.replace(AssetTable_Modes::combat());
         }
+        result
     }
     pub fn get_current_dress_gender() -> i32 { Self::get_preview().gender }
     pub fn get_gender(alt: bool) -> i32 {
@@ -308,8 +321,8 @@ impl UnitAssetMenuData {
             if !god.is_null() {
                 let female = god.get_female() as i32;
                 menu.god_mode = true;
-                gender = 
-                    if god.is_hero() { 
+                gender =
+                    if god.is_hero() {
                         let hero = engage_il2cpp::app::UnitPool::get_hero(false);
                         unit_dress_gender(hero)
                     } else { female + 1 };
@@ -627,6 +640,7 @@ impl UnitAssetMenuData {
                     if let Some(head) = try_get_il2cpp_hash(e.get_head_model()).filter(|h| db.hashes.head.contains_key(h)) { menu.original_assets[1] = head; }
                     if let Some(hair) = try_get_il2cpp_hash(e.get_hair_model()).filter(|h| db.hashes.hair.contains_key(h)) { menu.original_assets[2] = hair; }
                     if let Some(hair) = e.get_accessories().items().iter()
+                        .filter(|x| !x.is_null())
                         .find(|x| il2str(x.get_model()).is_some_and(|v| v.contains("Hair")))
                         .and_then(|x| try_get_il2cpp_hash(x.get_model()))
                         .filter(|hash| db.hashes.hair.contains_key(hash))
@@ -636,7 +650,8 @@ impl UnitAssetMenuData {
                     for xx in 0..5 {
                         if let Some(acc) =
                             e.get_accessories().items().iter()
-                                .find(|x| il2str(x.get_locator()).is_some_and(|v| v == ACC_LOC[xx]))
+                                .filter(|x| !x.is_null())
+                                .find(|x| il2str(x.get_locator()).is_some_and(|v| v == ACC_LOC[xx]) && !x.get_model().is_null())
                                 .and_then(|x| try_get_il2cpp_hash(x.get_model()))
                                 .filter(|hash| db.hashes.hair.contains_key(hash))
                         {

@@ -1,5 +1,6 @@
 use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
 use engage_il2cpp::app::{IRandom_2Methods, Mess_IconCategory, Random_2};
+use engage_il2cpp::unity_engine::IGameObjectMethods;
 use unity::{il2cpp::class::VirtualInvoke, prelude::*};
 use unity2::ClassIdentity;
 use unity2::system::string::IIl2CppStringMethods;
@@ -93,4 +94,9 @@ pub fn il2str(str: unity2::Il2CppString) -> Option<String> {
 }
 pub fn try_get_il2cpp_hash(str: unity2::Il2CppString) -> Option<i32> {
     if str.is_null() { None } else { Some(str.get_hash_code()) }
+}
+
+pub fn get_skin_mesh_renderers(go: engage_il2cpp::unity_engine::GameObject) -> Option<unity2::Array::<engage_il2cpp::unity_engine::Component>> {
+    let array = go.get_components_in_children_2(unity2::SystemType::from_il2cpp_type(engage_il2cpp::unity_engine::SkinnedMeshRenderer::class().raw().get_type()).unwrap(), true);
+    if array.is_null() { None } else { Some(array) }
 }

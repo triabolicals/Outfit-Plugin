@@ -1,17 +1,24 @@
 use std::sync::OnceLock;
-use engage::{
-    menu::{menu_item::{MenuItem, MenuItemContent}, BasicMenuResult},
-    menu::BasicMenuMethods
-};
 use engage_il2cpp::{
-    app::{ISingletonClass_1Methods, accessoryequipmentinfo::*, IHubAccessoryRoomMethods, AssetTable_Modes, AssetTable_Result, IBasicMenuItemMethods, IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods, IAssetTable_ResultMethods, ShopUnitSelectMenuItem, Proc, IProcInstMethods, IHubAccessoryShopSequence, AccessoryShopTopMenu_Result2, BasicMenu_Result, IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods, IShopUnitSelectMenuItemContent, IUnitMenuItemSetter, IShopUnitSelectMenuItemContentMethods, ShopUnitSelectMenuItemContent, ShopUnitSelectMenu, IBasicMenu, IBasicMenuMethods, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods, BasicMenuItem},
+    app::{
+        ISingletonClass_1Methods, accessoryequipmentinfo::*, IHubAccessoryRoomMethods, 
+        AssetTable_Modes, AssetTable_Result, 
+        IBasicMenuItemMethods, IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods, 
+        IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods, IAssetTable_ResultMethods, 
+        ShopUnitSelectMenuItem, IProcInstMethods, IHubAccessoryShopSequence, 
+        AccessoryShopTopMenu_Result2, BasicMenu_Result, 
+        IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods, 
+        IShopUnitSelectMenuItemContent, IUnitMenuItemSetter, IShopUnitSelectMenuItemContentMethods,
+        ShopUnitSelectMenuItemContent, ShopUnitSelectMenu, IBasicMenu, IBasicMenuMethods, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods, BasicMenuItem}
+    ,
     List_1Ext,
     system::collections::generic::IList_1Methods,
-    tm_pro::ITMP_Text,
-    unity_engine::{IComponentMethods, IGameObjectMethods, ui::IImageMethods}
+    unity_engine::{IComponentMethods, IGameObjectMethods, ui::IImageMethods},
+    app::BasicMenuItem_Attribute,
+    tm_pro::ITMP_TextMethods
 };
-use unity2::{Cast, Class, FromIlInstance, IlNull};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, CustomAssetMenu, get_default_asset_conditions};
+use unity2::{Cast, Class, FromIlInstance};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, get_default_asset_conditions, build_equipment_window, new_asset_table_accessory, ACC_LOC};
 
 #[derive(Default)]
 pub struct UnitSelectList {
@@ -154,6 +161,7 @@ impl ShopUnitSelect {
             let klass = Class::try_lookup("App", "ShopUnitSelectMenuItem").unwrap().clone_for_override();
             let klass_raw = klass.raw_mut();
             let vtable = klass_raw.get_vtable_mut();
+            vtable[8].method_ptr = Self::build_attr as _;
             vtable[10].method_ptr = Self::on_build_menu_item_content as _;
             vtable[12].method_ptr = Self::on_select as _;
             vtable[18].method_ptr = Self::a_call as _;
@@ -161,63 +169,73 @@ impl ShopUnitSelect {
             klass
         })
     }
-    pub fn a_call(this: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenuResult {
+    pub fn build_attr(_: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenuItem_Attribute { BasicMenuItem_Attribute::enable() }
+    pub fn a_call(this: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenu_Result {
         let hash = unity2::field_get_value_at_offset::<i32>(this, 0x64);
         if UnitAssetMenuData::set_by_hash(hash) {
-            if let Some(shop) = Self::get_hub_shop_sequence() { shop.set_m_shop_unit_select_menu_result(BasicMenu_Result{value: 129}); }
+            if let Some(shop) = Self::get_hub_shop_sequence() {
+                shop.set_m_shop_menu_result(AccessoryShopTopMenu_Result2::change());
+                shop.set_m_shop_unit_select_menu_result(BasicMenu_Result{value: 129});
+            }
             UnitAssetMenuData::get().unit_select_index = this.get_index();
-            BasicMenuResult::new().with_se_decide(true).with_close_this(true)
+            BasicMenu_Result::close_decide()
         }
-        else { BasicMenuResult::se_miss() }
+        else { BasicMenu_Result::se_miss() }
     }
-    pub fn b_call(_: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenuResult {
+    pub fn b_call(_: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) -> BasicMenu_Result {
         UnitAssetMenuData::get().preview.person = 0;
         if let Some(shop) = Self::get_hub_shop_sequence() {
             shop.set_m_shop_unit_select_menu_result(BasicMenu_Result{value: 513});
             shop.set_m_shop_menu_result(AccessoryShopTopMenu_Result2::end());
             shop.m_accessory_shop_unit_select_root().m_accessory_equipment_info_window().close();
         }
-        BasicMenuResult::new().with_se_decide(true).with_close_this(true)
+        BasicMenu_Result::close_decide()
     }
     pub fn on_select(this: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) {
         IBasicMenuItemMethods::on_select(this);
         let select = &mut UnitAssetMenuData::get().unit_select;
         select.selected = Some(this.get_index());
-        let default_conditions = engage_il2cpp::combat::CharacterAppearance::get_constions(get_default_asset_conditions());
+        let default_conditions = engage_il2cpp::combat::CharacterAppearance::conditions();
         if let Some(select) = select.get_selected() {
+            let mut name = None;
             if let Some(unit) = select.try_get_unit() {
                 UnitAssetMenuData::set_unit(unit);
-                // CustomAssetMenu::set_unit_name(unit.get_name());
                 let sequence = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
                 let result =
                     if sequence != 4 { AssetTable_Result::get_for_kizuna(unit.get_pid(), default_conditions) }
                     else { AssetTable_Result::get_for_accessory(unit) };
                 result.set_left_hand("null");
                 result.set_right_hand("null");
+                result.commit_8(new_asset_table_accessory("null", ACC_LOC[4]));
+                name = Some(unit.get_name());
                 hub_room_set_by_result(Some(result), ReloadType::All);
             }
             else if let Some(god) = select.try_get_god() {
                 UnitAssetMenuData::set_god(god);
                 let result = AssetTable_Result::get_for_hub_2(god);
+                name = Some(engage_il2cpp::app::Mess::get(god.get_mid()));
                 hub_room_set_by_result(Some(result), ReloadType::All);
             }
             else if let Some(person) = select.try_get_person() {
                 UnitAssetMenuData::set_by_hash(person.hash());
-                // CustomAssetMenu::set_unit_name(person.get_name());
+                name = Some(engage_il2cpp::app::Mess::get(person.get_name()));
                 let result = AssetTable_Result::get_for_kizuna(person.get_pid(), default_conditions);
                 hub_room_set_by_result(Some(result), ReloadType::All);
             }
             if let Some(shop) = Self::get_hub_shop_sequence() {
                 EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets)
                     .change_equipment_box(shop.m_accessory_shop_unit_select_root().m_accessory_equipment_info_window());
+                if let Some(name) = name {
+                    let unit_name = shop.m_accessory_shop_unit_select_root().m_unit_name();
+                    if !unit_name.is_null() { unit_name.set_text_2(name, true); }
+                }
             }
             else { EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets).update(); }
         }
     }
     pub fn on_build_menu_item_content(this: ShopUnitSelectMenuItem, _: unity2::OptionalMethod) {
-        if let Some(content) = this.get_menu_item_content().try_cast::<ShopUnitSelectMenuItemContent>() {
-            set_name_sprite(content, this);
-        }
+        let content = unsafe { this.get_menu_item_content().cast::<ShopUnitSelectMenuItemContent>() } ;
+        set_name_sprite(content, this);
     }
 }
 pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem){
@@ -234,11 +252,11 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     else {
         let person = engage_il2cpp::app::PersonData::try_get_from_hash(hash);
         if !person.is_null() {
-            let unit = engage_il2cpp::app::UnitPool::get_hero(false);
+            let unit = engage_il2cpp::app::UnitPool::get_from_person(person, false);
             if !unit.is_null() {
                 let s = engage_il2cpp::app::FaceThumbnail::get(unit);
                 if !s.is_null() { sprite = Some(s); }
-                name = Some(engage_il2cpp::app::Mess::get(unit.get_name()));
+                name = Some(unit.get_name());
             }
             else {
                 let s = engage_il2cpp::app::FaceThumbnail::get_2(person);
@@ -248,7 +266,7 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
             }
         }
     }
-    if let Some(name) = name { content.m_setter().m_unit_name().set_m_text(name); }
+    if let Some(name) = name { content.m_setter().m_unit_name().set_text_2(name, true); }
     if let Some(sprite) = sprite {
         content.m_setter().m_face().set_sprite(sprite);
         content.m_setter().m_face().get_game_object().set_active(true);
@@ -261,6 +279,8 @@ pub fn shop_unit_select_menu_item_content_build(this: ShopUnitSelectMenuItemCont
 
 pub extern "C" fn create_accessory_unit_select(this: engage_il2cpp::app::HubAccessoryShopSequence, _: unity2::OptionalMethod) {
     this.create_shop_unit_select_menu();
+    build_equipment_window(this.m_accessory_shop_unit_select_root().m_accessory_equipment_info_window(), true);
+    
     if !this.get_child().is_null() {
         if let Some(menu) = this.get_child().try_cast::<ShopUnitSelectMenu>() {
             let menu_list = menu.m_full_menu_item_list();
@@ -278,7 +298,11 @@ pub extern "C" fn create_accessory_unit_select(this: engage_il2cpp::app::HubAcce
             });
             menu.set_select_index(menu_data.unit_select_index);
         }
+        /*
         EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets)
             .change_equipment_box(this.m_accessory_shop_unit_select_root().m_accessory_equipment_info_window());
+
+         */
     }
+    println!("Finish Create Unit Select");
 }

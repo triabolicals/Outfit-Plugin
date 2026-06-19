@@ -1,5 +1,8 @@
 use std::path::PathBuf;
-use engage::spriteatlasmanager::FaceThumbnail;
+use engage_il2cpp::{
+    app::ISpriteAtlasManager_2,
+    system::collections::generic::{IDictionary_2Methods, InsertionBehavior}
+};
 use crate::capture::{create_face_sprite, png_file_check};
 use crate::EquipmentBoxPage;
 use super::*;
@@ -20,7 +23,7 @@ impl FaceFileHandle {
     pub fn try_load(path: &PathBuf, index: usize) -> Option<Self> {
         if let Some(mut file) = std::fs::read(path).ok().filter(|d| png_file_check(d)){
             if let Some(sprite) = create_face_sprite(&mut file) {
-                if FaceThumbnail::try_insert(format!("LOAD_{}", index), sprite){
+                if engage_il2cpp::app::FaceThumbnail::s_face_thumb().m_cache_table().try_insert(format!("LOAD_{}", index).into(), sprite, InsertionBehavior::overwrite_existing()){
                     let file_name = path.file_name()?.to_str()?.to_string();
                     return Some(Self { file_name, index })
                 }
@@ -79,9 +82,16 @@ impl UnitAssetLoader {
         else { LoadResult::MissingDirectory }
     }
     pub fn release_faces(&mut self) {
+        let thumbs = engage_il2cpp::app::FaceThumbnail::s_face_thumb().m_cache_table();
         self.load_face.iter().for_each(|d|{
             let destroy = self.selected_index != Some(d.index as i32);
-            if FaceThumbnail::remove(format!("LOAD_{}", d.index), destroy) { println!("Removed: {}", d.file_name); }
+            let key = format!("LOAD_{}", d.index);
+            let sprite = thumbs.try_get_value(format!("LOAD_{}", d.index).as_str().into());
+            thumbs.remove(key.as_str().into());
+            if destroy && sprite.0 {
+                engage_il2cpp::unity_engine::Object_2::destroy_2(sprite.1);
+                println!("Removed: {}", d.file_name);
+            }
         });
         self.load_face.clear();
     }

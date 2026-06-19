@@ -25,6 +25,9 @@ impl AssetColor{
             self.values[x] = c;
         }
     }
+    pub fn to_i32(&self) -> i32 {
+        (self.values[0] as i32) + ((self.values[1] as i32) << 8) + ((self.values[2] as i32) << 16)
+    }
     pub fn get_f32(&self) -> [f32; 3] { [self.values[0] as f32 / 255.0, self.values[1] as f32/ 255.0, self.values[2] as f32/ 255.0] }
     pub fn has_color(&self) -> bool { self.values[0] > 0 || self.values[1] > 0 || self.values[2] > 0 }
     pub fn is_zero(&self) -> bool { self.values[0] == 0 && self.values[1] == 0 && self.values[2] == 0 }

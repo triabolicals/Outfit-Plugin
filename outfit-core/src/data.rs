@@ -2,7 +2,6 @@ use std::{collections::HashSet, io::{Cursor, Read}};
 use std::collections::HashMap;
 pub use engage::{
     gamevariable::GameVariableManager,
-    random::Random
 };
 use engage_il2cpp::{
     app::{
@@ -433,10 +432,8 @@ impl OutfitData {
     }
     pub fn correct_anims(&self, result: AssetTable_Result, unit: engage_il2cpp::app::Unit, profile_flags: i32, conditions: &AssetConditions){
         let dress_gender =
-            if conditions.mode == 2 { self.get_dress_gender(get_result_dress_body_model(result, conditions.mode)) }
-            else { unit.get_dress_gender()};
-
-        if dress_gender != engage_il2cpp::app::Gender::male() && dress_gender != engage_il2cpp::app::Gender::female() { return; }
+            if conditions.mode == 2 { self.get_dress_gender(get_result_dress_body_model(result, conditions.mode)) } else { unit.get_dress_gender()};
+        if dress_gender.value == 0 || dress_gender.value > 2 { return; }
         let kind_ =
             if conditions.flags.contains(AssetFlags::CombatTranforming) { 9 }
             else if conditions.flags.contains(AssetFlags::Bullet) { 10 }
@@ -504,14 +501,14 @@ impl OutfitData {
             else if !self.anims.has_uas_anims(result, mount, dress_gender, job) { self.anims.set_uas_anims(result, mount, dress_gender, job); }
         }
     }
-    pub fn assign_random_head_hair(&self, result: AssetTable_Result, rng: &Random) {
+    pub fn assign_random_head_hair(&self, result: AssetTable_Result, rng: engage_il2cpp::app::Random_2) {
         let head = self.hashes.head.len();
-        let index = rng.get_value(head as i32);
+        let index = rng.get_value_2(head as i32);
         if let Some(head) = self.hashes.head.iter().nth(index as usize) {
             result.set_head_model(head.1.as_str());
             if let Some(skin) = self.list.skin.get(head.0) { skin.set_result_color(result, 2); }
         }
-        let index = rng.get_value( self.hashes.hair.len() as i32);
+        let index = rng.get_value_2( self.hashes.hair.len() as i32);
         if let Some(hair) = self.hashes.hair.iter().nth(index as usize) { apply_result_hair(hair.1, result); }
     }
     pub fn random_body(&self, result: AssetTable_Result, mode: i32, rng: engage_il2cpp::app::Random_2, female: bool) {

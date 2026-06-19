@@ -1,8 +1,10 @@
 use std::{collections::HashMap, io::{Cursor, Read}};
-use engage_il2cpp::app::BasicMenuItem;
-use engage_il2cpp::List_1Ext;
-use engage_il2cpp::prelude::List_1;
-use engage_il2cpp::system::collections::generic::IList_1Methods;
+use engage_il2cpp::{
+    app::BasicMenuItem,
+    List_1Ext,
+    prelude::List_1,
+    system::collections::generic::IList_1Methods
+};
 use unity2::Cast;
 use crate::{Asset, AssetColor, AssetType, ColorPreset, OutfitHashes, UnitAssetMenuData, data::{item::*, util::parse_label}, EyePreset, CustomAssetMenuItem3};
 

@@ -1,11 +1,10 @@
 use std::fs;
 use engage::{
-    dialog::BasicDialog2, gamevariable::GameVariableManager,
+    gamevariable::GameVariableManager,
     mess::Mess, pad::{NpadButton, Pad}, random::Random,
-    sequence::{hubaccessory::{HubAccessoryShopSequence, room::HubAccessoryRoom}, photograph::*},
     spriteatlasmanager::FaceThumbnail, tmpro::TextMeshProUGUI
 };
-use engage_il2cpp::app::{AccessoryData_Kinds, IAccessoryMenuItemMethods};
+use engage_il2cpp::app::{AccessoryData_Kinds, BasicDialog, BasicDialogItemNo, IAccessoryMenuItemMethods, IBasicDialogItem, IBasicDialogMethods, IPhotographDisposInfo, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographSequence};
 use crate::{
     is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR,
     data::{items::Profile, room::hub_room_set_by_result},
@@ -96,6 +95,10 @@ impl CustomAssetMenuItemKind {
             120..136 => { EnableColor(index as u8 - 120) }
             150..166 => { ScaleMenuItem(index as u8 - 150) }
             170..174 => { Expression(index as u8 - 170) }
+            1000..1500 => {
+                let menu_offset = index - 1000;
+                Menu(CustomAssetMenuKind::from_index(menu_offset))
+            }
             -1 => Pause,
             -2 => Item,
             -4 => FaceThumb,
@@ -107,6 +110,7 @@ impl CustomAssetMenuItemKind {
         let help = self.get_help(menu_item);
         let menu_kind = menu_item.get_asset_menu().menu_kind();
         let body = menu_kind.get_body(menu_item);
+        println!("OnSelect: {}", menu_item.menu_item_kind().to_index());
         let icon = self.get_icon(menu_item);
         let name = self.get_detail_box_name(menu_item);
         set_detail_box(name, Some(help), Some(body), icon.get_icon());
@@ -183,7 +187,7 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::ResetColor(color_kind as i32), false);
             }
             ScaleMenuItem(kind) => {
-                let cursor_index = (*kind % 4) + 2;
+                let cursor_index = (*kind % 8) + 1;
                 EquipmentBoxMode::set_cursor(Some(cursor_index as i32));
                 UnitAssetMenuData::set_reload(ReloadPreview::ScalePreview(*kind as i32), false);
             }
@@ -206,18 +210,20 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::Preset(menu_item.value() as usize), true);
             }
             Pause => {
-                if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager) {
-                    if let Some(pause) = dispos.current_dispos_info.pause_data_list.get(index as usize){
-                        dispos.current_dispos_info.current_pause_data = Some(pause);
-                        dispos.current_dispos_info.set_up_pause();
+                if let Some(dispos) = crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info()){
+                    let pause = dispos.get_pause_data_list().get(index);
+                    if !pause.is_null() {
+                        dispos.set_m_current_pause_data(pause);
+                        dispos.set_up_pause();
                     }
                 }
             }
             Item  => {
-                if let Some(dispos) = PhotographTopSequence::get_photograph_sequence().map(|p| &mut p.dispos_manager) {
-                    if let Some(pause) = dispos.current_dispos_info.weapon_data_list.get(index as usize){
-                        dispos.current_dispos_info.weapon_data = Some(pause);
-                        dispos.current_dispos_info.setup_weapon();
+                if let Some(dispos) = crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info()){
+                    let item = dispos.get_weapon_data_list().get(index);
+                    if !item.is_null() {
+                        dispos.set_m_hold_weapon_data(item);
+                        dispos.setup_weapon();
                     }
                 }
             }
@@ -230,7 +236,7 @@ impl CustomAssetMenuItemKind {
             _ => { EquipmentBoxMode::set_cursor(None); }
         }
     }
-    pub fn build_attribute(&self) -> engage_il2cpp::app::BasicMenuItem_Attribute {
+    pub fn build_attribute(&self) -> BasicMenuItem_Attribute {
         let emblem = UnitAssetMenuData::get_unit().is_none();
         let dvc = UnitAssetMenuData::get().is_dvc;
         let photo = UnitAssetMenuData::is_photo_graph();
@@ -245,7 +251,7 @@ impl CustomAssetMenuItemKind {
             Menu(EngagedBody(_)) => !emblem,
             _ => false,
         };
-        if hide { engage_il2cpp::app::BasicMenuItem_Attribute::hide() } else { engage_il2cpp::app::BasicMenuItem_Attribute::enable() }
+        if hide { BasicMenuItem_Attribute::hide() } else { BasicMenuItem_Attribute::enable() }
     }
 }
 
@@ -273,7 +279,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             FlagMenuItem(flag) => flag.get_equipment_box_type(menu_item),
             RGBA(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
             ResetColor(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
-            ScaleMenuItem(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(*kind/4)),
+            ScaleMenuItem(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(*kind/8)),
             ProfileItem(profile) => EquipmentBoxMode::ProfilePreview(*profile),
             Menu(menu) => menu.get_equipment_box_type(menu_item),
             _ => EquipmentBoxMode::CurrentProfile,
@@ -284,7 +290,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
         let menu_index = IBasicMenuItemMethods::get_index(menuitem);
         match self {
             UnitInventorySubMenuItem => { MenuTextCommand::Outfits.get() }
-            PresetAppearance|Pause|Item => { menuitem.get_name() }
+            PresetAppearance|Pause|Item => { IBasicMenuItemMethods::get_name(menuitem) }
             OutfitDataFile => { IBasicMenuItemMethods::get_name(menuitem) }
             Menu(menu) => menu.get_name(menuitem),
             Asset(ty) => ty.get_name(menuitem),
@@ -598,7 +604,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
 
              */
-            _ => { BasicMenu_Result::do_nothing() }
+            _ => { BasicMenu_Result::pass() }
         }
     }
     fn x_call(&self, menuitem: CustomAssetMenuItem3) -> BasicMenu_Result {
@@ -639,26 +645,13 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             Asset(AssetType::Body) => {
                 if !UnitAssetMenuData::get().god_mode && !UnitAssetMenuData::is_photo_graph() {
                     UnitAssetMenuData::get_preview().preview_data.break_body = menuitem.value();
+                    menuitem.rebuild_text();
                     // menuitem.menu.full_menu_item_list.iter_mut().for_each(|v|{v.rebuild_text(); });
                     BasicMenu_Result::se_decide()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
-            /*
-            Asset(AssetType::AOC(kind)) => {
-                if UnitAssetMenuData::is_unit_info() {
-                    let new_menu = AnimPreview(*kind);
-                    menuitem.menu.save_current_select();
-                    menuitem.menu.full_menu_item_list.clear();
-                    new_menu.create_menu_items(menuitem.menu);
-                    menuitem.menu.menu_kind = new_menu;
-                    menuitem.menu.rebuild_menu();
-                    BasicMenu_Result::se_cursor()
-                }
-                else { BasicMenu_Result::do_nothing() }
-            }
-             */
-            _ => { BasicMenu_Result::do_nothing() }
+            _ => { BasicMenu_Result::pass() }
         }
     }
     fn minus_call(&self, menuitem: CustomAssetMenuItem3) -> BasicMenu_Result {
@@ -708,12 +701,24 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 } else { BasicMenu_Result::se_miss() }
             }
             FaceThumb|OutfitDataFile => {
+                let action = system::Action::new(
+                    menuitem.into(),
+                    if self.to_index() == -4 { delete_face_item_method_info() } else { delete_outfit_data_method_info() }.into()
+                );
+                let yes = engage_il2cpp::app::YesMenuItem::new(action);
+                yes.set_m_text(engage_il2cpp::app::Mess::get("MID_MENU_YES"));
+                let no = BasicDialogItemNo::new();
+                let list = List_1::<engage_il2cpp::app::BasicMenuItem>::new_2(2);
+                unsafe {
+                    list.add(yes.cast());
+                    list.add(no.cast());
+                }
+                let dialog = BasicDialog::create_basic_dialog_bind(menuitem.get_menu(), list);
                 let message = format!("Delete '{}'?", IBasicMenuItemMethods::get_name(menuitem));
-                // let action = Action::new_method_mut(Some(menuitem), if self.to_index() == -4 { delete_face_item } else { delete_outfit_data });
-                // BasicDialog2::create_confirm_cancel_bind(menuitem.menu, message, Some(action));
+                dialog.set_text(message);
                 BasicMenu_Result::se_cursor()
             }
-            _ => { BasicMenu_Result::do_nothing() }
+            _ => { BasicMenu_Result::pass() }
         }
     }
     fn custom_call(&self, menuitem: CustomAssetMenuItem3) -> BasicMenu_Result {
@@ -726,7 +731,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     let speed = if Pad::is_button(NpadButton::y_key()) { 0.09 } else { 0.0 };
                     hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(speed));
                 }
-                BasicMenu_Result::do_nothing()
+                BasicMenu_Result::pass()
             }
 
              */
@@ -735,7 +740,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     ty.update_model(menuitem);
                     menu.reload_type = None;
                 }
-                BasicMenu_Result::do_nothing()
+                BasicMenu_Result::pass()
             }
             OutfitDataFile => {
                 let emblem = menu.god_mode;
@@ -758,7 +763,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     menu.loaded_data.equipment_box_state = box_state;
                     BasicMenu_Result::se_cursor()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
             FlagMenuItem(flag) => { flag.custom_call(menuitem) }
             ScaleMenuItem(scale_index) => {
@@ -781,7 +786,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                         BasicMenu_Result::se_cursor()
                     }
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
             RGBA(kind) => {
                 let k = (*kind % 16) as usize;
@@ -814,7 +819,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     hub_room_set_by_result(None, ReloadType::ColorScale);
                     BasicMenu_Result::se_cursor()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
             CurrentProfile => {
                 if change_selected_profile() {
@@ -823,7 +828,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     set_detail_box(None, Some(get_current_profile_assignment_text().into()), None, None);
                     BasicMenu_Result::se_cursor()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
             ProfileItem(profile) => {
                 if Pad::is_trigger(NpadButton::new().with_left(true)) {
@@ -846,7 +851,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     }
                     return BasicMenu_Result::se_cursor();
                 }
-                BasicMenu_Result::do_nothing()
+                BasicMenu_Result::pass()
             }
             UnitName => {
                 if r_l_press(true, false, true) | r_l_press(false, true, true) {
@@ -866,7 +871,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                         else { BasicMenu_Result::se_miss() };
                     }
                 }
-                BasicMenu_Result::do_nothing()
+                BasicMenu_Result::pass()
             }
             PresetAppearance => {
                 let left = Pad::is_trigger(NpadButton::l_key());
@@ -877,7 +882,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     menu.loaded_data.equipment_box_state = box_state;
                     BasicMenu_Result::se_cursor()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
             Expression(kind) => {
                 let preview = UnitAssetMenuData::get_preview();
@@ -891,9 +896,9 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     self.on_select(menuitem);
                     BasicMenu_Result::se_cursor()
                 }
-                else { BasicMenu_Result::do_nothing() }
+                else { BasicMenu_Result::pass() }
             }
-            _ => { BasicMenu_Result::do_nothing() }
+            _ => { BasicMenu_Result::pass() }
         }
     }
 }
@@ -915,16 +920,6 @@ fn get_current_profile_assignment_text() -> String {
             if !profile_str.is_empty() { profile_str += ", "; } else { profile_str += get_profile_name(*i as i32, emblem).to_string().as_str() }
         });
         format!("{}\nAssigned to: {}", help, profile_str)
-    }
-}
-fn set_unit_name(unit: &Unit, value: &Il2CppString, _: unity2::OptionalMethod) {
-    if value.is_null() { return; }
-    let str = value.to_string();
-    if str.len() == 0 { return; }
-    unit.edit.set_name(value);
-    if let Some(hub) = HubAccessoryRoom::get_instance().and_then(|c| c.get_child())
-        .map(|p| p.cast_mut::<HubAccessoryShopSequence>()){
-        hub.change_root.unit_name.set_text(unit.get_name(), true);
     }
 }
 pub fn get_current_profile_name() -> unity2::Il2CppString {
@@ -962,6 +957,7 @@ pub fn scale_change_value(index: i32, increase: bool, speed_up: bool) -> u16 {
     preview.scale_preview[index as usize] = new_value;
     new_value
 }
+#[unity2::callback]
 fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
     let path = format!("{}{}", THUMB_DIR, IBasicMenuItemMethods::get_name(menu_item));
     let idx = menu_item.value();
@@ -976,6 +972,7 @@ fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) 
         menu.set_next(Some(if load_face.len() == 0 { ProfileSettings } else { FaceSelection }));
     }
 }
+#[unity2::callback]
 fn delete_outfit_data(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
     let list = &mut UnitAssetMenuData::get().loaded_data.loaded_data;
     let name = IBasicMenuItemMethods::get_name(menu_item).to_rust_string();

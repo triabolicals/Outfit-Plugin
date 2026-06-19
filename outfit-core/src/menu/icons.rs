@@ -39,7 +39,6 @@ pub enum CustomMenuIcon {
     SilverCard,
     NoIcon,
     Color,
-
 }
 impl CustomMenuIcon {
     pub fn get_system_label(&self) -> Option<&'static str> {

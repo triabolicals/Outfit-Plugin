@@ -33,7 +33,9 @@ engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", 
     "app-unitutil", "combat-proportionparameters", "combat-characterjoint", "combat-dressutility", "combat-characterasset", "combat-characterassett_1",
     "combat-characterproportion", "app-talk3_d-characterfactoryasync_2", "app-unitinfowindowcharamodel-types",
     "system-action", "app-unitinfowindowcharaupdater", "app-bitstruct", "app-unitaccessory", "app-unitaccessorylist", "app-accessorydata", "app-pad", "app-sortieutil",
-    "app-titlebar", "app-ut",
+    "app-titlebar", "app-ut", "app-yesmenuitem", "app-basicdialogitemyes", "app-basicdialog",
+    "app-photographsequence", "app-photographeditdisposmenu", "app-photographcameracontroller", "app-photographdisposinfo", "app-photographtopsequence",
+    "combat-characterfactoryasync", "app-photographpausedata", "app-gameuserdata-types",
 ] }
 unity2 = { git = "https://github.com/DivineDragonFanClub/unity2" }
 

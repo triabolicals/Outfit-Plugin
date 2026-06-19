@@ -47,12 +47,11 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                                     // assets::transform::change_dragon2,
                                     assets::asset_table_result_god_setup_outfit,
                                     // assets::transform::transformation_chain_atk,
-                                    assets::create_break_effect_hook,
                                     assets::dress::combat_character_play_facial,
                                 );
                             } else { outfit_core::reset_faces(true); }
                         }
-                        engage::proc::UNIT_SELECT_SUB_MENU => { menu_item_add(&mut proc.borrow_mut()); }
+                       // engage::proc::UNIT_SELECT_SUB_MENU => { menu_item_add(&mut proc.borrow_mut()); }
                         _ => {}
                     }
                 }
@@ -61,7 +60,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
         }
     }
 }
-fn menu_item_add(proc: &mut ProcInst) { outfit_core::add_sub_unit_menu_item(proc); }
+// fn menu_item_add(proc: &mut ProcInst) { outfit_core::add_sub_unit_menu_item(proc); }
 #[skyline::main(name = "outfits")]
 pub fn main() {
     cobapi::register_system_event_handler(event_install);

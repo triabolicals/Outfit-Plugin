@@ -35,7 +35,7 @@ impl AssetFlag {
         }
     }
     pub fn from_rel_index(idx: i32) -> Option<AssetFlag> {
-        if idx < 8 {
+        if idx < 9 {
             Some(
                 match idx {
                     0 => AssetFlag::DisableHairAcc,
@@ -135,8 +135,8 @@ impl CustomMenuItem for AssetFlag {
                         message += MenuTextCommand::A.insert_right("View Files. ").to_string().as_str();
                     }
                     let key = format!("G_Face_{}", keys.0);
-                    if GameVariableManager::exist(&key) {
-                        let str = GameVariableManager::get_string(&key).to_string();
+                    if engage_il2cpp::GameVariableManager::is_exist(key.as_str()) {
+                        let str = engage_il2cpp::GameVariableManager::get_string(key.as_str()).to_string();
                         if str.contains(".png") { message += format!("File: {}. ", str).as_str(); }
                     }
 
@@ -184,7 +184,9 @@ impl CustomMenuItem for AssetFlag {
                 if UnitAssetMenuData::get_person_flag() & 8 != 0 {
                     match UnitAssetMenuData::get().loaded_data.load_faces() {
                         LoadResult::Success => {
+                            println!("Found Files");
                             let menu = menu_item.get_asset_menu();
+                            println!("Building Menu");
                             menu.rebuild_menu(FaceSelection, true);
                             menu.toggle_ui();
                             BasicMenu_Result::se_cursor()
@@ -201,7 +203,7 @@ impl CustomMenuItem for AssetFlag {
                 }
                 else { BasicMenu_Result::se_miss() }
             }
-            _ => { return BasicMenu_Result::do_nothing(); }
+            _ => { return BasicMenu_Result::pass(); }
         }
         menu_item.set_m_decided(self.is_decided());
         menu_item.rebuild_text();
@@ -243,7 +245,7 @@ impl CustomMenuItem for AssetFlag {
                     menu_item.set_m_decided(UnitAssetMenuData::get_person_flag() & 8 != 0);
                     menu_item.rebuild_text();
                 }
-                Self::DisableHeadAcc|Self::DisableHairAcc => { return BasicMenu_Result::do_nothing() }
+                Self::DisableHeadAcc|Self::DisableHairAcc => { return BasicMenu_Result::pass() }
                 _ => { return self.a_call(menu_item); }
             }
             menu_item.rebuild_text();
@@ -254,6 +256,6 @@ impl CustomMenuItem for AssetFlag {
             EquipmentBoxMode::CurrentProfile.update();
             BasicMenu_Result::se_cursor()
         }
-        else { BasicMenu_Result::do_nothing() }
+        else { BasicMenu_Result::pass() }
     }
 }

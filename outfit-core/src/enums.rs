@@ -1,5 +1,4 @@
 use std::fmt::Display;
-use engage::unit::Gender;
 
 pub const BODY_EXPRESS: [&str; 47] = [
     "EmoNormal", "EmoAngry", "EmoDeny", "EmoDeny2", "EmoGive", "EmoJoy", "EmoJoy2", "EmoLookR", "EmoLookL",

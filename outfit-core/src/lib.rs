@@ -4,8 +4,11 @@ use engage::{
     spriteatlasmanager::FaceThumbnailStaticFields, gamedata::GamedataArray,
     keyhelp::KeyHelpData, proc::ProcInst,
 };
+use engage_il2cpp::app::{BasicMenu, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods};
+use engage_il2cpp::List_1Ext;
 use engage_il2cpp::unity_engine::{IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2Methods, SkinnedMeshRenderer};
-use unity2::Cast;
+use unity2::{injection, Cast, Class, ClassIdentity};
+use unity2::injection::{ClassBuilder, DefaultInjectedMembers, InjectedClass};
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -19,6 +22,7 @@ use unity2::Cast;
 // mod photo;
 mod localize;
 mod capture;
+mod photo;
 
 pub use enums::*;
 pub use data::*;
@@ -39,10 +43,21 @@ pub const INPUT_DIR: &str = "sd:/engage/outfits/input/";
 pub const CAPTURE_DIR: &str = "sd:/engage/outfits/capture/";
 pub const THUMB_DIR: &str = "sd:/engage/outfits/capture/face/";
 pub use menu::items::AssetType;
+use crate::room::CreateUnitInfoModel;
 
+extern "C" {
+    fn cobapi_register_injected_class(
+        namespace: *const u8,
+        namespace_len: usize,
+        name: *const u8,
+        name_len: usize,
+        class: *mut unity2::il2cpp::class::Il2CppClass,
+        parent_ctor: *const unity2::MethodInfo,
+    ) -> bool;
+}
 pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
-pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| {OutfitData::init()}) }
+pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| OutfitData::init()) }
 
 fn photo_off(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::Inactive;
@@ -52,13 +67,48 @@ fn photo_on(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
     UnitAssetMenuData::init_photo_profiles();
 }
 
+pub fn register<T: InjectedClass>(
+    configure: impl FnOnce(ClassBuilder<T::Parent>) -> ClassBuilder<T::Parent>,
+) -> Option<Class> {
+    let class = configure(T::class_builder()).build();
+    T::fill_cache(class);
+
+    let parent_ctor: Option<&'static unity2::MethodInfo> =
+        T::Parent::class().raw().get_method_from_name(".ctor", 0).map(|mi| &*mi);
+
+    let registered = unsafe {
+        cobapi_register_injected_class(
+            T::NAMESPACE.as_ptr(),
+            T::NAMESPACE.len(),
+            T::NAME.as_ptr(),
+            T::NAME.len(),
+            class.raw_mut(),
+            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity2::MethodInfo),
+        )
+    };
+    registered.then_some(class)
+}
 pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_dvc = is_dvc;
     if UnitAssetMenuData::get().init {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
-    skyline::install_hook!(appearance_create_from_result);
+    if register::<CreateUnitInfoModel>(|b| {
+        b.add_fields(CreateUnitInfoModel::__injected_fields())
+            .add_methods(CreateUnitInfoModel::__injected_methods())
+    }).is_none() { println!("[Outfit] MyComponent was already registered"); }
+    if register::<CustomAssetMenu>(|b|{
+        b.add_fields(CustomAssetMenu::__injected_fields())
+            .add_methods(CustomAssetMenu::__injected_methods())
+            .add_overrides(CustomAssetMenu::__injected_overrides())
+    }).is_none() { println!("[Outfit] CustomAssetMenu was already registered"); }
+    if register::<CustomAssetMenuItem3>(|b|{
+        b.add_fields(CustomAssetMenuItem3::__injected_fields())
+            .add_overrides(CustomAssetMenuItem3::__injected_overrides())
+            .add_methods(CustomAssetMenuItem3::__injected_methods())
+    }).is_none() { println!("[Outfit] CustomAssetMenuItem was not registered"); }
+    skyline::install_hooks!(appearance_create_from_result);
     let mut init = false;
     println!("Installing Outfit Plugin v{} ...", VERSION);
     OUTFIT_DATA.get_or_init(|| {
@@ -72,12 +122,16 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     let _ = std::fs::create_dir_all(INPUT_DIR);
     let _ = std::fs::create_dir_all(CAPTURE_DIR);
     let _ = std::fs::create_dir_all(THUMB_DIR);
-
-    let vtable = Il2CppClass::from_name("App", "GameUserData").unwrap().get_vtable_mut();
+    let klass = Class::lookup("App", "GameUserData");
+    let vtable = klass.raw_mut().get_vtable_mut();
     vtable[4].method_ptr = game_user_data_version as _;
     vtable[12].method_ptr = game_user_data_on_deserialize as _;
     vtable[11].method_ptr = game_user_data_on_serialize as _;
+    /*
+    let vtable = Il2CppClass::from_name("App", "GameUserData").unwrap().get_vtable_mut();
 
+
+     */
     /*
         get_nested_virtual_methods_mut("App", "AssetTable", "Result", "GetHashCode")
         .map(|method|{ method.method_ptr = new_result_get_hash_code as _; });
@@ -93,12 +147,15 @@ if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").o
     if let Some(method) = class.get_virtual_method_mut("YCall") { method.method_ptr = photo::photograph_edit_dispos_menu_minus as _; }
 }
  */
+    /*
+
+
+     */
     if let Some(method) = Il2CppClass::from_name("App", "ShopUnitSelectMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("Build"))
     {
         method.method_ptr = unitselect::shop_unit_select_menu_item_content_build as _;
     }
-
     if let Some(method) = Il2CppClass::from_name("App", "AccessoryMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("BuildText"))
     {
@@ -122,12 +179,16 @@ if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").o
     UnitAssetMenuData::get().is_loaded = false;
     UnitAssetMenuData::get().init = true;
     UnitAssetMenuData::get().data.clear();
+    /*
     if let Some(key) = KeyHelpData::try_get_mut("KHID_写真撮影_配置編集") {
         let y_button = KeyHelpData::instantiate().unwrap();
         y_button.button_index = 3;
         y_button.mid = "MID_MENU_ACCESSORY_SHOP_ACCESSORY".into();
         key.add(y_button);
     }
+
+     */
+    /*
     let thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
     let s = thumbs.cache_table.entries.iter().filter(|i| i.key.is_some()).map(|c| c.key.unwrap().to_string()).collect::<Vec<String>>();
 
@@ -139,6 +200,8 @@ if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").o
             thumbs.cache_table.add(alt_key.as_str().into(), sprite);
         }
     });
+
+     */
     init
 }
 pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
@@ -155,10 +218,13 @@ pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
                     let h = engage_il2cpp::combat::Kaneko::find_in_children(go.get_transform(), hair);
                     if !h.is_null() {
                         let go = h.get_game_object();
-                        data.preview.has_hair_acc = go.get_components_in_children_3::<SkinnedMeshRenderer>(true).iter().
-                            any(|r|{
-                                let name = r.get_name().to_rust_string();
-                                (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc")
+                        data.preview.has_hair_acc =
+                            get_skin_mesh_renderers(go).is_some_and(|arr|{
+                                arr.iter().map(|r| unsafe { r.cast::<SkinnedMeshRenderer>() })
+                                    . any(|r|{
+                                        let name = r.get_name().to_rust_string();
+                                        (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc")
+                                    })
                             });
                         if let Some(mt_hair) = get_material_from_go(go, "MtHair") {
                             let color = mt_hair.get_color_2(colors[0]);
@@ -229,14 +295,18 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
                     }
                 }
                 else if j == 2 {
-                    go.get_components_in_children_3::<SkinnedMeshRenderer>(true).iter().for_each(|smr| {
-                        engage_il2cpp::app::Ut::get_instance_materials(smr).iter().for_each(|m| {
-                            if m.get_name().to_rust_string().contains("MtSkin") {
-                                m.set_float("_Makeup", 0.0);
-                                m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
-                            }
-                        });
-                    });
+                    if let Some(arr) = get_skin_mesh_renderers(go) {
+                        arr.iter()
+                            .map(|r| unsafe { r.cast::<SkinnedMeshRenderer>() })
+                            .for_each(|smr| {
+                                engage_il2cpp::app::Ut::get_instance_materials(smr).iter().for_each(|m| {
+                                    if m.get_name().to_rust_string().contains("MtSkin") {
+                                        m.set_float("_Makeup", 0.0);
+                                        m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color { r, g, b, a: 1.0 });
+                                    }
+                                });
+                            });
+                    }
                 }
                 else if j == 14 {
                     if let Some(m) = get_material_from_go(go, "MtHair2").or_else(|| get_material_from_go(go, "MtOdd")){
@@ -255,8 +325,11 @@ fn get_mt_eye(go: engage_il2cpp::unity_engine::GameObject) -> Option<engage_il2c
 }
 
 fn get_material_from_go(go: engage_il2cpp::unity_engine::GameObject, name: &str) -> Option<engage_il2cpp::unity_engine::Material> {
-    go.get_components_in_children_3::<engage_il2cpp::unity_engine::Renderer>(true).iter()
-        .flat_map(|r| engage_il2cpp::app::Ut::get_instance_materials(r).iter())
-        .find(|m| m.get_name().to_rust_string().contains(name))
-
+    if let Some(arr) = get_skin_mesh_renderers(go) {
+        arr.iter()
+            .map(|r| unsafe { r.cast::<engage_il2cpp::unity_engine::SkinnedMeshRenderer>() })
+            .flat_map(|r| engage_il2cpp::app::Ut::get_instance_materials(r).iter())
+            .find(|m| m.get_name().to_rust_string().contains(name))
+    }
+    else { None }
 }

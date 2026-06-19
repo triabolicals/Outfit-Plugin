@@ -37,8 +37,9 @@ pub fn asset_table_result_setup_hook_outfit(
 {
     let result = call_original!(this, mode, unit, equipped, conds, method_info);
     let mut conditions = AssetConditions::new(unit, mode, equipped);
-
+    println!("Commiting for Dress");
     dress::commit_for_unit_dress(result, mode, unit, equipped, conds, &mut conditions);
+    println!("Finished Commiting for Dress");
     result
 }
 
@@ -75,10 +76,4 @@ pub fn is_monster_body(this: AssetTable_Result) -> bool {
     let dress = this.get_body_model();
     if !dress.is_null() { if dress.to_rust_string().contains("T_c") { return true;} }
     false
-}
-
-#[unity::hook("Combat", "CharacterEffect", "CreateBreak")]
-pub fn create_break_effect_hook(this: &mut CharacterEffect, method_info: unity2::OptionalMethod) {
-    call_original!(this, method_info);
-    outfit_core::room::break_effect(this);
 }

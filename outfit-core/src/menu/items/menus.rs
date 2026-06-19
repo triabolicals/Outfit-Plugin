@@ -5,6 +5,7 @@ use engage_il2cpp::{
     prelude::List_1,
     system::collections::generic::IList_1Methods
 };
+use engage_il2cpp::app::{IItemDataMethods, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographPauseDataMethods, IPhotographSequence};
 use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result}, menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand}, room::ReloadType, CustomAssetMenuItem3};
 use super::*;
 
@@ -64,7 +65,6 @@ impl CustomAssetMenuKind {
             FaceSelection => 15,
             EngagedBody(female) => 16 + *female as i32,
             HairEdit => 18,
-            // AnimPreview(hub) => 19 + *hub as i32,
             ShopBody((kind, alt)) => { clamp_menu_index_value(if *alt { 105 } else { 100 }, *kind, 5) },    //1020
             ShopAcc(kind) => clamp_menu_index_value(110, *kind, 5),
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
@@ -90,6 +90,7 @@ impl CustomAssetMenuKind {
             9 => Rig,
             10 => HeadEdit,
             11 => LoadData,
+            12 => PresetAppearanceMenu(false),
             13 => PauseList,
             14 => ItemList,
             15 => FaceSelection,
@@ -99,7 +100,7 @@ impl CustomAssetMenuKind {
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
             130..135 => ShopAoc(value as u8 - 130),
-            140..150 => ColorSelection(value as u8 - 140),
+            140..160 => ColorSelection(value as u8 - 140),
             170..250 => ClassBodySelection(((value as u8 - 170) % 40, value >= 210)),
             300..400 => {
                 let i = value - 300;
@@ -107,7 +108,7 @@ impl CustomAssetMenuKind {
                 let p = (i / 10) as u8;
                 ColorPresets(p, k)
             }
-            _ => { unreachable!() },
+            _ => { ProfileSelection },
         }
     }
     pub fn get_help_index(&self, is_menu_item: bool) -> i32 {
@@ -160,7 +161,6 @@ impl CustomAssetMenuKind {
                 }
                 else { Some(MainShop) }
             }
-            // AnimPreview(hub) => Some(ShopAoc(*hub)),
             _ => { Some(MainShop) }
         }
     }
@@ -294,23 +294,21 @@ impl CustomAssetMenuKind {
         let female = UnitAssetMenuData::get_gender(false) == 2;
         match self {
             MainShop => {
-                /*
                 if UnitAssetMenuData::is_photo_graph() {
                     for x in [ShopBody((0, false)), Head, Hair, Rig, ShopAcc(0), ColorKindSelection, ScaleMenu, PresetAppearanceMenu(false)]{
                         list.add(CustomAssetMenuItem3::new_menu(x, unity2::Il2CppString::null()).as_basic_menu_item());
                     }
-                    if let Some(p) = PhotographTopSequence::get_photograph_sequence() {
-                        if p.dispos_manager.current_dispos_info.weapon_data_list.len() > 1 {
+                    if let Some(p) = crate::photo::get_photosequence(){
+                        let dispos = p.m_dispos_manager().m_current_dispos_info();
+                        if dispos.get_weapon_data_list().count() > 0 {
                             list.add(CustomAssetMenuItem3::new_menu(ItemList, unity2::Il2CppString::null()).as_basic_menu_item());
                         }
-                        if p.dispos_manager.current_dispos_info.pause_data_list.len() > 1 {
+                        if dispos.get_pause_data_list().count() > 0 {
                             list.add(CustomAssetMenuItem3::new_menu(PauseList, unity2::Il2CppString::null()).as_basic_menu_item());
                         }
                     }
                 }
                 else {
-
-                 */
                     list.add(CustomAssetMenuItem3::new(CurrentProfile).as_basic_menu_item());
                     for x in [
                         ProfileSelection, ProfileSettings, ShopBody((0, false)), EngagedBody(false), Head, Hair, Rig,
@@ -321,7 +319,7 @@ impl CustomAssetMenuKind {
                     if !UnitAssetMenuData::get().god_mode {
                         list.add(CustomAssetMenuItem3::new(UnitName).as_basic_menu_item());
                     }
-               // }
+                }
             }
             LoadData => {
                 let item = CustomAssetMenuItem3::new(CurrentData);
@@ -366,7 +364,7 @@ impl CustomAssetMenuKind {
             }
             ProfileSettings => {
                 [   FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing),
-                    FlagMenuItem(AssetFlag::EngagedAnimation), FlagMenuItem(AssetFlag::EnableBattleAccessories), FlagMenuItem(AssetFlag::UseFaceThumbnail),
+                    FlagMenuItem(AssetFlag::EngagedAnimation), FlagMenuItem(AssetFlag::UseFaceThumbnail),
                     Data(AssetDataMode::Export), Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
                 ].into_iter().for_each(|v|{ list.add(CustomAssetMenuItem3::new(v).as_basic_menu_item()); });
             }
@@ -559,95 +557,33 @@ impl CustomAssetMenuKind {
                     }
                 }
             }
+            ItemList => {
+                if let Some(data_list) = crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info().get_weapon_data_list()) {
+                    data_list.iter().for_each(|x| {
+                        let name = engage_il2cpp::app::Mess::get(x.get_name());
+                        let item = CustomAssetMenuItem3::new(Item);
+                        item.set_name(name);
+                        list.add(item.as_basic_menu_item());
+                    });
+                }
+            }
+            PauseList => {
+                if let Some(data_list) = crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info().get_pause_data_list()) {
+                    data_list.iter().for_each(|x| {
+                        let name = engage_il2cpp::app::Mess::get(x.get_name());
+                        let item = CustomAssetMenuItem3::new(Item);
+                        item.set_name(x.get_name());
+                        list.add(item.as_basic_menu_item());
+                    });
+                }
+            }
             _ => {}
         }
         if list.count() == 0 { list.add(CustomAssetMenuItem3::new(NoItem).as_basic_menu_item()); }
     }
-    /*
-    pub fn create_menu_items(&self, this: &mut CustomAssetMenu) {
-        let db = get_outfit_data();
-        let preview = UnitAssetMenuData::get_preview();
-        let female = UnitAssetMenuData::get_gender(false) == 2;
-        match self {
-            /*
-            PauseList => {
-                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p|&p.dispos_manager.current_dispos_info) {
-                    let mid = info.current_pause_data.map(|v|{ v.mid.to_string() });
-                    info.pause_data_list.iter().for_each(|x|{
-                        let item = CustomAssetMenuItem3::new(Pause);
-                        item.name = x.get_name();
-                        item.decided = Some(x.mid.to_string()) == mid;
-                        list.add(item);
-                    });
-                }
-                if this.full_menu_item_list.len() < 2 { list.add(CustomAssetMenuItem3::new(NoItem)); }
-            }
-            ItemList => {
-                if let Some(info) = PhotographTopSequence::get_photograph_sequence().map(|p| &p.dispos_manager.current_dispos_info) {
-                    let hash = info.weapon_data.map(|v| v.parent.hash).unwrap_or(0);
-                    info.weapon_data_list.iter().for_each(|x|{
-                        let item = CustomAssetMenuItem3::new(Item);
-                        item.name = x.get_name();
-                        item.decided = hash == x.parent.hash;
-                        list.add(item);
-                    });
-                }
-                if this.full_menu_item_list.len() < 2 { list.add(CustomAssetMenuItem3::new(NoItem)); }
-            }
-            */
-            VoiceSelection => { db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, this.full_menu_item_list); }
-            /*
-            AnimPreview(hub) => {
-                EquipmentBoxMode::set_open(false);
-                UnitAssetMenuData::get_preview().anim_pause = false;
-                hub_room_set_by_result(None, ReloadType::BodyAnimSpeed(1.0));
-                if *hub > 1 {
-                    db.list.aoc_state[2].iter().for_each(|x|{
-                        let item = CustomAssetMenuItem3::new(Anim(*hub));
-                        item.name = x.into();
-                        item.hash = Animator::string_to_hash(x);
-                        list.add(item);
-                    });
-                }
-                let i = if *hub < 2 { *hub as usize } else { *hub as usize + 1 };
-                db.list.aoc_state[i].iter().for_each(|x|{
-                    let item = CustomAssetMenuItem3::new(Anim(*hub));
-                    item.name = x.into();
-                    item.hash = Animator::string_to_hash(x);
-                    list.add(item);
-                });
-            }
-
-             */
-            _ => { list.add(CustomAssetMenuItem3::new(-1, -1)); }
-        }
-        if this.full_menu_item_list.len() == 0 { list.add(CustomAssetMenuItem3::new(NoItem)); }
-        else {
-            if let Some(index) = self.get_save_select_index(){
-                if this.selects[index].index == 0 {
-                    if let Some(pos) = this.full_menu_item_list.iter().position(|v| v.decided)
-                        .or_else(|| this.full_menu_item_list.iter().position(|v| v.original))
-                    {
-                        this.selects[index].index = pos as i32;
-                        this.selects[index].scroll = pos as i32;
-                    }
-                }
-            }
-        }
-    }
-
-     */
     pub fn b_call(&self) {
         let reload_type =
             match self {
-                /*
-                AnimPreview(_) => {
-                    UnitAssetMenuData::get_preview().anim_pause = false;
-                    EquipmentBoxMode::set_open(true);
-                    ReloadType::BodyAnimSpeed(1.0)
-                }
-
-                 */
                 ScaleMenu => {
                     hub_room_set_by_result(None, ReloadType::All);
                     UnitAssetMenuData::get().control.setup(false, true);
@@ -727,9 +663,9 @@ impl CustomMenuItem for CustomAssetMenuKind {
     }
     fn get_equipment_box_type(&self, _menu_item: CustomAssetMenuItem3) -> EquipmentBoxMode {
         match self{
-            Rig|ShopBody(_)|ClassBodySelection(_)|Hair|Head => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets),
+            Rig|ShopBody(_)|ClassBodySelection(_)|Hair|Head|VoiceSelection  => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets),
             ShopAcc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
-            ShopAoc(_)|VoiceSelection => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
+            ShopAoc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
             ShopMount(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
             ScaleMenu => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(0)),
             ColorSelection(kind)| ColorPresets(_, kind)  => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),

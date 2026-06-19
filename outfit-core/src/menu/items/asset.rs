@@ -2,12 +2,12 @@ use engage::{gameuserdata::GameUserData,
     map::mind::MapMind, mess::Mess, random::Random,
     sequence::hubaccessory::room::HubAccessoryRoom,
     unitinfo::UnitInfo, util::get_singleton_proc_instance,
-    combat::CharacterAppearance,
     gamesound::{GameSound, GameSoundFadeSpeedType}
 };
 use engage_il2cpp::system::collections::generic::IList_1Methods;
-use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenuItemMethods};
-use unity2::IlNull;
+use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenu, IBasicMenuItemMethods};
+use engage_il2cpp::List_1Ext;
+use unity2::Cast;
 use crate::{get_outfit_data, left_right_enclose, new_asset_table_accessory, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS, anim::AnimData, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, apply_result_hair, set_color_by_i32};
 use super::*;
 
@@ -24,6 +24,24 @@ pub enum AssetType {
     Rig,
 }
 impl AssetType {
+    pub fn default_icon(self) -> CustomMenuIcon {
+        match self {
+            AssetType::Body => CustomMenuIcon::Clothes,
+            AssetType::Head => CustomMenuIcon::Head,
+
+            AssetType::Hair => CustomMenuIcon::Hair,
+            AssetType::AOC(_) => CustomMenuIcon::SolaTail,
+            AssetType::Acc(x) => {
+                if x < 3 { CustomMenuIcon::AccFace }
+                else if x == 3 { CustomMenuIcon::EngageCommon }
+                else { CustomMenuIcon::Shield }
+            }
+            AssetType::Mount(k) => CustomMenuIcon::Mount(k),
+            AssetType::Voice => CustomMenuIcon::Talk,
+            AssetType::ColorPreset(_) => CustomMenuIcon::Color,
+            AssetType::Rig => CustomMenuIcon::Body,
+        }
+    }
     pub fn to_index(&self) -> i32 {
         match self {
             AssetType::Body => 0,
@@ -294,11 +312,7 @@ impl CustomMenuItem for AssetType {
                         else { format!("Combat/Map: {} / Map: {}\n{}", mode2, mode1, MenuTextCommand::LeftRight.insert_right("Change Page")) }.into()
                     }
                     else {
-                        let mut help = format!("Combat/Map {} / {}\n{} ", mode2, mode1, MenuTextCommand::LeftRight.insert_right("Change Page"));
-                        if UnitAssetMenuData::get_flag() & 32 != 0 {
-                            help.push_str(MenuTextCommand::X.insert_right("Set for Break").to_string().as_str());
-                        }
-                        help.into()
+                        format!("Combat/Map {} / {}\n{} ", mode2, mode1, MenuTextCommand::LeftRight.insert_right("Change Page")).into()
                     }
                 }
                 Self::Rig => format!("Combat Rig: {}", mode2).into(),
@@ -359,6 +373,8 @@ impl CustomMenuItem for AssetType {
         match self {
             AssetType::ColorPreset(kind) => {
                 for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
+                menu_item.get_asset_menu().b_call();
+                return BasicMenu_Result::se_decide();
             }
             AssetType::Body => {
                 let idx = menu_item.get_asset_menu().menu_kind().to_index();
@@ -401,22 +417,12 @@ impl CustomMenuItem for AssetType {
                 }
             }
         }
-        /*
-        let index = menu_item.index;
-        menu_item.menu.full_menu_item_list.iter_mut().for_each(|x|{
-            match x.menu_kind {
-                Asset(AssetType::ColorPreset(_)) => {
-                    x.set_decided(x.index == index);
-                    x.rebuild_text();
-                }
-                Asset(_) => {
-                    x.set_decided(hash == x.hash);
-                    x.rebuild_text();
-                }
-                _ => {}
-            }
+        menu_item.get_asset_menu().m_full_menu_item_list().iter().for_each(|v|{ 
+            let i = unsafe { v.cast::<CustomAssetMenuItem3>() };
+            let decided = i.value() == hash;
+            i.set_m_decided(decided);
+            i.rebuild_text();
         });
-         */
         self.get_equipment_box_type(menu_item).update();
         menu_item.rebuild_text();
         BasicMenu_Result::se_decide()

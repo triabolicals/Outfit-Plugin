@@ -19,12 +19,13 @@ pub fn commit_for_unit_dress(
         result.commit_2(mmode, unit.get_person(), unit.get_job(), equipped);
         return;
     }
-    let condition_unit = 
-        if conditions.flags.contains(AssetFlags::Vision) { 
+    let condition_unit =
+        if conditions.flags.contains(AssetFlags::Vision) {
             let owner = engage_il2cpp::app::UnitUtil::get_vision_owner(unit);
-            if !owner.is_null() { owner } else { unit } 
+            if !owner.is_null() { owner }
+            else { unit }
         } else { unit };
-    
+
     if conditions.flags.contains(AssetFlags::MapTransform) && mode == 1 {
         let jid = condition_unit.get_job().get_jid().to_rust_string();
         /*
@@ -42,7 +43,7 @@ pub fn commit_for_unit_dress(
             }
             else { result.setup_for_person_job_item(1, PersonData::get("PID_エル_竜化"), Some(condition_unit.job), None, conds); }
         }
-        
+
          */
         return
     }
@@ -82,10 +83,11 @@ pub fn commit_for_unit_dress(
         }
         else {
             result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
-            // db.accessory_conditions.commit_accessories(result, condition_unit, mode);
         }
         profile_flag = data.get_active_flag(conditions.flags.contains(AssetFlags::Engaged));
+        println!("Setting AssetSets");
         UnitAssetMenuData::set_assets(result, condition_unit, conditions);
+        println!("Assets Set");
     }
     else {
         result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
@@ -104,7 +106,9 @@ pub fn commit_for_unit_dress(
         return;
     }
     if conditions.flags.contains(AssetFlags::CombatTranforming) { AnimData::remove(result, true, true); }
+    println!("Correction Anims");
     db.correct_anims(result, unit, profile_flag, conditions);
+    println!("Finished Correction Anims");
 }
 fn hair_adjustment(result: AssetTable_Result) {
     /*
@@ -116,7 +120,7 @@ fn hair_adjustment(result: AssetTable_Result) {
             }
         }
     }
-    
+
      */
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]

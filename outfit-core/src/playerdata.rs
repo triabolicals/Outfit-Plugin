@@ -145,6 +145,22 @@ impl PlayerOutfitData {
             voice: 0, rig: 0, aoc_alt: [0; 4],
         }
     }
+    pub fn get_asset_hash(&self, kind: AssetType) -> i32 {
+        match kind {
+            AssetType::Body => { self.ubody }
+            AssetType::Head => { self.uhead }
+            AssetType::Hair => { self.uhair }
+            AssetType::AOC(slot) => { self.aoc[slot as usize] }
+            Acc(slot) => { self.acc[slot as usize] }
+            AssetType::Mount(slot) => { self.mount[slot as usize] }
+            AssetType::Voice => { self.voice }
+            AssetType::ColorPreset(kind) => {
+                if self.colors[kind as usize].has_color() { self.colors[kind as usize].to_i32() }
+                else { 0 }
+            }
+            AssetType::Rig => { self.rig }
+        }
+    }
     pub fn set_from_preset(&mut self, data: &PersonalDressData) {
         let photo = UnitAssetMenuData::is_photo_graph();
         self.uhair = data.uhair;
@@ -279,7 +295,8 @@ impl PlayerOutfitData {
             if let Some(hair) = db.try_get_asset(AssetType::Hair, self.uhair) { apply_result_hair(hair, result); }
             if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
                 let allow_cross_dress = self.flag & 128 != 0;
-                let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
+                let b = self.ubody;
+                //let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
                 if let Some(body) = db.try_get_asset(AssetType::Body, b)
                     .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
                 {
@@ -511,7 +528,7 @@ impl PlayerOutfitData {
 }
 
 pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method_info: unity2::OptionalMethod){
-    IGameUserDataMethods::on_serialize(this, stream);
+    unsafe { game_user_data_serialize(this, stream, _method_info) };
     stream.write_begin(UnitAssetData::version());
     let menu_data = UnitAssetMenuData::get();
     PLAYABLE_HASH.iter().for_each(|p|{
@@ -531,7 +548,7 @@ pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method
 }
 pub fn game_user_data_version(_this: GameUserData, _method_info: unity2::OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
 pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: unity2::OptionalMethod){
-    IGameUserDataMethods::on_deserialize(this, stream, version);
+    unsafe { game_user_data_deserialize(this, stream, version, _method_info); }
     let menu_data = UnitAssetMenuData::get();
     if !menu_data.is_loaded && version >= 21 {
         let version = stream.read_begin_2();
@@ -547,7 +564,13 @@ pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, versi
             if menu_data.data.iter().find(|v| v.person == *p).is_none() {
                 menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
         });
-        crate::capture::reset_faces(false);
+        // crate::capture::reset_faces(false);
+        println!("Deserialized: {} Faces", menu_data.data.len());
         menu_data.is_loaded = true;
     }
 }
+#[skyline::from_offset(0x2517840)]
+fn game_user_data_serialize(this: GameUserData, stream: Stream_2, _method_info: unity2::OptionalMethod);
+
+#[skyline::from_offset(0x2518170)]
+fn game_user_data_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: unity2::OptionalMethod);
