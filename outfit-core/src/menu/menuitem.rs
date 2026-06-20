@@ -16,6 +16,7 @@ use engage_il2cpp::{
 	system::collections::generic::IDictionary_2Methods,
 	unity_engine::{IRectTransformMethods, RectTransform}
 };
+use engage_il2cpp::app::IBasicMenuItemContent;
 use unity::{prelude::*};
 use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData};
@@ -243,14 +244,22 @@ impl CustomAssetMenuItem3 {
 	pub fn build_attribute(self) -> BasicMenuItem_Attribute { self.menu_item_kind().build_attribute() }
 	#[override_virtual(name = "OnSelect")]
 	pub fn on_select(self) {
-		IBasicMenuItemMethods::on_select(self);
 		self.menu_item_kind().on_select(self);
 		if let Some(c) = self.get_color() { self.set_cursor_color(c); }
+		let content = self.get_menu_item_content();
+		if !content.is_null() {
+			content.set_m_text_base_color(self.m_active_text_color());
+			content.update_text_color();
+		}
 	}
 	#[override_virtual(name = "OnDeselect")]
 	pub fn on_deselect(self) {
-		IBasicMenuItemMethods::on_deselect(self);
-		if let Some(c) = self.get_color() { IBasicMenuItemMethods::set_cursor_color(self, c); }
+		let content = self.get_menu_item_content();
+		if !content.is_null() {
+			content.set_m_text_base_color(self.m_inactive_text_color());
+			content.update_text_color();
+		}
+		if let Some(c) = self.get_color() { self.set_cursor_color(c); }
 	}
 	#[override_virtual(name = "ACall")] pub fn a_call(self) -> BasicMenu_Result { self.menu_item_kind().a_call(self) }
 	#[override_virtual(name = "XCall")] pub fn x_call(self) -> BasicMenu_Result { self.menu_item_kind().x_call(self) }
@@ -579,12 +588,13 @@ impl CustomAssetMenuItem {
 	}
 }
  */
-pub fn accessory_menu_item_content_build_text(this: engage_il2cpp::app::AccessoryMenuItemContent, _: unity2::OptionalMethod) {
+pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, _: unity2::OptionalMethod) {
 	IAccessoryMenuItemContentMethods::build_text(this);
 	if !UnitAssetMenuData::get().is_preview { return; }
 	let custom_item = this.get_menu_item();
 	if !custom_item.is_null() {
 		let custom_item = unsafe { custom_item.cast::<CustomAssetMenuItem3>() };
+		println!("Building...");
 		let kind = custom_item.menu_item_kind();
 		this.m_name_object().set_active(true);
 		let name_text = this.m_name_text();

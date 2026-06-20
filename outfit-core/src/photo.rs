@@ -6,6 +6,8 @@ use engage_il2cpp::{
     combat::{CharacterFactoryAsync, ICharacterJointMethods, ICharacterMethods},
     unity_engine::IComponentMethods,
     system::{Action, object::*},
+    root_motion::final_ik::{IIKSolverLookAt, ILookAtIK},
+    unity_engine::{ITransformMethods}
 };
 use unity::{prelude::*};
 use unity2::{Cast, FromIlInstance};
@@ -86,21 +88,38 @@ fn set_up(this: CreatePhotographCharacter, _: unity2::OptionalMethod) {
             let camera_transform = camera.get_transform();
             new_character.set_is_visible(true);
             let character_joint = new_character.get_joint();
-            let head_loc = character_joint.get_c_head_loc();
-            let character_go = new_character.get_game_object();
-            // character_go.get_components_in_children_3::<LookAtIK>(true).iter().for_each(|l| {});
+            if let Some(head_go) = to_option(character_joint.get_c_head_loc()).and_then(|t| to_option(t.get_game_object())) {
+                let character_go = new_character.get_game_object();
+                character_go.get_components_in_children_5::<engage_il2cpp::root_motion::final_ik::LookAtIK>().iter()
+                    .filter(|c| !c.is_null())
+                    .for_each(|c| {
+                        if let Some(go) = to_option(c.get_transform())
+                            .and_then(|t| to_option(t.get_parent()))
+                            .and_then(|t| to_option(t.get_game_object()))
+                        {
+                            if engage_il2cpp::unity_engine::Object_2::op_equality(head_go, go) {
+                                println!("Head Found");
+                                c.solver().set_target(camera_transform);
+                                c.solver().set_eyes_weight(0.5);
+                                this.dispos_info().set_m_look_at_ik_body(c);
+                            }
+                            else if engage_il2cpp::unity_engine::Object_2::op_equality(character_go, go){
+                                println!("Character Found");
+                                c.solver().set_target(this.dispos_info().m_look_target().get_transform());
+                                c.solver().set_body_weight(0.3);
+                                c.solver().set_head_weight(0.5);
+                                this.dispos_info().set_m_look_at_ik_body(c);
+                            }
+                        }
+
+                    });
+            }
         }
     }
     dispos_info.set_up_pause();
     dispos_info.setup_weapon();
 }
 /*
-if let Some(char) = this.this.m_character_cmp.as_ref() {
-        if let Some(go) = char.get_game_object().filter(|v| !v.is_null()) {
-            go.set_active2(false);
-            go.destroy();
-        }
-    }
     this.this.m_character_cmp = Some(this.character_cmp);
     this.this.m_is_loading_character = false;
     if let Some((char, camera_trans)) = this.this.m_character_cmp.as_ref().zip(Camera::get_main().map(|v| v.get_transform())){
@@ -138,3 +157,7 @@ if let Some(char) = this.this.m_character_cmp.as_ref() {
     }
 }
  */
+pub fn to_option<T: Cast>(v: T) -> Option<T> {
+    if v.is_null() { None } else { Some(v) }
+
+}

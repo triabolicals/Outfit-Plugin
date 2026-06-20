@@ -1,5 +1,5 @@
 use engage::{gameuserdata::GameUserData,
-    map::mind::MapMind, mess::Mess, random::Random,
+    map::mind::MapMind, random::Random,
     sequence::hubaccessory::room::HubAccessoryRoom,
     unitinfo::UnitInfo, util::get_singleton_proc_instance,
     gamesound::{GameSound, GameSoundFadeSpeedType}

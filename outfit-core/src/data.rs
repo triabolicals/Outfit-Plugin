@@ -12,9 +12,9 @@ use engage_il2cpp::{
     Dictionary_2Ext,
     List_1Ext,
     app::assettable::prelude::IList_1Methods,
-    system::collections::generic::IList_1
+    system::collections::generic::IList_1,
+    app::{IAccessoryDataMethods, IPersonDataMethods, IRandom_2Methods}
 };
-use engage_il2cpp::app::{IAccessoryDataMethods, IPersonDataMethods, IRandom_2Methods};
 use unity2::{Cast, system::string::IIl2CppStringMethods};
 pub use super::*;
 
@@ -174,6 +174,7 @@ impl OutfitData {
                 .iter()
                 .filter(|(x, _)| !x.is_null())
                 .map(|(x, i)| (i, x.to_rust_string())).collect();
+        /*
         println!("Sorting Added Assets");
         assets.iter().enumerate()
             .filter(|(_, (_, s))|{
@@ -253,6 +254,7 @@ impl OutfitData {
                     }
                 }
             });
+        */
         println!("Finished with Assets");
         let dress = DressData::init(&mut hashes);
         println!("Finished with DressData");

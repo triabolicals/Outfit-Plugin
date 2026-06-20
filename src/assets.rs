@@ -1,5 +1,4 @@
 use unity::prelude::*;
-use engage::{gamedata::{assettable::*, skill::*, *}};
 use engage_il2cpp::app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase};
 use engage_il2cpp::unity_engine::resource_management::async_operations::asyncoperationhandle_1::IAsyncOperationHandle_1Methods;
 use unity2::Cast;
@@ -37,9 +36,7 @@ pub fn asset_table_result_setup_hook_outfit(
 {
     let result = call_original!(this, mode, unit, equipped, conds, method_info);
     let mut conditions = AssetConditions::new(unit, mode, equipped);
-    println!("Commiting for Dress");
     dress::commit_for_unit_dress(result, mode, unit, equipped, conds, &mut conditions);
-    println!("Finished Commiting for Dress");
     result
 }
 

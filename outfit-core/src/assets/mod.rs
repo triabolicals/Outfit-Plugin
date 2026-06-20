@@ -31,9 +31,10 @@ pub fn find_aid_condition_prefix(entry: AssetTable, prefix: &str, with_gender: b
         }
         else { Some(engage_il2cpp::app::Gender::none()) };
     let condition = entry_indexes.m_list().iter()
-        .filter(|i|{ i.count() == 1 })
+        .filter(|i| i.count() == 1)
         .find_map(|i| i.iter().find(|idx| map.get(&idx).is_some_and(|v| v.starts_with(prefix))))
         .and_then(|i| map.get(&i).cloned());
+
     if gender.is_none() { condition.clone().as_ref().and_then(|c| condition.zip(get_gender_from_condition(c))) }
     else { condition.zip(gender) }
 }

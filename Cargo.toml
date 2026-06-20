@@ -40,7 +40,7 @@ engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", 
     "system-action", "app-unitinfowindowcharaupdater", "app-bitstruct", "app-unitaccessory", "app-unitaccessorylist", "app-accessorydata", "app-pad", "app-sortieutil",
     "app-titlebar", "app-ut",
 ] }
-unity2 = { git = "https://github.com/DivineDragonFanClub/unity2" }
+unity2 = { git = "https://github.com/DivineDragonFanClub/unity2"}
 
 [patch."https://github.com/triabolicals/engage"]
 engage = {path = "/Users/trile/Project/lib/engage"}

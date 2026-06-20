@@ -105,6 +105,13 @@ impl DressData {
         println!("Appearance Count: {}", personal.len());
         let job_list = engage_il2cpp::app::JobData::get_list();
         let mut transform: Vec<JobTransformData> = job_list.iter().flat_map(|j| JobTransformData::from_job(j)).collect();
+        engage_il2cpp::app::PersonData::get_list().iter().filter(|p| !p.get_job().is_null() && !p.get_aid().is_null())
+            .for_each(|p|{
+                let jhash = p.get_job().hash();
+                if !transform.iter().any(|c| c.hash == jhash) {
+                    if let Some(j) = JobTransformData::from_person(p) { transform.push(j); }
+                }
+            });
         transform_items.iter().for_each(|(hash, item)|{
             if let Some(data) = transform.iter_mut().find(|x| x.hash == *hash) { data.item = Some(*item); }
         });
@@ -385,6 +392,27 @@ impl JobTransformData {
     pub fn check_asset(asset: unity2::Il2CppString) -> bool {
         il2str(asset).is_none_or(|a| (a.contains("null") || a.contains("T_c")) && (!a.contains("AM") && !a.contains("AF")))
     }
+    pub fn from_person(person: engage_il2cpp::app::PersonData) -> Option<JobTransformData> {
+        if person.get_job().is_null() { return None; }
+        let pid = il2str(person.get_pid()).filter(|x| x.ends_with("_竜化"))?;
+        let aid = il2str(person.get_aid()).filter(|x| x.ends_with("竜化"))?;
+        let aid_condition = get_condition_index(aid.as_str())?;
+        let search_lists = engage_il2cpp::app::AssetTable::s_search_lists();
+        let mut asset_table = AssetTableIndexes::default();
+        asset_table.mode_2.extend(search_lists.get(2).iter().filter(|x| has_condition_index(*x, aid_condition)).map(|x| x.index()));
+        let mode_1_trans_condition = get_condition_index("竜化").unwrap();
+        let conditions = [il2str(person.get_name()).and_then(|v| get_condition_index(v.as_str())), get_condition_index(pid.as_str()), Some(aid_condition)];
+        asset_table.mode_1.extend(
+            search_lists.get(1).iter()
+                .filter(|x| has_condition_index(*x, mode_1_trans_condition) && (conditions.iter().any(|v| v.is_some_and(|i|has_condition_index(*x, i)))))
+                .map(|x| x.index())
+        );
+        if !asset_table.is_empty() {
+            println!("Adding transformation from person: {}", engage_il2cpp::app::Mess::get_game_data_name(person.get_pid()));
+            Some(Self{ is_transform: true, hash: person.get_job().hash(), asset_table, item: None })
+        }
+        else { None }
+    }
     pub fn from_job(job_data: engage_il2cpp::app::JobData) -> Option<JobTransformData> {
         let job_condition = get_condition_index(job_data.get_jid())?;
         let transform = get_condition_index("Transformed");
@@ -431,7 +459,10 @@ impl JobTransformData {
                     .map(|x| x.index())
             );
         }
-        if !asset_table.is_empty() { Some(Self{ is_transform, hash, asset_table, item: None}) }
+        if !asset_table.is_empty() {
+            println!("Adding trans for Class: {} [monster: {}]", engage_il2cpp::app::Mess::get_game_data_name(job_data.get_jid()), is_transform);
+            Some(Self{ is_transform, hash, asset_table, item: None})
+        }
         else { None }
     }
     pub fn get_result(&self, mode: i32, unit: engage_il2cpp::app::Unit) -> AssetTable_Result{

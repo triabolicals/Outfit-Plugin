@@ -564,7 +564,7 @@ pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, versi
             if menu_data.data.iter().find(|v| v.person == *p).is_none() {
                 menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
         });
-        // crate::capture::reset_faces(false);
+        crate::capture::reset_faces(false);
         println!("Deserialized: {} Faces", menu_data.data.len());
         menu_data.is_loaded = true;
     }
