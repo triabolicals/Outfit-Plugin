@@ -100,7 +100,15 @@ impl DressData {
             });
         println!("Appearance Count: {}", personal.len());
         let job_list = JobData::get_list().unwrap();
-        let mut transform: Vec<JobTransformData> = job_list.iter().flat_map(|j| JobTransformData::from_job(j)).collect();
+        let mut transform: Vec<JobTransformData> =
+            PersonData::get_list().unwrap().iter().filter(|p| p.aid.is_some() && p.get_job().is_some() && p.name.is_some())
+                .flat_map(|x| JobTransformData::from_person(x))
+                .collect();
+        let hashes: Vec<_> = transform.iter().map(|v| v.hash).collect();
+        transform.extend(
+        job_list.iter().filter(|j| j.weapons[9] > 0 && !hashes.contains(&j.parent.hash))
+            .flat_map(|j| JobTransformData::from_job(j))
+        );
         transform_items.iter().for_each(|(hash, item)|{
             if let Some(data) = transform.iter_mut().find(|x| x.hash == *hash) { data.item = Some(*item); }
         });
@@ -389,6 +397,33 @@ impl JobTransformData {
             (a.contains("null") || a.contains("T_c")) && (!a.contains("AM") && !a.contains("AF"))
         })
     }
+    pub fn from_person(person: &PersonData) -> Option<JobTransformData> {
+        let job = person.get_job()?;
+        let pid = person.pid.to_string();
+        if !pid.ends_with("_竜化") { return None; }
+        let aid = person.aid.map(|v| v.to_string())?; //.filter(|v| v.ends_with("竜化"))?;
+        let aid_condition = AssetTableStaticFields::get_condition_index(aid.as_str());
+        if aid_condition <= 0 { return  None; }
+        let mode_1_trans_con = AssetTableStaticFields::get_condition_index("竜化");
+        let sf = AssetTableStaticFields::get();
+        let mut asset_table = AssetTableIndexes::default();
+        asset_table.mode_2.extend(
+            sf.search_lists[2].iter().filter(|x| x.condition_indexes.has_condition_index(aid_condition))
+                .map(|x| x.parent.index)
+        );
+        let name_condition = person.name.map(|v| AssetTableStaticFields::get_condition_index(v)).unwrap_or(-1);
+        let conditions = [aid_condition, AssetTableStaticFields::get_condition_index(pid.as_str()), name_condition];
+        asset_table.mode_1.extend(
+            sf.search_lists[1].iter()
+                .filter(|x| x.condition_indexes.has_condition_index(mode_1_trans_con) && conditions.iter().any(|i| x.condition_indexes.has_condition_index(*i)))
+                .map(|x| x.parent.index)
+        );
+        if !asset_table.is_empty() {
+            println!("Adding transformation from person: {} for {}", Mess::get_name(pid.as_str()), Mess::get_name(job.jid));
+            Some(Self{ is_transform: true, hash: job.parent.hash, asset_table, item: None })
+        }
+        else { None }
+    }
     pub fn from_job(job_data: &JobData) -> Option<JobTransformData> {
         let job_condition = AssetTableStaticFields::get_condition_index(job_data.jid);
         let transform = AssetTableStaticFields::get_condition_index("Transformed");
@@ -441,6 +476,7 @@ impl JobTransformData {
             );
         }
         if !asset_table.is_empty() {
+            println!("JobTransformation Added: {} [Monster: {}]", Mess::get_name(job_data.jid), !is_transform);
             Some(Self{ is_transform, hash, asset_table, item: None, }) }
         else { None }
 
