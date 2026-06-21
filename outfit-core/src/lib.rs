@@ -4,11 +4,11 @@ use engage::{
     spriteatlasmanager::FaceThumbnailStaticFields, gamedata::GamedataArray,
     keyhelp::KeyHelpData, proc::ProcInst,
 };
-use engage_il2cpp::app::{BasicMenu, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods};
+use engage_il2cpp::app::{BasicMenu, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods, PhotographEditDisposMenu, PhotographTopSequence};
 use engage_il2cpp::List_1Ext;
 use engage_il2cpp::unity_engine::{IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2Methods, SkinnedMeshRenderer};
 use unity2::{injection, Cast, Class, ClassIdentity};
-use unity2::injection::{ClassBuilder, DefaultInjectedMembers, InjectedClass};
+use unity2::injection::{DefaultInjectedMembers, InjectedClass};
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -43,6 +43,7 @@ pub const INPUT_DIR: &str = "sd:/engage/outfits/input/";
 pub const CAPTURE_DIR: &str = "sd:/engage/outfits/capture/";
 pub const THUMB_DIR: &str = "sd:/engage/outfits/capture/face/";
 pub use menu::items::AssetType;
+use crate::photo::CreatePhotographCharacter;
 use crate::room::CreateUnitInfoModel;
 
 extern "C" {
@@ -67,7 +68,23 @@ fn photo_on(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
     UnitAssetMenuData::init_photo_profiles();
 }
 
-pub fn register<T: InjectedClass>(
+pub fn register<T: InjectedClass>() -> Option<Class> {
+    let class = injection::build::<T>();
+    let parent_ctor: Option<&'static unity2::MethodInfo> =
+        T::Parent::class().raw().get_method_from_name(".ctor", 0).map(|mi| &*mi);
+    let registered = unsafe {
+        cobapi_register_injected_class(
+            T::NAMESPACE.as_ptr(),
+            T::NAMESPACE.len(),
+            T::NAME.as_ptr(),
+            T::NAME.len(),
+            class.raw_mut(),
+            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity2::MethodInfo),
+        )
+    };
+    registered.then_some(class)
+}
+/*
     configure: impl FnOnce(ClassBuilder<T::Parent>) -> ClassBuilder<T::Parent>,
 ) -> Option<Class> {
     let class = configure(T::class_builder()).build();
@@ -88,27 +105,26 @@ pub fn register<T: InjectedClass>(
     };
     registered.then_some(class)
 }
+
+ */
 pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_dvc = is_dvc;
     if UnitAssetMenuData::get().init {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
-    if register::<CreateUnitInfoModel>(|b| {
-        b.add_fields(CreateUnitInfoModel::__injected_fields())
-            .add_methods(CreateUnitInfoModel::__injected_methods())
-    }).is_none() { println!("[Outfit] MyComponent was already registered"); }
-    if register::<CustomAssetMenu>(|b|{
-        b.add_fields(CustomAssetMenu::__injected_fields())
-            .add_methods(CustomAssetMenu::__injected_methods())
-            .add_overrides(CustomAssetMenu::__injected_overrides())
-    }).is_none() { println!("[Outfit] CustomAssetMenu was already registered"); }
-    if register::<CustomAssetMenuItem3>(|b|{
-        b.add_fields(CustomAssetMenuItem3::__injected_fields())
-            .add_overrides(CustomAssetMenuItem3::__injected_overrides())
-            .add_methods(CustomAssetMenuItem3::__injected_methods())
-    }).is_none() { println!("[Outfit] CustomAssetMenuItem was not registered"); }
+    if register::<CreateUnitInfoModel>().is_none() { println!("[Outfit] MyComponent was already registered"); }
+    if register::<CustomAssetMenu>().is_none() { println!("[Outfit] CustomAssetMenu was already registered"); }
+    if register::<CustomAssetMenuItem3>().is_none() { println!("[Outfit] CustomAssetMenuItem was already registered"); }
+    if register::<CreatePhotographCharacter>().is_none() { println!("[Outfit] CreatePhotographCharacter was already registered"); }
+
     skyline::install_hooks!(appearance_create_from_result);
+    let klass = Class::lookup("App", "GameUserData");
+    let vtable = klass.raw_mut().get_vtable_mut();
+    vtable[4].method_ptr = game_user_data_version as _;
+    vtable[12].method_ptr = game_user_data_on_deserialize as _;
+    vtable[11].method_ptr = game_user_data_on_serialize as _;
+
     let mut init = false;
     println!("Installing Outfit Plugin v{} ...", VERSION);
     OUTFIT_DATA.get_or_init(|| {
@@ -122,35 +138,12 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     let _ = std::fs::create_dir_all(INPUT_DIR);
     let _ = std::fs::create_dir_all(CAPTURE_DIR);
     let _ = std::fs::create_dir_all(THUMB_DIR);
-    let klass = Class::lookup("App", "GameUserData");
-    let vtable = klass.raw_mut().get_vtable_mut();
-    vtable[4].method_ptr = game_user_data_version as _;
-    vtable[12].method_ptr = game_user_data_on_deserialize as _;
-    vtable[11].method_ptr = game_user_data_on_serialize as _;
-    /*
-    let vtable = Il2CppClass::from_name("App", "GameUserData").unwrap().get_vtable_mut();
-
-
-     */
-    /*
-        get_nested_virtual_methods_mut("App", "AssetTable", "Result", "GetHashCode")
-        .map(|method|{ method.method_ptr = new_result_get_hash_code as _; });
-if let Some(class) = Il2CppClass::from_name("App", "PhotographTopSequence").ok() {
-    if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = photo_off as _; }
-    if let Some(method) = class.get_virtual_method_mut("OnBind") { method.method_ptr = photo_on as _; }
-}
-
-if let Some(class) = Il2CppClass::from_name("App", "HubAccessoryRoom").ok() {
-    if let Some(method) = class.get_virtual_method_mut("OnDispose") { method.method_ptr = room::CustomHubAccessoryRoom::on_dispose as _; }
-}
-if let Some(class) = Il2CppClass::from_name("App", "PhotographEditDisposMenu").ok() {
-    if let Some(method) = class.get_virtual_method_mut("YCall") { method.method_ptr = photo::photograph_edit_dispos_menu_minus as _; }
-}
- */
-    /*
-
-
-     */
+    let vtable = PhotographTopSequence::class().raw_mut().get_vtable_mut();
+    vtable[10].method_ptr = photo_off as _;
+    vtable[11].method_ptr = photo_on as _;
+    if let Some(y_call) =  PhotographEditDisposMenu::class().raw_mut().get_virtual_method_mut("YCall") {
+        y_call.method_ptr = photo::photograph_edit_dispos_menu_minus as _;
+    }
     if let Some(method) = Il2CppClass::from_name("App", "ShopUnitSelectMenuItemContent").ok()
         .and_then(|k| k.get_virtual_method_mut("Build"))
     {
@@ -319,6 +312,7 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
         room::head_acc(go, flag & 64 != 0);
         room::hair_acc(go, flag & 16 != 0);
     }
+    println!("Finished with Colors");
 }
 fn get_mt_eye(go: engage_il2cpp::unity_engine::GameObject) -> Option<engage_il2cpp::unity_engine::Material>{
     get_material_from_go(go, "MtEye")

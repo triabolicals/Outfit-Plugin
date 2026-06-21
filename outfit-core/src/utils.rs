@@ -1,8 +1,9 @@
 use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
 use engage_il2cpp::app::{IRandom_2Methods, Mess_IconCategory, Random_2};
-use engage_il2cpp::unity_engine::IGameObjectMethods;
+use engage_il2cpp::combat::Kaneko;
+use engage_il2cpp::unity_engine::{IGameObjectMethods, IRectTransformMethods, Transform};
 use unity::{il2cpp::class::VirtualInvoke, prelude::*};
-use unity2::ClassIdentity;
+use unity2::{Cast, ClassIdentity};
 use unity2::system::string::IIl2CppStringMethods;
 use crate::assets::new_asset_table_accessory;
 pub trait Randomizer<T> {
@@ -70,7 +71,7 @@ pub fn left_right_enclose(string: &String) -> unity2::Il2CppString {
     format!("{}{}{}",
             engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
             string,
-            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left")
+            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
     ).into()
 }
 pub fn get_default_asset_conditions() -> unity2::Array::<unity2::Il2CppString> {
@@ -99,4 +100,26 @@ pub fn try_get_il2cpp_hash(str: unity2::Il2CppString) -> Option<i32> {
 pub fn get_skin_mesh_renderers(go: engage_il2cpp::unity_engine::GameObject) -> Option<unity2::Array::<engage_il2cpp::unity_engine::Component>> {
     let array = go.get_components_in_children_2(unity2::SystemType::from_il2cpp_type(engage_il2cpp::unity_engine::SkinnedMeshRenderer::class().raw().get_type()).unwrap(), true);
     if array.is_null() { None } else { Some(array) }
+}
+pub fn get_rect_transform_child(transform: Transform, child_name: &str) -> Option<engage_il2cpp::unity_engine::RectTransform> {
+    let child = Kaneko::find_in_children(transform, child_name);
+    if !child.is_null() { child.try_cast::<engage_il2cpp::unity_engine::RectTransform>() }
+    else { None }
+
+}
+pub fn change_rect_transform_in_children_size(transform: Transform, name: &str, dx: f32, dy: f32) {
+    if let Some(child) = get_rect_transform_child(transform, name) {
+        let mut size_delta = child.get_size_delta();
+        size_delta.x += dx;
+        size_delta.y += dy;
+        child.set_size_delta(size_delta);
+    }
+}
+pub fn change_rect_transform_in_child_anchor(transform: Transform, name: &str, dx: f32, dy: f32) {
+    if let Some(child) = get_rect_transform_child(transform, name) {
+        let mut an = child.get_anchored_position();
+        an.x += dx;
+        an.y += dy;
+        child.set_anchored_position(an);
+    }
 }

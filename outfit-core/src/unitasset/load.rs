@@ -62,6 +62,8 @@ impl UnitAssetLoader {
             dir.filter_map(|f| f.ok().filter(|f| f.path().is_file() && read_to_string(f.path()).is_ok())) //.is_ok_and(|f| f.starts_with("#Outfit Plugin"))))
             .for_each(|file| {
                 if let Some(load_data) = PlayerOutfitData::try_load_from_file(&file, Some(gender_restrict)){
+                    let name = file.path().to_path_buf();
+                    println!("File: {}", name.display());
                     self.loaded_data.push(UnitAssetLoadData::new(load_data, file.path().to_path_buf()));
                 }
             });

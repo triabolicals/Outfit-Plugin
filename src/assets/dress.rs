@@ -85,9 +85,9 @@ pub fn commit_for_unit_dress(
             result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
         }
         profile_flag = data.get_active_flag(conditions.flags.contains(AssetFlags::Engaged));
-        println!("Setting AssetSets");
+        // println!("Setting AssetSets");
         UnitAssetMenuData::set_assets(result, condition_unit, conditions);
-        println!("Assets Set");
+        // println!("Assets Set");
     }
     else {
         result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
@@ -106,9 +106,9 @@ pub fn commit_for_unit_dress(
         return;
     }
     if conditions.flags.contains(AssetFlags::CombatTranforming) { AnimData::remove(result, true, true); }
-    println!("Correction Anims");
+    // println!("Correction Anims");
     db.correct_anims(result, unit, profile_flag, conditions);
-    println!("Finished Correction Anims");
+    // println!("Finished Correction Anims");
 }
 fn hair_adjustment(result: AssetTable_Result) {
     /*

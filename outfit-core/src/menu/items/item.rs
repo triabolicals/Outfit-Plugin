@@ -110,12 +110,11 @@ impl CustomAssetMenuItemKind {
         let help = self.get_help(menu_item);
         let menu_kind = menu_item.get_asset_menu().menu_kind();
         let body = menu_kind.get_body(menu_item);
-        println!("OnSelect: {}", menu_item.menu_item_kind().to_index());
         let icon = self.get_icon(menu_item);
         let name = self.get_detail_box_name(menu_item);
         set_detail_box(name, Some(help), Some(body), icon.get_icon());
         self.get_equipment_box_type(menu_item).update();
-        let index = IBasicMenuItemMethods::get_index(menu_item);
+        let index = menu_item.get_index();
         match self {
             CurrentData => {
                 let data = UnitAssetMenuData::get();
@@ -125,12 +124,12 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::Full, true);
                 set_detail_box(name, Some(help), Some(body), icon.get_icon());
             }
-            // Anim(_) => { hub_room_set_by_result(None, ReloadType::BodyAnim(menu_item.hash as u32)); }
             OutfitDataFile => {
                 let data = UnitAssetMenuData::get();
                 let current = if index == 0 { None } else { Some(index-1) };
                 if data.loaded_data.selected_index != current {
                     data.loaded_data.selected_index = current;
+                    println!("Loaded Data Set to {}", current.unwrap());
                     UnitAssetMenuData::set_reload(ReloadPreview::LoadedData, true);
                     let result = UnitAssetMenuData::get_result();
                     let menu = UnitAssetMenuData::get();
@@ -152,11 +151,10 @@ impl CustomAssetMenuItemKind {
                 UnitAssetMenuData::set_reload(ReloadPreview::Asset, false);
             }
             RGBA(kind) => {
+                let v2 = menu_item.value2();
+                let pos = match v2 { 16 => 2, 17 => 3, 14 => 4, _ => { v2 % 8 + 1 } };
                 let color_kind = (*kind % 16) as usize;
-                if color_kind < 8 {
-                    let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
-                    EquipmentBoxMode::set_cursor(Some(cursor_pos as i32));
-                }
+                EquipmentBoxMode::set_cursor(Some(pos));
                 let preview = UnitAssetMenuData::get_preview();
                 if !preview.preview_data.colors[color_kind].has_color() && color_kind < 8 {
                     for x in 0..3 {
@@ -173,17 +171,30 @@ impl CustomAssetMenuItemKind {
                     Hair => EquipmentBoxMode::set_cursor(Some(3)),
                     Rig => EquipmentBoxMode::set_cursor(Some(4)),
                     VoiceSelection => EquipmentBoxMode::set_cursor(Some(5)),
+                    ColorSelection(16)|ColorPresets(_, 16) => {
+                        EquipmentBoxMode::Hair.update();
+                        EquipmentBoxMode::set_cursor(Some(2));
+                    }
+                    ColorSelection(17)|ColorPresets(_, 17)  => {
+                        EquipmentBoxMode::Hair.update();
+                        EquipmentBoxMode::set_cursor(Some(3));
+                    }
+                    ColorSelection(14)|ColorPresets(_, 14) => {
+                        EquipmentBoxMode::Hair.update();
+                        EquipmentBoxMode::set_cursor(Some(4));
+                    }
                     ColorSelection(kind)| ColorPresets(_, kind) => {
-                        let k = *kind % 16;
-                        if k < 8 { EquipmentBoxMode::set_cursor(Some(if k < 4 { 2 + k } else { k - 2 } as i32)); }
+                        let k = *kind % 8;
+                        EquipmentBoxMode::set_color_cursor(Some(k as i32));
                     }
                     _ => EquipmentBoxMode::set_cursor(None),
                 }
             }
             ResetColor(color_kind) => {
+                let v2 = menu_item.value2();
+                let pos = match v2 { 16 => 2, 17 => 3, 14 => 4, _ => { v2 % 8 + 1 } };
                 let color_kind = *color_kind as usize;
-                let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
-                EquipmentBoxMode::set_cursor(Some(cursor_pos as i32));
+                EquipmentBoxMode::set_cursor(Some(pos));
                 UnitAssetMenuData::set_reload(ReloadPreview::ResetColor(color_kind as i32), false);
             }
             ScaleMenuItem(kind) => {
@@ -232,6 +243,7 @@ impl CustomAssetMenuItemKind {
                 let v = UnitAssetMenuData::get_preview().preview_data.expression[k] as usize;
                 let v = if v == 0 { k } else { v - 1 };
                 hub_room_set_by_result(None, ReloadType::FacialPreview(v));
+                EquipmentBoxMode::set_cursor(None);
             }
             _ => { EquipmentBoxMode::set_cursor(None); }
         }
@@ -277,7 +289,13 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
         match self {
             Asset(asset) => asset.get_equipment_box_type(menu_item),
             FlagMenuItem(flag) => flag.get_equipment_box_type(menu_item),
-            RGBA(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
+            RGBA(kind)|ResetColor(kind) => {
+                let v2 = menu_item.value2();
+                match v2 {
+                    14|16|17 => EquipmentBoxMode::Hair,
+                    _ => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind))
+                }
+            },
             ResetColor(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
             ScaleMenuItem(kind) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(*kind/8)),
             ProfileItem(profile) => EquipmentBoxMode::ProfilePreview(*profile),
@@ -287,11 +305,11 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
     }
     fn get_name(&self, menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
         let idx = self.to_index();
-        let menu_index = IBasicMenuItemMethods::get_index(menuitem);
+        let menu_index = menuitem.m_index();
         match self {
             UnitInventorySubMenuItem => { MenuTextCommand::Outfits.get() }
-            PresetAppearance|Pause|Item => { IBasicMenuItemMethods::get_name(menuitem) }
-            OutfitDataFile => { IBasicMenuItemMethods::get_name(menuitem) }
+            PresetAppearance|Pause|Item => { menuitem.m_name() }
+            OutfitDataFile|FaceThumb => { menuitem.m_name() }
             Menu(menu) => menu.get_name(menuitem),
             Asset(ty) => ty.get_name(menuitem),
             FlagMenuItem(flag) => flag.get_name(menuitem),
@@ -337,7 +355,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { "Custom Name".into() }
             }
             Data(data) => { data.get_name(menuitem) }
-            NoItem => { "----".into() }
+            NoItem => { "------".into() }
             Expression(kind) => {
                 let k = *kind as usize;
                 let v = UnitAssetMenuData::get_preview().preview_data.expression[k] as usize;
@@ -363,10 +381,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             CurrentProfile => { Some(get_current_profile_name()) }
             Data(item) => { item.get_detail_box_name(menuitem) }
             UnitName => { Some("Unit Name".into()) }
-            PresetAppearance => { Some(IBasicMenuItemMethods::get_name(menuitem)) }
-            FaceThumb => { Some(
-                IBasicMenuItemMethods::get_name(menuitem).to_rust_string().trim_end_matches(".png").into())
-            }
+            PresetAppearance => { Some(menuitem.m_name()) }
+            FaceThumb => { Some(menuitem.m_name().to_rust_string().trim_end_matches(".png").into()) }
             Expression(kind) => { Some(FACIAL_STATES[*kind as usize].0.into()) }
             _ => { Some(MenuText::get_command(idx)) }
         }
@@ -448,7 +464,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             Data(_) => MenuTextCommand::Data.get(),
             CurrentProfile|ProfileItem(_) => MenuText::get_command(1),
             OutfitDataFile => {
-                if IBasicMenuItemMethods::get_index(menuitem) == 0 { "".into() }
+                if menuitem.m_index() == 0 { "".into() }
                 else {
                     let emblem = UnitAssetMenuData::get().god_mode;
                     let saved_profile = UnitAssetMenuData::get().loaded_data.profile;
@@ -561,7 +577,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                             FaceThumbnail::try_insert(keys.2, sprite);
                             UnitAssetMenuData::get().loaded_data.selected_index = Some(menuitem.value());
                             let key = format!("G_Face_{}", keys.0);
-                            let name = IBasicMenuItemMethods::get_name(menuitem).to_rust_string();
+                            let name = menuitem.m_name().to_rust_string();
                             if !GameVariableManager::exist(key.as_str()) { GameVariableManager::make_entry_str(key.as_str(), name); }
                             else { GameVariableManager::set_string(key.as_str(), name); }
                             FaceThumbnail::try_insert(keys.0, sprite);
@@ -569,6 +585,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     }
                 }
                 menuitem.get_asset_menu().b_call();
+                menuitem.get_asset_menu().toggle_ui();
                 BasicMenu_Result::se_decide()
             }
             PresetAppearance => {
@@ -642,6 +659,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 menuitem.rebuild_text();
                 BasicMenu_Result::se_decide()
             }
+            /*
             Asset(AssetType::Body) => {
                 if !UnitAssetMenuData::get().god_mode && !UnitAssetMenuData::is_photo_graph() {
                     UnitAssetMenuData::get_preview().preview_data.break_body = menuitem.value();
@@ -651,6 +669,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else { BasicMenu_Result::pass() }
             }
+
+             */
             _ => { BasicMenu_Result::pass() }
         }
     }
@@ -714,7 +734,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     list.add(no.cast());
                 }
                 let dialog = BasicDialog::create_basic_dialog_bind(menuitem.get_menu(), list);
-                let message = format!("Delete '{}'?", IBasicMenuItemMethods::get_name(menuitem));
+                let message = format!("Delete '{}'?", menuitem.m_name());
                 dialog.set_text(message);
                 BasicMenu_Result::se_cursor()
             }
@@ -757,8 +777,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 else if l || r {
                     let box_state =
-                        if r { menu.loaded_data.equipment_box_state.get_previous() }
-                        else { menu.loaded_data.equipment_box_state.get_next() };
+                        if r { menu.loaded_data.equipment_box_state.get_next() }
+                        else { menu.loaded_data.equipment_box_state.get_previous() };
                     EquipmentBoxMode::LoadData(box_state).update();
                     menu.loaded_data.equipment_box_state = box_state;
                     BasicMenu_Result::se_cursor()
@@ -959,7 +979,7 @@ pub fn scale_change_value(index: i32, increase: bool, speed_up: bool) -> u16 {
 }
 #[unity2::callback]
 fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
-    let path = format!("{}{}", THUMB_DIR, IBasicMenuItemMethods::get_name(menu_item));
+    let path = format!("{}{}", THUMB_DIR, menu_item.m_name());
     let idx = menu_item.value();
     if let Ok(_) = fs::remove_file(path.as_str()) {
         let load_face = &mut UnitAssetMenuData::get().loaded_data.load_face;
@@ -975,12 +995,12 @@ fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) 
 #[unity2::callback]
 fn delete_outfit_data(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
     let list = &mut UnitAssetMenuData::get().loaded_data.loaded_data;
-    let name = IBasicMenuItemMethods::get_name(menu_item).to_rust_string();
+    let name = menu_item.m_name().to_rust_string();
     if let Some(pos) = list.iter().position(|x| x.get_filename() == name) {
         let file = list.remove(pos);
         if fs::remove_file(file.path).is_ok() {
             let menu = menu_item.get_asset_menu();
-            menu.set_next(Some(if list.len() == 0 { ProfileSettings } else { FaceSelection }));
+            menu.set_next(Some(if list.len() == 0 { ProfileSettings } else { LoadData }));
         }
     }
 }

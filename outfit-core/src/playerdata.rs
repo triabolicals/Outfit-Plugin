@@ -548,7 +548,7 @@ pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method
 }
 pub fn game_user_data_version(_this: GameUserData, _method_info: unity2::OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
 pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: unity2::OptionalMethod){
-    unsafe { game_user_data_deserialize(this, stream, version, _method_info); }
+    unsafe { game_user_data_deserialize(this, stream, version, _method_info) };
     let menu_data = UnitAssetMenuData::get();
     if !menu_data.is_loaded && version >= 21 {
         let version = stream.read_begin_2();

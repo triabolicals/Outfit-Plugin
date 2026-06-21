@@ -1,5 +1,4 @@
 pub use engage::{
-	unit::*,
 	gameuserdata::GameUserData,
 	menu::*,
 	proc::{Bindable, ProcInstFields},
@@ -36,22 +35,15 @@ use engage_il2cpp::{
 		UnitInfo_Side,
 		BackgroundManager,
 		UnitInfo,
-		ISortieSequenceUnitSelectMethods,
-		ISortieSelectionUnitManager,
+		ISortieSequenceUnitSelectMethods, ISortieSelectionUnitManager,
 		UnitSelectMenu,
-		IUnitSelectMenuMethods,
-		IBasicMenuItemMethods,
-		IBasicMenuItem,
+		IUnitSelectMenuMethods, IBasicMenuItemMethods, IBasicMenuItem,
 		SortieSelectionUnitManager,
-		IMapMindMethods,
-		IBasicMenu,
+		IMapMindMethods, IBasicMenu,
 		AssetTable_Result,
-		IAssetTable_ResultMethods,
-		IStructData_1Methods,
-		IStructBase,
+		IAssetTable_ResultMethods, IStructData_1Methods, IStructBase,
 		SortieUtil,
-		IAssetTable_Result,
-		IPad
+		IAssetTable_Result, IPad
 	},
 	List_1Ext,
 	nn::hid::NpadButton,
@@ -71,11 +63,12 @@ use engage_il2cpp::{
 		IRectTransformMethods,
 		IRenderTextureMethods,
 		ITransformMethods,
-		RectTransform
 	}
 };
 use engage::gamesound::GameSound;
 use engage::titlebar::TitleBar;
+use engage_il2cpp::tm_pro::{ITMP_Text, TextMeshProUGUI};
+use engage_il2cpp::unity_engine::{IObject_2Methods, Transform};
 use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull, SystemType};
 use unity::prelude::*;
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
@@ -97,7 +90,7 @@ use crate::room::ReloadType;
 
 #[unity2::inject(namespace = "App", name = "CustomAssetMenu", parent = AccessoryShopChangeMenu)]
 pub struct CustomAssetMenu {
-	pub unit_name: engage_il2cpp::tm_pro::TextMeshProUGUI,
+	pub unit_name: TextMeshProUGUI,
 	pub equipment: AccessoryEquipmentInfo,
 	pub detail_box: AccessoryDetailInfoWindow,
 	pub menu_kind_v: i32,
@@ -108,6 +101,7 @@ impl CustomAssetMenu {
 	pub fn set_vtable(self) {
 		let klass = self.get_class().raw_mut();
 		let vtable = klass.get_vtable_mut();
+		/*
 		vtable[10].method_ptr = Self::on_dispose as _;
 		vtable[24].method_ptr = Self::on_build as _;
 		vtable[39].method_ptr = Self::tick_input as _;
@@ -115,13 +109,15 @@ impl CustomAssetMenu {
 		vtable[43].method_ptr = Self::key_right as _;
 		vtable[51].method_ptr = Self::b_call as _;
 		vtable[56].method_ptr = Self::plus_call as _;
+
+		 */
 	}
 	pub fn get_menu_item_kind(self) -> CustomAssetMenuItemKind {
 		let item = self.get_menu_item(self.m_select_index());
 		if !item.is_null() {
 			unsafe { item.cast::<CustomAssetMenuItem3>().menu_item_kind()}
 		}
-		else { CustomAssetMenuItemKind::NoItem }
+		else { NoItem }
 	}
 	pub fn menu_kind(self) -> CustomAssetMenuKind { CustomAssetMenuKind::from_index(self.menu_kind_v()) }
 	pub fn set_menu_kind(self, menu_kind_v: CustomAssetMenuKind)  { self.set_menu_kind_v(menu_kind_v.to_index()); }
@@ -133,6 +129,19 @@ impl CustomAssetMenu {
 		if let Some(next) = next { self.set_next_menu_kind_v(next.to_index()); }
 		else { self.set_next_menu_kind_v(-1); }
 	}
+	pub fn adjust_content(content: AccessoryShopChangeRoot) {
+		content.get_components_in_children::<TextMeshProUGUI>(true).iter()
+			.filter(|t| t.get_name().to_rust_string().starts_with("Name"))
+			.for_each(|t| {
+				t.set_m_min_font_size(22.0);
+				t.set_m_max_font_size(24.0);
+				t.set_m_font_size_max(24.0);
+				t.set_m_font_size_min(22.0);
+			});
+		let transform = content.get_transform();
+		crate::utils::change_rect_transform_in_children_size(transform, "AccName", 100.0, 0.0);
+		crate::utils::change_rect_transform_in_child_anchor(transform, "BodyParts", 100.0, 0.0);
+	}
 	pub fn create_bind_unit_info(proc: impl Into<engage_il2cpp::app::ProcInst>, unit: engage_il2cpp::app::Unit){
 		let menu_data = UnitAssetMenuData::get();
 		if let Some(root) = Self::get_root() {
@@ -141,14 +150,13 @@ impl CustomAssetMenu {
 			let equipment = root.get_component_in_children_3::<AccessoryEquipmentInfo>();
 			let detail_box = root.get_component_in_children_3::<AccessoryDetailInfoWindow>();
 			menu_data.is_preview = true;
+			menu_data.is_shop_combat = true;
 			menu_data.mode = MenuMode::UnitInfo;
 			UnitAssetMenuData::set_unit(unit);
 			let menu = Self::new(content);
-			let x_max = menu.m_menu_content().get_transform().get_position().x - 280.0;
-			let mut x_min = 320.0;
+			let x_max = 1390.0;
+			let x_min = 450.0;
 			if !equipment.is_null() {
-				let rect = equipment.get_component_2::<RectTransform>();
-				x_min = rect.get_size_delta().x + rect.get_position().x + 100.0;
 				menu.set_equipment(equipment);
 				build_equipment_window(equipment, false);
 			}
@@ -169,7 +177,7 @@ impl CustomAssetMenu {
 			let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
 			start_key_help(OutfitMenuKind::UnitInfo);
 			UnitInfoCharaImageMaskOffset::get_instance().iter().for_each(|mask| {
-				if mask.m_texture().equals(render_texture) && mask.is_visible() {
+				if IObject_2Methods::equals(mask.m_texture(), render_texture) && mask.is_visible() {
 					let mut pos = mask.m_rect_transform().get_position();
 					if menu_data.menu_adj == 0.0 { menu_data.menu_adj = pos.x; }
 					unit_info_char_mask_setup(mask, false);
@@ -177,6 +185,7 @@ impl CustomAssetMenu {
 					mask.m_rect_transform().set_position(pos);
 				}
 			});
+			Self::adjust_content(root);
 		}
 	}
 	pub fn create_photo_graph_bind(proc: impl Into<engage_il2cpp::app::ProcInst>) {
@@ -314,63 +323,6 @@ impl CustomAssetMenu {
 		if !self.unit_name().is_null() { self.unit_name().set_text(next.get_name()); }
 		GameSound::post_event("Chara_Change", None);
 	}
-	pub fn tick_input(self) -> bool {
-		let left = engage_il2cpp::app::Pad::is_trigger(NpadButton::left());
-		let right = engage_il2cpp::app::Pad::is_trigger(NpadButton::right());
-		let unit_info = UnitAssetMenuData::is_unit_info();
-		if (left || right) && left != right {
-			if self.pause() {    // add facial
-				hub_room_set_by_result(None, ReloadType::Facial(right));
-				GameSound::post_event("Category_Change", None);
-			}
-		}
-		let menu = UnitAssetMenuData::get();
-		if !UnitAssetMenuData::is_shop() {
-			let menu_item_index = self.get_menu_item_kind().to_index();
-			let rgb = menu_item_index >= 100 && menu_item_index < 120;
-			let stick = model_camera_control(rgb);
-			let trigger = engage_il2cpp::app::Pad::is_trigger(NpadButton::plus());
-			let menu_kind = self.menu_kind();
-			if self.pause() {
-				if engage_il2cpp::app::Pad::is_trigger(NpadButton::minus()) && unit_info {
-					crate::capture::capture_unit_info(self, false, false);
-				}
-				if trigger {
-					self.m_menu_content().get_game_object().set_active(true);
-					self.toggle_ui();
-					self.set_pause(false);
-					TitleBar::show_header();
-					menu_kind.key_help_update(false);
-				} else if engage_il2cpp::app::Pad::is_trigger(NpadButton::x()) {
-					let title = TitleBar::get_instance();
-					if title.is_show_header { TitleBar::hide_header(); } else { TitleBar::show_header(); }
-				}
-				return true;
-			}
-			else if engage_il2cpp::app::Pad::is_trigger(NpadButton::plus()) {
-				self.toggle_ui();
-				self.m_menu_content().get_game_object().set_active(false);
-				self.set_pause(true);
-				menu_kind.key_help_update(true);
-				return true;
-			}
-			if stick { return true; }
-			if menu_kind == MainShop && unit_info {
-				let l = engage_il2cpp::app::Pad::is_trigger(NpadButton::l());
-				let r = engage_il2cpp::app::Pad::is_trigger(NpadButton::r());
-				if (l || r) && l != r { self.lr_base(r); }
-			}
-		}
-		if let Some(next) = self.next() {
-			self.rebuild_menu(next, true);
-			self.set_next(None);
-		}
-		else if let Some(reload) = menu.reload_type{
-			if !engage_il2cpp::app::Pad::is_button(NpadButton::up()) && !engage_il2cpp::app::Pad::is_button(NpadButton::down()) { menu.reload_delay = false; }
-			if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
-		}
-		unsafe { tick_input_base(self, None) }
-	}
 }
 #[unity2::injected_methods]
 impl CustomAssetMenu{
@@ -388,7 +340,7 @@ impl CustomAssetMenu{
 				let request_close = self.m_request_close_event_handler();
 				if !request_close.is_null() { request_close.invoke(); }
 			}
-			BasicMenu_Result{value: 512}
+			BasicMenu_Result{value: 513}
 		}
 	}
 	#[override_virtual(name = "PlusCall")]
@@ -408,7 +360,7 @@ impl CustomAssetMenu{
 				menu.is_preview = false;
 				let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
 				UnitInfoCharaImageMaskOffset::get_instance().iter().for_each(|mask|{
-					if mask.m_texture().equals(render_texture) && mask.is_visible() {
+					if IObject_2Methods::equals(mask.m_texture(), render_texture) && mask.is_visible() {
 						let mut pos = mask.m_rect_transform().get_position();
 						pos.x = menu.menu_adj;
 						unit_info_char_mask_setup(mask, true);
@@ -472,6 +424,66 @@ impl CustomAssetMenu{
 
 	#[override_virtual(name = "KeyRight")]
 	pub fn key_right(self, trigger: bool) { self.key_base(trigger, true) }
+
+	#[override_virtual(name = "TickInput")]
+	pub fn tick_input(self) -> bool {
+		let left = engage_il2cpp::app::Pad::is_trigger(NpadButton::left());
+		let right = engage_il2cpp::app::Pad::is_trigger(NpadButton::right());
+		let unit_info = UnitAssetMenuData::is_unit_info();
+		if (left || right) && left != right {
+			if self.get_menu_item_kind().can_facial() && self.menu_kind().can_facial() {
+				hub_room_set_by_result(None, ReloadType::Facial(right));
+				GameSound::post_event("Category_Change", None);
+			}
+		}
+		let menu = UnitAssetMenuData::get();
+		if !UnitAssetMenuData::is_shop() {
+			let menu_item_index = self.get_menu_item_kind().to_index();
+			let rgb = menu_item_index >= 100 && menu_item_index < 120;
+			let stick = model_camera_control(rgb);
+			let trigger = engage_il2cpp::app::Pad::is_trigger(NpadButton::plus());
+			let menu_kind = self.menu_kind();
+			if self.pause() {
+				if engage_il2cpp::app::Pad::is_trigger(NpadButton::minus()) && unit_info {
+					crate::capture::capture_unit_info(self, false, false);
+				}
+				if trigger {
+					self.m_menu_content().get_game_object().set_active(true);
+					self.toggle_ui();
+					self.set_pause(false);
+					TitleBar::show_header();
+					menu_kind.key_help_update(false);
+				}
+				else if engage_il2cpp::app::Pad::is_trigger(NpadButton::x()) {
+					let title = TitleBar::get_instance();
+					if title.is_show_header { TitleBar::hide_header(); } else { TitleBar::show_header(); }
+				}
+				return true;
+			}
+			else if engage_il2cpp::app::Pad::is_trigger(NpadButton::plus()) {
+				self.toggle_ui();
+				self.m_menu_content().get_game_object().set_active(false);
+				self.set_pause(true);
+				menu_kind.key_help_update(true);
+				return true;
+			}
+			if stick { return true; }
+			if menu_kind == MainShop && unit_info {
+				let l = engage_il2cpp::app::Pad::is_trigger(NpadButton::l());
+				let r = engage_il2cpp::app::Pad::is_trigger(NpadButton::r());
+				if (l || r) && l != r { self.lr_base(r); }
+			}
+		}
+		if let Some(next) = self.next() {
+			self.rebuild_menu(next, true);
+			self.set_next(None);
+		}
+		else if let Some(reload) = menu.reload_type{
+			if !engage_il2cpp::app::Pad::is_button(NpadButton::up()) && !engage_il2cpp::app::Pad::is_button(NpadButton::down()) { menu.reload_delay = false; }
+			if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
+		}
+		unsafe { tick_input_base(self, None) }
+	}
 }
 #[skyline::from_offset(0x245ed80)]
 fn tick_input_base(custom: CustomAssetMenu, optional_method: OptionalMethod) -> bool;
@@ -596,7 +608,6 @@ pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32,
 			}
 		}
 	}
-
 	appearance
 }
 fn unit_info_char_mask_setup(mask: UnitInfoCharaImageMaskOffset, revert: bool) {

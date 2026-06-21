@@ -5,18 +5,17 @@ use engage_il2cpp::{
 		IAccessoryMenuItemContent, IBasicMenuItem,
 		IBasicMenuItemMethods, BasicMenu_Result, BasicMenuItem_Attribute, BasicMenuItem,
 	},
-	tm_pro::ITMP_Text,
 	unity_engine::{
 		IGameObjectMethods, IObject_2Methods,
 		ui::{IGraphicMethods, IImageMethods}
 	},
-	app::{IAccessoryMenuItemContentMethods, IBasicMenuItemContentMethods},
+	app::IBasicMenuItemContentMethods,
 	tm_pro::ITMP_TextMethods,
 	app::{AccessoryMenuItemContent, ISpriteAtlasManager_2},
 	system::collections::generic::IDictionary_2Methods,
-	unity_engine::{IRectTransformMethods, RectTransform}
+	unity_engine::{IRectTransformMethods, RectTransform},
+	app::IBasicMenuItemContent
 };
-use engage_il2cpp::app::IBasicMenuItemContent;
 use unity::{prelude::*};
 use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData};
@@ -85,7 +84,7 @@ impl CustomAssetMenuItem3 {
 		let kind = asset.kind;
 		item.set_m_decided(UnitAssetMenuData::get_current_unit_hash(asset.kind) == asset.hash);
 		item.set_value(asset.hash);
-		IBasicMenuItemMethods::set_name(item,  asset.get_name(label));
+		item.set_m_name(asset.get_name(label));
 		item.set_menu_item_kind(Asset(asset.kind));
 		let preview = UnitAssetMenuData::get_preview();
 		let original =
@@ -116,7 +115,7 @@ impl CustomAssetMenuItem3 {
 	}
 	pub fn new_asset3(other: &OtherAssetItem, labels: &AssetLabelTable, is_body: bool) -> Self {
 		let item = Self::new_asset2(&other.asset, other.label.as_str());
-		if !other.is_mess { IBasicMenuItemMethods::set_name(item, other.get_name(labels, is_body)); }
+		if !other.is_mess { item.set_m_name(other.get_name(labels, is_body)); }
 		item
 	}
 	pub fn as_basic_menu_item(self) -> BasicMenuItem { unsafe { self.cast() } }
@@ -149,7 +148,7 @@ impl CustomAssetMenuItem3 {
 		self.on_build_menu_item_content();
 		if let Some(content) = self.get_item_content() {
 			let menu_item_kind = self.menu_item_kind();
-			content.m_name_text().set_m_text(menu_item_kind.get_name(self));
+			content.m_name_text().set_text_2(menu_item_kind.get_name(self), true);
 		}
 		self.set_icon();
 	}
@@ -157,10 +156,12 @@ impl CustomAssetMenuItem3 {
 		let is_decided = self.get_m_decided();
 		let menu_kind = self.menu_item_kind();
 		let mut idx = menu_kind.to_index();
+		let menu_item_content = self.get_menu_item_content();
+		if menu_item_content.is_null() { return; }
 		if idx == -4 { // FaceThumb
-			let name = IBasicMenuItemMethods::get_name(self).to_rust_string();
+			let name = self.m_name().to_rust_string();
 			let name_trimmed = name.trim_end_matches(".png").to_string();
-			if let Some(content) = self.get_menu_item_content().try_cast::<AccessoryMenuItemContent>() {
+			if let Some(content) = menu_item_content.try_cast::<AccessoryMenuItemContent>() {
 				content.m_name_text().set_text_2(name_trimmed.as_str(), true);
 				let index = self.get_index();
 				let key = format!("LOAD_{}", index);
@@ -169,13 +170,11 @@ impl CustomAssetMenuItem3 {
 					content.m_kind_icon_object().set_active(true);
 					let rec = content.m_kind_icon_object().get_component::<RectTransform>();
 					if !rec.is_null() {
-						rec.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 90.0, y: 90.0});
-						rec.set_size_delta(engage_il2cpp::unity_engine::Vector2{x: 127.0, y: 50.0});
+						rec.set_size_delta(engage_il2cpp::unity_engine::Vector2{x: 128.0, y: 50.0});
+						rec.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 90.0, y: 0.0});
 					}
 					let rec_name = content.m_name_object().get_component::<RectTransform>();
-					if rec_name.is_null() {
-						rec.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 160.0, y: -40.0});
-					}
+					if !rec_name.is_null() { rec_name.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 174.0, y: -40.0}); }
 					content.m_kind_icon_image().set_sprite(sprite);
 					return;
 				}
@@ -185,9 +184,7 @@ impl CustomAssetMenuItem3 {
 			content.m_fixed_cursor_object().set_active(is_decided);
 			let icon = menu_kind.get_icon(self);
 			let rect = content.m_name_object().get_component::<RectTransform>();
-			if !rect.is_null() {
-				rect.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 104.0, y: -40.0});
-			}
+			if !rect.is_null() { rect.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 104.0, y: -40.0}); }
 			let rect = content.m_kind_icon_object().get_component::<RectTransform>();
 			if !rect.is_null() {
 				rect.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 70.0, y: 0.0});
@@ -223,7 +220,7 @@ impl CustomAssetMenuItem3 {
 			else {
 				content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
 				if let Some(icon2) = icon.get_icon() {
-					if let Some(icon_key) = icon.get_system_label() { println!("MenuItemIndex {}: {}", idx, icon_key); }
+					// if let Some(icon_key) = icon.get_system_label() { println!("MenuItemIndex {}: {}", idx, icon_key); }
 					content.m_kind_icon_image().set_sprite(icon2);
 					content.m_kind_icon_object().set_active(true);
 				}
@@ -233,13 +230,6 @@ impl CustomAssetMenuItem3 {
 }
 #[unity2::injected_methods]
 impl CustomAssetMenuItem3 {
-	/*
-	#[override_virtual(name = "GetName")]
-	pub fn get_name(self) -> unity2::Il2CppString {
-		let name = self.menu_item_kind().get_name(self);
-		name
-	}
-	 */
 	#[override_virtual(name = "BuildAttribute")]
 	pub fn build_attribute(self) -> BasicMenuItem_Attribute { self.menu_item_kind().build_attribute() }
 	#[override_virtual(name = "OnSelect")]
@@ -588,13 +578,12 @@ impl CustomAssetMenuItem {
 	}
 }
  */
-pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, _: unity2::OptionalMethod) {
-	IAccessoryMenuItemContentMethods::build_text(this);
+pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, method_info:  unity2::OptionalMethod) {
+	unsafe { build_text(this, method_info) }
 	if !UnitAssetMenuData::get().is_preview { return; }
 	let custom_item = this.get_menu_item();
 	if !custom_item.is_null() {
 		let custom_item = unsafe { custom_item.cast::<CustomAssetMenuItem3>() };
-		println!("Building...");
 		let kind = custom_item.menu_item_kind();
 		this.m_name_object().set_active(true);
 		let name_text = this.m_name_text();
@@ -617,3 +606,5 @@ pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, _:
 	}
 	return;
 }
+#[skyline::from_offset(0x27b8510)]
+fn build_text(this: AccessoryMenuItemContent, optional_method: unity2::OptionalMethod);

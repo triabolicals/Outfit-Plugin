@@ -49,6 +49,7 @@ pub struct UnitAssetPreview {
     pub update: u8,
     pub has_head_acc: bool,
     pub has_hair_acc: bool,
+    pub preview_asset: Option<(AssetType, i32)>
 }
 impl UnitAssetPreview {
     pub const fn new() -> Self {
@@ -66,6 +67,7 @@ impl UnitAssetPreview {
             update_dress_gender: false,
             update: 0,
             has_head_acc: false,
+            preview_asset: None,
             has_hair_acc: false,
         }
     }
@@ -428,10 +430,12 @@ impl UnitAssetMenuData {
                 }
             }
             ReloadPreview::LoadedData => {
+                println!("Loaded Data Reload");
                 if let Some(loaded) = data.loaded_data.selected_index.and_then(|i| data.loaded_data.loaded_data.get_mut(i as usize)) {
                     let flag = loaded.data.flag;
                     loaded.data.flag |= 193;
                     loaded.data.set_result(result, 2, false, false);
+                    println!("Result Set");
                     loaded.data.flag = flag;
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);

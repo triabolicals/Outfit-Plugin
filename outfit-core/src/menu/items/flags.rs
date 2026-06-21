@@ -184,9 +184,7 @@ impl CustomMenuItem for AssetFlag {
                 if UnitAssetMenuData::get_person_flag() & 8 != 0 {
                     match UnitAssetMenuData::get().loaded_data.load_faces() {
                         LoadResult::Success => {
-                            println!("Found Files");
                             let menu = menu_item.get_asset_menu();
-                            println!("Building Menu");
                             menu.rebuild_menu(FaceSelection, true);
                             menu.toggle_ui();
                             BasicMenu_Result::se_cursor()

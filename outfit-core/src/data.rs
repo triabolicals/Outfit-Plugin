@@ -42,7 +42,6 @@ pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_hea
 const ASSET_FILENAME: [&str; 5] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig"];
 pub struct OutfitData {
     pub hashes: OutfitHashes,
-    // pub accessory_conditions: AccessoryConditions,
     pub dress: DressData,
     pub item: Vec<ItemAsset>,
     pub anims: AnimData,
@@ -110,7 +109,10 @@ impl OutfitData {
                 group.push(AssetGroup{ label: labels.get(label_idx).unwrap(), list, });
             }
         });
-        new_list.job_count = (new_list.job_m.len() as i32, new_list.job_f.len() as i32);
+        new_list.job_count = (
+            new_list.job_m.iter().filter(|x|x.list.iter().any(|x| x.kind == AssetType::Body)).count() as i32,
+            new_list.job_f.iter().filter(|x|x.list.iter().any(|x| x.kind == AssetType::Body)).count() as i32
+        );
         let mut asset_data: [u8; 12] = [0; 12];
         [&mut new_list.engaged, &mut new_list.other].iter_mut().for_each(|group|{
             data.read_exact(&mut idx_count).unwrap();
@@ -170,11 +172,10 @@ impl OutfitData {
         assets.retain(|(i, _)| !remove_hashes.contains(&i));
         let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
         let dic_map: HashMap<i32, String> =
-            engage_il2cpp::app::AssetTable::s_condition_indexes()
+            AssetTable::s_condition_indexes()
                 .iter()
                 .filter(|(x, _)| !x.is_null())
                 .map(|(x, i)| (i, x.to_rust_string())).collect();
-        /*
         println!("Sorting Added Assets");
         assets.iter().enumerate()
             .filter(|(_, (_, s))|{
@@ -227,7 +228,6 @@ impl OutfitData {
                         }
                         AssetType::Hair => {
                             if let Some((condition, gender)) = find_condition(2, asset, false, item.kind, &dic_map) {
-                                println!("Found Condition: {}", condition);
                                 if let Some(cond_idx) = get_condition_index(condition.as_str()) {
                                     hashes.add_hair(asset.as_str());
                                     if let Some(o_hair) = find_mode_1_hair(cond_idx).map(|o| { hash_string(o) }) { hashes.head_hair.insert(*hash, o_hair); }
@@ -254,12 +254,9 @@ impl OutfitData {
                     }
                 }
             });
-        */
         println!("Finished with Assets");
         let dress = DressData::init(&mut hashes);
-        println!("Finished with DressData");
         let anims = AnimData::init(&mut assets);
-        println!("Finished with AnimData");
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
@@ -269,7 +266,6 @@ impl OutfitData {
             list: new_list,
             labels: new_labels,
             item: ItemAsset::init(),
-            // accessory_conditions: AccessoryConditions::new(),
         }
     }
     pub fn is_monster_class(&self, unit: engage_il2cpp::app::Unit) -> bool {

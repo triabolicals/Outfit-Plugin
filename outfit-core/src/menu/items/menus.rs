@@ -3,9 +3,9 @@ use engage_il2cpp::{
     app::{IAccessoryMenuItemMethods, IBasicMenuItem, IBasicMenuItemMethods},
     List_1Ext,
     prelude::List_1,
-    system::collections::generic::IList_1Methods
+    system::collections::generic::IList_1Methods,
+    app::{IItemDataMethods, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographPauseDataMethods, IPhotographSequence}
 };
-use engage_il2cpp::app::{IItemDataMethods, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographPauseDataMethods, IPhotographSequence};
 use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result}, menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand}, room::ReloadType, CustomAssetMenuItem3};
 use super::*;
 
@@ -70,11 +70,11 @@ impl CustomAssetMenuKind {
             ShopMount(kind) => clamp_menu_index_value(120, *kind, 5),
             ShopAoc(kind) => clamp_menu_index_value(130, *kind, 4),
             ColorSelection(kind) => {
-                let k = *kind % 16;
-                clamp_menu_index_value(140, k, 16)
+                let k = *kind % 18;
+                clamp_menu_index_value(140, k, 18)
             },
             ClassBodySelection((class, alt)) => { clamp_menu_index_value(if *alt { 210 } else { 170 }, *class, 40) },
-            ColorPresets(page, _) => clamp_menu_index_value(300, *page, 11),
+            ColorPresets(page, kind) => clamp_menu_index_value(300, *page * 18 + *kind, 180),
         }
     }
     pub fn from_index(value: i32) -> Self {
@@ -102,11 +102,11 @@ impl CustomAssetMenuKind {
             130..135 => ShopAoc(value as u8 - 130),
             140..160 => ColorSelection(value as u8 - 140),
             170..250 => ClassBodySelection(((value as u8 - 170) % 40, value >= 210)),
-            300..400 => {
+            300..480 => {
                 let i = value - 300;
-                let k = (i % 10) as u8;
-                let p = (i / 10) as u8;
-                ColorPresets(p, k)
+                let p = (i / 18) as u8;
+                let k = i - (p as i32) * 18;
+                ColorPresets(p, k as u8)
             }
             _ => { ProfileSelection },
         }
@@ -120,8 +120,8 @@ impl CustomAssetMenuKind {
                 148..154 => { 1148 }
                 154 => { 1149 }
                 171..210|211..250 => 1028,
-                300..400 => {
-                    let p = idx - 300;
+                300..480 => {
+                    let p = (idx - 300) / 18;
                     1150 + p
                 }
                 _ => { 1020 + ((idx - 100 ) / 10) }
@@ -323,7 +323,7 @@ impl CustomAssetMenuKind {
             }
             LoadData => {
                 let item = CustomAssetMenuItem3::new(CurrentData);
-                IBasicMenuItemMethods::set_name(item, MenuText::get_command(7));
+                item.set_m_name( MenuText::get_command(7));
                 list.add(item.as_basic_menu_item());
                 UnitAssetMenuData::get().loaded_data.loaded_data.iter().for_each(|x|{
                     let item = CustomAssetMenuItem3::new(OutfitDataFile);
@@ -396,6 +396,7 @@ impl CustomAssetMenuKind {
                             let new_label = format!("MJID_{}", set[x].label);
                             CustomAssetMenuItem3::new_menu(ClassBodySelection((x as u8, *alt)), engage_il2cpp::app::Mess::get(new_label))
                         };
+                    item.set_value2(if female { x << 1 | 1 } else { x << 1 } as i32);
                     list.add(item.as_basic_menu_item());
                 }
             }
@@ -473,9 +474,15 @@ impl CustomAssetMenuKind {
                 let enable_item = CustomAssetMenuItem3::new(EnableColor(k as u8));
                 enable_item.set_m_decided(preview.preview_data.colors[k].values[3] != 0);
                 list.add(enable_item.as_basic_menu_item());
-                if k < 8 { list.add(CustomAssetMenuItem3::new(ResetColor(k as u8)).as_basic_menu_item()); }
                 UnitAssetMenuData::get_preview().color_preview[4*k+3] = 1;
-                list.add(CustomAssetMenuItem3::new(RGBA(k as u8)).as_basic_menu_item());
+                if k < 8 {
+                    let reset = CustomAssetMenuItem3::new(ResetColor(k as u8));
+                    reset.set_value2(*page as i32);
+                    list.add(reset.as_basic_menu_item());
+                }
+                let rgba = CustomAssetMenuItem3::new(RGBA(k as u8));
+                rgba.set_value2(*page as i32);
+                list.add(rgba.as_basic_menu_item());
                 for x in 0..10 {
                     list.add(CustomAssetMenuItem3::new_menu(ColorPresets(x, *page), unity2::Il2CppString::null()).as_basic_menu_item());
                 }
@@ -502,7 +509,11 @@ impl CustomAssetMenuKind {
                 let kind2 = *color_kind;
                 let preview = UnitAssetMenuData::get_preview();
                 let k2 = kind2 % 16;
-                if k2 < 8 { list.add(CustomAssetMenuItem3::new(ResetColor(k2)).as_basic_menu_item()); }
+                if k2 < 8 {
+                    let item = CustomAssetMenuItem3::new(ResetColor(k2));
+                    item.set_value2(*color_kind as i32);
+                    list.add(item.as_basic_menu_item());
+                }
                 if kind < 8 {
                     db.list.color_presets.iter()
                         .filter(|x| x.colors[kind as usize] != 0)
@@ -518,7 +529,7 @@ impl CustomAssetMenuKind {
                                 }
                             }
                             let name = x.get_name();
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), x.colors[kind as usize], name, selected, original);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), x.colors[kind as usize], name, selected, original);
                             item.set_value2(k2 as i32);
                             list.add(item.as_basic_menu_item());
                         });
@@ -526,7 +537,7 @@ impl CustomAssetMenuKind {
                 else if kind == 8 {
                     db.list.eye_colors.iter().for_each(|x| {
                         let name = x.get_name();
-                        let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), x.color, name, false, false);
+                        let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), x.color, name, false, false);
                         item.set_value2(k2 as i32);
                         list.add(item.as_basic_menu_item());
                     });
@@ -538,7 +549,7 @@ impl CustomAssetMenuKind {
                         for i in 0..3 { color |= (preview.color_preview[4 * x as usize + i] as i32) << (i * 8); }
                         if k2 != x && color != 0 && !used_colors.contains(&color) {
                             let name = format!("{} [Current]", MenuText::get_command(1140 + x as i32));
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), color, name.into(), false, false);
                             item.set_value2(k2 as i32);
                             list.add(item.as_basic_menu_item());
                             used_colors.push(color);
@@ -549,7 +560,7 @@ impl CustomAssetMenuKind {
                         for i in 0..3 { color |= (preview.original_color[4 * x as usize + i] as i32) << (i * 8); }
                         if k2 != x && color != 0 && !used_colors.contains(&color) {
                             let name = format!("{} [Original]", MenuText::get_command(1140 + x as i32));
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(k2), color, name.into(), false, false);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), color, name.into(), false, false);
                             item.set_value2(k2 as i32);
                             list.add(item.as_basic_menu_item());
                             used_colors.push(color);
@@ -570,9 +581,8 @@ impl CustomAssetMenuKind {
             PauseList => {
                 if let Some(data_list) = crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info().get_pause_data_list()) {
                     data_list.iter().for_each(|x| {
-                        let name = engage_il2cpp::app::Mess::get(x.get_name());
                         let item = CustomAssetMenuItem3::new(Item);
-                        item.set_name(x.get_name());
+                        item.set_m_name(x.get_name());
                         list.add(item.as_basic_menu_item());
                     });
                 }
@@ -598,19 +608,19 @@ impl CustomAssetMenuKind {
                 ShopMount(_) => { ReloadType::ForcedUpdate }
                 ColorSelection(kind) => {
                     let kind = (*kind % 16) as usize;
-                    UnitAssetMenuData::get_preview().color_preview[4*kind + 3] = 0;
+                    UnitAssetMenuData::get_preview().color_preview[4 * kind + 3] = 0;
                     ReloadType::ForcedUpdate
                 }
                 ColorKindSelection => { ReloadType::ForcedUpdate }
-                ShopAoc(_)|ShopAcc(_) => { ReloadType::All }
-                PresetAppearanceMenu(_)|LoadData => {
+                ShopAoc(_) | ShopAcc(_) => { ReloadType::All }
+                PresetAppearanceMenu(_) | LoadData => {
                     UnitAssetMenuData::get().loaded_data.selected_index = None;
                     ReloadType::ForcedUpdate
                 }
-                ProfileSettings|VoiceSelection => { ReloadType::NoUpdate }
+                ProfileSettings | VoiceSelection => { ReloadType::NoUpdate }
                 _ => { ReloadType::All }
             };
-       hub_room_set_by_result(None, reload_type );
+        hub_room_set_by_result(None, reload_type );
     }
     pub fn key_help_update(&self, ui_hide: bool) {
         if UnitAssetMenuData::is_shop() { return; }
@@ -673,12 +683,11 @@ impl CustomMenuItem for CustomAssetMenuKind {
             _ => EquipmentBoxMode::CurrentProfile,
         }
     }
-
     fn get_name(&self, menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
         match self {
             ProfileSettings => { MenuTextCommand::Settings.get() }
             ShopBody(_)  => { engage_il2cpp::app::Mess::get("MID_Hub_amiibo_Accessory_Trade") }
-            ClassBodySelection((_, _)) => { IBasicMenuItemMethods::get_name(menuitem) }
+            ClassBodySelection(_) => { menuitem.m_name() }
             ShopAcc(_) => { engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Parts") }
             VoiceSelection => { MenuTextCommand::Voice.get() }
             Head => { engage_il2cpp::app::Mess::get("MID_Hub_Mascot_Accessories_Head") }
@@ -697,18 +706,19 @@ impl CustomMenuItem for CustomAssetMenuKind {
     }
     fn get_body(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         match self {
-            LoadData => { 
-                menu_item.get_asset_menu().menu_kind().get_body(menu_item)
-            }
+            LoadData => { menu_item.menu_item_kind().get_body(menu_item) }
             ClassBodySelection((_, alt)) => {
-                let page = if *alt { 6 } else { 2 };
-                let count = if UnitAssetMenuData::get_flag() & 128 != 0 { 8 } else { 4 };
+                let db = get_outfit_data();
+                let count = if UnitAssetMenuData::get_gender(*alt) == 2 { db.list.job_count.1 } else { db.list.job_count.0 } as u8;
+                let v2 = menu_item.value2();
+                let idx = (v2 >> 1) as usize;
+                let page = idx;
+                let female = v2 & 1 != 0;
+                let db = if female { db.list.job_f.get(idx) } else { db.list.job_m.get(idx) };
+                let name = db.map(|v| engage_il2cpp::app::Mess::get(v.label)).unwrap_or_else(|| MenuTextCommand::Class.get());
                 left_right_enclose(
                 &format!("{} ({}) [{}/{}]",
-                         MenuTextCommand::Class.get(),
-                         MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2),
-                         page,
-                         count)
+                    name, MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2), page +1, count +1)
                 )
             }
             EngagedBody(female) => { left_right_enclose(&if *female { "Female"} else { "Male"}.to_string()) }

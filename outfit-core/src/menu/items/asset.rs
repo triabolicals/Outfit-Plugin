@@ -1,14 +1,15 @@
-use engage::{gameuserdata::GameUserData,
-    map::mind::MapMind, random::Random,
+use engage::{gameuserdata::GameUserData, random::Random,
     sequence::hubaccessory::room::HubAccessoryRoom,
     unitinfo::UnitInfo, util::get_singleton_proc_instance,
     gamesound::{GameSound, GameSoundFadeSpeedType}
 };
-use engage_il2cpp::system::collections::generic::IList_1Methods;
-use engage_il2cpp::app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenu, IBasicMenuItemMethods};
-use engage_il2cpp::List_1Ext;
+use engage_il2cpp::{
+    system::collections::generic::IList_1Methods,
+    app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods},
+    List_1Ext
+};
 use unity2::Cast;
-use crate::{get_outfit_data, left_right_enclose, new_asset_table_accessory, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS, anim::AnimData, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, apply_result_hair, set_color_by_i32};
+use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS, anim::AnimData, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, apply_result_hair, set_color_by_i32};
 use super::*;
 
 #[derive(PartialEq, Copy, Clone)]
@@ -68,7 +69,7 @@ impl AssetType {
                     10..15 => AssetType::Acc(index as u8 - 10),
                     20..25 => AssetType::Mount(index as u8 - 20),
                     30..34 => AssetType::AOC(index as u8 - 30),
-                    40..50 => AssetType::ColorPreset(index as u8 - 40),
+                    40..51 => AssetType::ColorPreset(index as u8 - 40),
                     _ => unreachable!(),
                 }
             )
@@ -118,100 +119,7 @@ impl AssetType {
         result.set_ride_dress_model("");
         result.set_left_hand("null");
         result.set_right_hand("null");
-        let db = get_outfit_data();
-        let asset = db.try_get_asset(*self, menu_item.value());
         match self {
-            AssetType::Body => {
-                if let Some(asset) = asset {
-                    result.set_dress_model(asset.as_str());
-                    result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
-                    if UnitAssetMenuData::get_preview().update_dress_gender {
-                        UnitAssetMenuData::get_preview().update_dress_gender = false;
-                        reload_type = ReloadType::ForcedUpdate;
-                    }
-                    else if !is_engaged { reload_type = ReloadType::Dress; }
-                }
-            }
-            AssetType::Rig => {
-                if let Some(asset) = asset {
-                    result.set_body_model(asset.as_str());
-                    reload_type = ReloadType::Body;
-                }
-            }
-            AssetType::Head => {
-                if let Some(asset) = asset {
-                    result.set_head_model(asset.as_str());
-                    reload_type = ReloadType::Head;
-                }
-            }
-            AssetType::Hair => {
-                if let Some(asset) = asset {
-                    apply_result_hair(asset, result);
-                    result.replace(AssetTable_Modes::combat());
-                    reload_type = ReloadType::Hair;
-                }
-            }
-            AssetType::Acc(kind) => {
-                if let Some(asset) = asset {
-                    if asset.contains("Msc0AT") { result.set_left_hand(asset.as_str()); }
-                    else {
-                        let acc_locator = ACC_LOC[*kind as usize];
-                        result.commit_8(new_asset_table_accessory(asset.as_str(), acc_locator));
-                        result.replace(AssetTable_Modes::combat());
-                        EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1));
-                        reload_type = ReloadType::Accessories(*kind as usize);
-                    }
-                }
-            }
-            AssetType::Mount(kind) => {
-                if GameUserData::get_sequence() == 3 {
-                    if let Some(unit) = MapMind::get_unit() { unit.reload_actor(); }
-                }
-                if let Some(asset) = asset {
-                    result.get_body_anims().clear();
-                    let dress = db.get_dress_gender(result.get_dress_model());
-                    let gender = if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::female() { "F" } else { "M" };
-                    result.set_ride_dress_model(asset.as_str());
-                    result.set_ride_model(Mount::from_i32(1+*kind as i32).get_default_asset(true));
-                    match kind {
-                        0 => {
-                            let anim = format!("Cav0B{}-No1_c000_N", gender);
-                            // result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
-                            // result.body_anims.add(anim.as_str().into());
-                            result.set_body_anim(anim.as_str());
-                        }
-                        1 => {
-                            let anim = format!("Cav2C{}-No1_c000_N", gender);
-                            // result.body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
-                            // result.body_anims.add(anim.as_str().into());
-                            result.set_body_anim(anim.as_str());
-                        }
-                        2 => {
-                            let anim = format!("Wng2D{}-No1_c000_N", gender);
-                            result.set_body_anim(anim.as_str());
-                        }
-                        3 => {
-                            if dress == engage_il2cpp::app::Gender::male() { result.set_dress_model("uBody_Wng0EF_c000"); }
-                            result.set_body_anim("Wng0EF-No1_c000_N");
-                        }
-                        4 => {
-                            let anim = format!("Wng1F{}-No1_c000_N", gender);
-                            result.set_body_anim(anim.as_str());
-                        }
-                        _ => {} // result.body_anims.add(format!("Com0A{}-No1_c000_N", gender).into()); }
-                    }
-                    hub_room_set_by_result(Some(result), ReloadType::Mount);
-                }
-                return;
-            }
-            AssetType::AOC(_) => {
-                if let Some(asset) = asset {
-                    AnimData::remove(result, true, true);
-                    result.set_body_anim(asset.as_str());
-                    AnimData::remove(result, true, true);
-                    return hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
-                }
-            }
             AssetType::Voice => { return; }
             AssetType::ColorPreset(kind) => {
                 let v = menu_item.value();
@@ -223,26 +131,29 @@ impl AssetType {
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 return;
             }
+            _ => { UnitAssetMenuData::get_preview().preview_asset = Some((self.clone(), menu_item.value())); }
         }
         if UnitAssetMenuData::is_unit_info() && *self != AssetType::Body { result.set_body_anim(result.m_hub_anim()); }
-        hub_room_set_by_result(Some(result), reload_type);
+        hub_room_set_by_result(Some(result), ReloadType::All);
     }
     pub fn update_box(&self, menu_item: CustomAssetMenuItem3){
         self.get_equipment_box_type(menu_item).update();
         match self {
             AssetType::Body => { EquipmentBoxMode::set_cursor(Some(1)); }
-            AssetType::Head => { EquipmentBoxMode::set_cursor(Some(2)) }
-            AssetType::Hair => { EquipmentBoxMode::set_cursor(Some(3)) }
-            AssetType::Rig => { EquipmentBoxMode::set_cursor(Some(4)); }
+            AssetType::Rig => { EquipmentBoxMode::set_cursor(Some(2)); }
+            AssetType::Head => { EquipmentBoxMode::set_cursor(Some(1)) }
+            AssetType::Hair => { EquipmentBoxMode::set_cursor(Some(1)) }
             AssetType::Acc(k) => { EquipmentBoxMode::set_cursor(Some(*k as i32 + 1)); }
             AssetType::Mount(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
             AssetType::AOC(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
             AssetType::Voice => { EquipmentBoxMode::set_cursor(Some(5)); }
             AssetType::ColorPreset(kind) => {
-                EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)).update();
-                let color_kind = *kind as i32;
-                let cursor_pos = if color_kind < 4 { color_kind + 2 } else { color_kind - 2 };
-                EquipmentBoxMode::set_cursor(Some(cursor_pos));
+                let v2 = menu_item.value2();
+                if v2 == 14 { EquipmentBoxMode::set_cursor(Some(4)); }
+                else {
+                    let k = *kind;
+                    EquipmentBoxMode::set_color_cursor(Some(k as i32));
+                }
             }
         }
     }
@@ -273,28 +184,26 @@ impl CustomMenuItem for AssetType {
             Self::ColorPreset(_) => { CustomMenuIcon::Color }
         }
     }
-    fn get_equipment_box_type(&self, _: CustomAssetMenuItem3) -> EquipmentBoxMode {
+    fn get_equipment_box_type(&self, item: CustomAssetMenuItem3) -> EquipmentBoxMode {
         match self {
-            Self::Body|Self::Head|Self::Hair|Self::Rig => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets),
+            Self::Body|Self::Rig => EquipmentBoxMode::Body,
+            Self::Head => EquipmentBoxMode::Head,
+            Self::Hair => EquipmentBoxMode::Hair,
             Self::Acc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
             Self::Voice|Self::AOC(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
-            Self::ColorPreset(kind) =>  EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),
+            Self::ColorPreset(kind) => {
+                let v2 = item.value2();
+                if v2 == 14 { EquipmentBoxMode::Hair }
+                else { EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)) }
+            }
             Self::Mount(_) =>  EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
         }
     }
     fn get_name(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
-        match self {
-            Self::Body => {
-                if menu_item.value() == UnitAssetMenuData::get_preview().preview_data.break_body {
-                    return format!("{} [B]", IBasicMenuItemMethods::get_name(menu_item)).into();
-                }
-            }
-            _ => {}
-        }
-        IBasicMenuItemMethods::get_name(menu_item)
+        menu_item.m_name()
     }
     fn get_detail_box_name(&self, menu_item: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
-        Some(IBasicMenuItemMethods::get_name(menu_item))
+        Some(menu_item.m_name())
     }
     fn get_help(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
         let db = get_outfit_data();

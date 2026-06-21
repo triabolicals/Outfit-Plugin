@@ -9,6 +9,7 @@ use engage_il2cpp::{
     tm_pro::ITMP_TextMethods,
     unity_engine::IRectTransformMethods
 };
+use engage_il2cpp::tm_pro::{ITMP_Text, TextMeshProUGUI};
 use unity2::{Cast, FromIlInstance, IlNull};
 use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData, items::Profile, menu::icons::CustomMenuIcon, FACIAL_STATES};
 const BLANK: &'static str = "------";
@@ -38,6 +39,7 @@ pub fn build_equipment_window(this: engage_il2cpp::app::AccessoryEquipmentInfo, 
         let rect = item_content.get_rect_transform();
         let mut size = rect.get_size_delta();
         size.x += 40.0;
+        crate::change_rect_transform_in_children_size(child_transform, "Name", 40.0, 0.0);
         rect.set_size_delta(size);
         item_content.build(item);
         list.add(BasicMenuItem::from(item));
@@ -53,6 +55,7 @@ pub enum EquipmentBoxMode {
     CurrentProfilePage(EquipmentBoxPage),
     ProfilePreview(Profile),
     LoadData(EquipmentBoxPage),
+    Body,
     Hair,
     Head,
 }
@@ -173,7 +176,7 @@ impl EquipmentBoxMode {
                         .map(|v| unity2::Il2CppString::from(v.as_str()))
                         .or_else(|| Some(BLANK.into()))
                 ).or_else(||
-                    db.try_get_asset(kind, preview.preview_data.ubody)
+                    db.try_get_asset(kind, preview.get_original_asset_hash(kind))
                         .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)))
                         .map(|v| unity2::Il2CppString::from(v.as_str()))
                         .or_else(|| Some(BLANK.into()))
@@ -182,7 +185,6 @@ impl EquipmentBoxMode {
             }
         }
     }
-
     pub fn set_data(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, page: EquipmentBoxPage, data: Option<&PlayerOutfitData>) {
         if UnitAssetMenuData::is_photo_graph() { return; }
         let preview = UnitAssetMenuData::get_preview();
@@ -305,11 +307,21 @@ impl EquipmentBoxMode {
                     Self::set_profile_name(equipment, None);
                 }
             }
+            Self::Body => {
+                Self::set_rows(equipment, 7);
+                Self::set_asset(equipment, 1, AssetType::Body, None);
+                Self::set_asset(equipment, 2, AssetType::Rig, None);
+                Self::set_asset(equipment, 3, AssetType::ColorPreset(4), None);
+                Self::set_asset(equipment, 4, AssetType::ColorPreset(5), None);
+                Self::set_asset(equipment, 5, AssetType::ColorPreset(6), None);
+                Self::set_asset(equipment, 6, AssetType::ColorPreset(7), None);
+            }
             Self::Hair => {
-                Self::set_rows(equipment, 4);
+                Self::set_rows(equipment, 5);
                 Self::set_asset(equipment, 1, AssetType::Hair, None);
                 Self::set_asset(equipment, 2, AssetType::ColorPreset(0), None);
                 Self::set_asset(equipment, 3, AssetType::ColorPreset(1), None);
+                Self::set_asset(equipment, 4, AssetType::ColorPreset(14), None);
                 Self::set_profile_name(equipment, None);
             }
             Self::Head => {
@@ -353,6 +365,18 @@ impl EquipmentBoxMode {
     pub fn set_cursor(kind: Option<i32>){
         if UnitAssetMenuData::is_photo_graph() { return; }
         if let Some(equipment) = get_equipment_box() { Self::change_cursor(equipment, kind); }
+    }
+    pub fn set_color_cursor(color_kind: Option<i32>){
+        if UnitAssetMenuData::is_photo_graph() { return; }
+        if let Some(equipment) = get_equipment_box() { 
+            let pos = color_kind.map(|v|{
+                match v {
+                    14 => 4,
+                    _ => (v % 8) + 1,
+                }
+            });
+            Self::change_cursor(equipment, pos);
+        }
     }
 }
 pub fn get_equipment_box() -> Option<engage_il2cpp::app::AccessoryEquipmentInfo> {
