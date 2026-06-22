@@ -1,12 +1,12 @@
 use std::fs;
 use engage::{
-    gamevariable::GameVariableManager,
-    mess::Mess, pad::{NpadButton, Pad}, random::Random,
-    spriteatlasmanager::FaceThumbnail, tmpro::TextMeshProUGUI
+    app::{AccessoryData_Kinds, BasicDialog, BasicDialogItemNo, GameUserData, GameVariable, IAccessoryMenuItemMethods, IBasicDialogItem, IBasicDialogMethods, IBitField32, IBitField32Methods, IGameVariableMethods, IPhotographDisposInfo, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographSequence, IRandom_2Methods, ISpriteAtlasManager_2, IUnit, IUnitEdit, Pad, Random_2},
+    GameVariableManager,
+    system::collections::generic::{IDictionary_2Methods, InsertionBehavior},
+    app::IUnitEditMethods
 };
-use engage_il2cpp::app::{AccessoryData_Kinds, BasicDialog, BasicDialogItemNo, IAccessoryMenuItemMethods, IBasicDialogItem, IBasicDialogMethods, IPhotographDisposInfo, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographSequence};
 use crate::{
-    is_up_down_press, left_right_enclose, r_l_press, AssetType, THUMB_DIR,
+    is_up_down_press, left_right_enclose, AssetType, THUMB_DIR,
     data::{items::Profile, room::hub_room_set_by_result},
     menu::{icons::CustomMenuIcon, items::{AssetFlag, CustomAssetMenuKind, CustomMenuItem}, *},
     localize::{MenuText, MenuTextCommand}, FACIAL_STATES
@@ -303,7 +303,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             _ => EquipmentBoxMode::CurrentProfile,
         }
     }
-    fn get_name(&self, menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_name(&self, menuitem: CustomAssetMenuItem3) -> unity::Il2CppString {
         let idx = self.to_index();
         let menu_index = menuitem.m_index();
         match self {
@@ -346,11 +346,11 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             ProfileItem(p) => {
                 let emblem = UnitAssetMenuData::get().god_mode;
                 let i = if menu_index == 1 && emblem { 3 } else { menu_index } as usize;
-                format!("{}: {}", Mess::get(PROFILE_MID[i]), p.get_name()).into()
+                format!("{}: {}", engage::app::Mess::get(PROFILE_MID[i]), p.get_name()).into()
             }
             UnitName => {
-                if let Some(unit) = UnitAssetMenuData::get_shop_unit().filter(|v| v.edit.name.is_some()){
-                    format!("{} [{}]", unit.get_name(), MenuTextCommand::on_off(unit.edit.is_enabled())).into()
+                if let Some(unit) = UnitAssetMenuData::get_shop_unit().filter(|v| !v.m_edit().m_name().is_null()){
+                    format!("{} [{}]", unit.get_name(), MenuTextCommand::on_off(unit.m_edit().is_enable())).into()
                 }
                 else { "Custom Name".into() }
             }
@@ -365,7 +365,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             _ => { MenuText::get_command(idx) }
         }
     }
-    fn get_detail_box_name(&self, menuitem: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
+    fn get_detail_box_name(&self, menuitem: CustomAssetMenuItem3) -> Option<unity::Il2CppString> {
         let idx = self.to_index();
         match self {
             OutfitDataFile => {
@@ -387,7 +387,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             _ => { Some(MenuText::get_command(idx)) }
         }
     }
-    fn get_help(&self, menuitem: CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_help(&self, menuitem: CustomAssetMenuItem3) -> unity::Il2CppString {
         let idx = self.to_index();
         match self {
             ResetColor(kind) => {
@@ -429,10 +429,12 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             UnitName => {
                 let help = MenuText::get_help(400).unwrap();
                 if let Some(unit) = UnitAssetMenuData::get_shop_unit() {
-                    if let Some(name) = unit.edit.name {
-                        let help_idx = if unit.person.flag.value & 128 == 0 && unit.person.parent.index > 1 { 401 } else { 400 };
+                    let name = unit.m_edit().m_name();
+                    if !name.is_null() {
+                        let person = unit.get_person();
+                        let help_idx = if person.get_flag().get_value() & 128 == 0 && person.index() > 1 { 401 } else { 400 };
                         format!("{}\nSet name: {}", MenuText::get_help(help_idx).unwrap(), name).into()
-                    } else { format!("{}\nDefault: {}", help, Mess::get_name(unit.person.pid)).into() }
+                    } else { format!("{}\nDefault: {}", help, engage::app::Mess::get_game_data_name(unit.get_pid())).into() }
                 }
                 else { help }
             }
@@ -452,7 +454,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             _ => { MenuText::get_help(idx).unwrap_or(format!("MenuItemHelp #{}", idx).into()) }
         }
     }
-    fn get_body(&self, menuitem:  CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_body(&self, menuitem:  CustomAssetMenuItem3) -> unity::Il2CppString {
         match self {
             CurrentData => { get_current_profile_name() }
             Asset(ty) => ty.get_body(menuitem),
@@ -552,7 +554,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                             let current_dress = profile.ubody;
                             let current_dress_gender = db.get_dress_gender_hash(current_dress)
                                 .or_else(||db.get_dress_gender_hash(data.preview.original_assets[0]))
-                                .unwrap_or(engage_il2cpp::app::Gender::none());
+                                .unwrap_or(engage::app::Gender::none());
                             let flag = profile.flag;
                             *profile = new_data.data.clone();
                             if flag & 128 == 0 && db.try_get_asset(AssetType::Body, new_data.data.ubody).is_some() {
@@ -573,14 +575,20 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             FaceThumb => {
                 if let Some(unit) = UnitAssetMenuData::get_unit() {
                     if let Some(keys) = crate::capture::get_unit_face_keys(unit){
-                        if let Some(sprite) = FaceThumbnail::get_item(format!("LOAD_{}", menuitem.value())){
-                            FaceThumbnail::try_insert(keys.2, sprite);
+                        let table = engage::app::FaceThumbnail::s_face_thumb().m_cache_table();
+                        let (found, sprite) = table.try_get_value(format!("LOAD_{}", menuitem.value()).into());
+                        if found && !sprite.is_null(){
+                            table.try_insert(keys.2.into(), sprite, InsertionBehavior::overwrite_existing());
                             UnitAssetMenuData::get().loaded_data.selected_index = Some(menuitem.value());
                             let key = format!("G_Face_{}", keys.0);
                             let name = menuitem.m_name().to_rust_string();
-                            if !GameVariableManager::exist(key.as_str()) { GameVariableManager::make_entry_str(key.as_str(), name); }
+                            if !GameVariableManager::is_exist(key.as_str()) {
+                                let user_data = GameUserData::get_instance();
+                                let vars: GameVariable = user_data.get_variable();
+                                vars.entry_2(key.as_str(), name);
+                            }
                             else { GameVariableManager::set_string(key.as_str(), name); }
-                            FaceThumbnail::try_insert(keys.0, sprite);
+                            table.try_insert(keys.0.into(), sprite, InsertionBehavior::overwrite_existing());
                         }
                     }
                 }
@@ -602,7 +610,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let preview = UnitAssetMenuData::get_preview();
                 let v = preview.preview_data.scale[*kind as usize] & 1024 != 0;
                 preview.preview_data.scale[*kind as usize] ^= 1024;
-                IAccessoryMenuItemMethods::set_m_decided(menuitem, !v);
+                menuitem.set_m_decided(!v);
+                menuitem.rebuild_text();
                 BasicMenu_Result::se_decide()
             }
             /*
@@ -636,7 +645,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             ScaleMenuItem(scale_index) => {
                 let i = *scale_index as usize;
                 let preview = UnitAssetMenuData::get_preview();
-                let random_value = get_random_scaling(i as i32, Random::get_game());
+                let random_value = get_random_scaling(i as i32, Random_2::get_game());
                 if random_value > 0  {
                     preview.scale_preview[i] = random_value as u16;
                     preview.preview_data.scale[i] = random_value as u16;
@@ -647,11 +656,11 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { BasicMenu_Result::se_miss() }
             }
             RGBA(kind) => {
-                let rng = Random::get_game();
+                let rng = Random_2::get_game();
                 let i = (*kind % 16) as usize;
                 let preview = UnitAssetMenuData::get_preview();
                 for c in 0..3 {
-                    let random_value = rng.get_value(255) as u8;
+                    let random_value = rng.get_value_2(255) as u8;
                     preview.color_preview[4 * i + c] = random_value;
                     preview.preview_data.colors[i].values[c] = random_value;
                 }
@@ -721,14 +730,14 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 } else { BasicMenu_Result::se_miss() }
             }
             FaceThumb|OutfitDataFile => {
-                let action = system::Action::new(
+                let action = engage::system::Action::new(
                     menuitem.into(),
                     if self.to_index() == -4 { delete_face_item_method_info() } else { delete_outfit_data_method_info() }.into()
                 );
-                let yes = engage_il2cpp::app::YesMenuItem::new(action);
-                yes.set_m_text(engage_il2cpp::app::Mess::get("MID_MENU_YES"));
+                let yes = engage::app::YesMenuItem::new(action);
+                yes.set_m_text(engage::app::Mess::get("MID_MENU_YES"));
                 let no = BasicDialogItemNo::new();
-                let list = List_1::<engage_il2cpp::app::BasicMenuItem>::new_2(2);
+                let list = List_1::<engage::app::BasicMenuItem>::new_2(2);
                 unsafe {
                     list.add(yes.cast());
                     list.add(no.cast());
@@ -743,7 +752,6 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
     }
     fn custom_call(&self, menuitem: CustomAssetMenuItem3) -> BasicMenu_Result {
         let menu = UnitAssetMenuData::get();
-        let pad = get_instance::<Pad>();
         match self {
             /*
             Anim(_) => {
@@ -766,10 +774,10 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let emblem = menu.god_mode;
                 let limit = if emblem { 3 } else { 5 };
                 let previous = menu.loaded_data.profile;
-                let l = Pad::is_trigger(NpadButton::l_key());
-                let r = Pad::is_trigger(NpadButton::r_key());
-                let left = Pad::is_trigger(NpadButton::left_key());
-                let right = Pad::is_trigger(NpadButton::right_key());
+                let l = Pad::is_trigger(NpadButton::l());
+                let r = Pad::is_trigger(NpadButton::r());
+                let left = Pad::is_trigger(NpadButton::left());
+                let right = Pad::is_trigger(NpadButton::right());
                 if left || right {
                     menu.loaded_data.profile = (limit + previous + if l { -1 } else { 1 }) % limit;
                     set_detail_box(None, None, Some(self.get_body(menuitem)), ProfileItem(Profile::from_index(menu.loaded_data.profile)).get_icon(menuitem).get_icon());
@@ -790,13 +798,13 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let i = *scale_index as usize;
                 let menu_data = UnitAssetMenuData::get_preview();
                 let key =
-                    Pad::is_button(NpadButton::left_key()) as i32 +
-                        ((Pad::is_button(NpadButton::right_key()) as i32) << 1) +
-                        ((Pad::is_trigger(NpadButton::l_key()) as i32) << 2) +
-                        ((Pad::is_trigger(NpadButton::r_key()) as i32) << 3);
+                    Pad::is_button(NpadButton::left()) as i32 +
+                        ((Pad::is_button(NpadButton::right()) as i32) << 1) +
+                        ((Pad::is_trigger(NpadButton::l()) as i32) << 2) +
+                        ((Pad::is_trigger(NpadButton::r()) as i32) << 3);
                 if key > 0 && ( key & (key - 1) == 0){
                     let previous = menu_data.scale_preview[i] & 1023;
-                    let fast = pad.npad_state.buttons.y();
+                    let fast = Pad::is_button(NpadButton::y());
                     let next = scale_change_value(*scale_index as i32, key & 10 != 0, fast);
                     if previous == next { BasicMenu_Result::se_miss() }
                     else {
@@ -812,9 +820,9 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 let k = (*kind % 16) as usize;
                 let preview = UnitAssetMenuData::get_preview();
                 let mut new_values = [0u8; 3];
-                let trigger =  pad.npad_state.buttons.a() && pad.old_buttons.a();
-                let keys = [(NpadButton::left_key(), NpadButton::right_key()), (NpadButton::l_key(), NpadButton::r_key()), (NpadButton::zl_key(), NpadButton::zr_key())];
-                let amount = if pad.npad_state.buttons.y() { 5 } else { 1 };
+                let trigger =  Pad::is_repeat(NpadButton::a());
+                let keys = [(NpadButton::left(), NpadButton::right()), (NpadButton::l(), NpadButton::r()), (NpadButton::zl(), NpadButton::zr())];
+                let amount = if Pad::is_button(NpadButton::y()) { 5 } else { 1 };
                 let mut update = false;
                 for x in 0..3 {
                     let (a, b) = &keys[x];
@@ -851,7 +859,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 else { BasicMenu_Result::pass() }
             }
             ProfileItem(profile) => {
-                if Pad::is_trigger(NpadButton::new().with_left(true)) {
+                if Pad::is_trigger(NpadButton::left()) {
                     let new = profile.left();
                     EquipmentBoxMode::ProfilePreview(new).update();
                     menuitem.set_menu_item_kind(ProfileItem(new));
@@ -861,7 +869,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                     }
                     return BasicMenu_Result::se_cursor();
                 }
-                else if Pad::is_trigger(NpadButton::new().with_right(true)) {
+                else if Pad::is_trigger(NpadButton::right()) {
                     let new = profile.right();
                     EquipmentBoxMode::ProfilePreview(new).update();
                     menuitem.set_menu_item_kind(ProfileItem(new));
@@ -874,19 +882,19 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 BasicMenu_Result::pass()
             }
             UnitName => {
-                if r_l_press(true, false, true) | r_l_press(false, true, true) {
+                if Pad::is_trigger(NpadButton::left()) || Pad::is_trigger(NpadButton::right()) {
                     if let Some(unit) = UnitAssetMenuData::get_shop_unit() {
                         return
-                        if unit.person.parent.index > 1 && unit.person.flag.value & 128 == 0 && unit.edit.name.is_some() {
-                            let new_gender = if unit.edit.gender == 1 || unit.edit.gender == 2 { 0 } else { unit.person.gender };
-                            unit.edit.set_gender(new_gender);
+                        if unit.get_person().index() > 1 && unit.get_person().get_flag().m_value() & 128 == 0 && !unit.m_edit().m_name().is_null() {
+                            let new_gender = if unit.m_edit().is_enable() { engage::app::Gender::none() } else { unit.get_person().get_gender() };
+                            unit.m_edit().set_gender(new_gender);
                             menuitem.rebuild_text();
-                            if let Some(char_name) = GameObject::find("CharacterName")
-                                .and_then(|v| v.get_component_in_children::<TextMeshProUGUI>(true))
-                            {
-                                char_name.set_text(unit.get_name(), true);
+                            let name = menuitem.get_asset_menu().unit_name();
+                            if !name.is_null() {
+                                name.set_text_2(unit.get_name(), true);
+                                BasicMenu_Result::se_decide()
                             }
-                            BasicMenu_Result::se_decide()
+                            else { BasicMenu_Result::se_miss() }
                         }
                         else { BasicMenu_Result::se_miss() };
                     }
@@ -894,8 +902,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 BasicMenu_Result::pass()
             }
             PresetAppearance => {
-                let left = Pad::is_trigger(NpadButton::l_key());
-                let right = Pad::is_trigger(NpadButton::r_key());
+                let left = Pad::is_trigger(NpadButton::l());
+                let right = Pad::is_trigger(NpadButton::r());
                 if left || right {
                     let box_state = menu.loaded_data.equipment_box_state.get_preset_appearance(right);
                     EquipmentBoxMode::LoadData(box_state).set_preset_appearance(menuitem.value());
@@ -906,8 +914,8 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
             Expression(kind) => {
                 let preview = UnitAssetMenuData::get_preview();
-                let l = Pad::is_trigger(NpadButton::left_key());
-                let r = Pad::is_trigger(NpadButton::right_key());
+                let l = Pad::is_trigger(NpadButton::left());
+                let r = Pad::is_trigger(NpadButton::right());
                 if l || r && r != l {
                     let mut v = (preview.preview_data.expression[*kind as usize] + if l { 13 } else { 1 } ) % 14;
                     if v == (*kind + 1) { v = (v + if l { 13 } else { 1 } ) % 14; }
@@ -942,29 +950,29 @@ fn get_current_profile_assignment_text() -> String {
         format!("{}\nAssigned to: {}", help, profile_str)
     }
 }
-pub fn get_current_profile_name() -> unity2::Il2CppString {
+pub fn get_current_profile_name() -> unity::Il2CppString {
     let emblem = UnitAssetMenuData::get().god_mode;
     let selection = UnitAssetMenuData::get_preview().selected_profile;
     get_profile_name(selection, emblem)
 }
-pub fn get_profile_name(index: i32, emblem: bool) -> unity2::Il2CppString {
+pub fn get_profile_name(index: i32, emblem: bool) -> unity::Il2CppString {
     match index {
-        0 => { engage_il2cpp::app::Mess::get(PROFILE_MID[0]) },
-        1 => { if emblem { engage_il2cpp::app::Mess::get(PROFILE_MID[3]) } else { MenuTextCommand::Engage.get() }},
-        2 => { engage_il2cpp::app::Mess::get("MID_SAVEDATA_SEQ_HUB") }
+        0 => { engage::app::Mess::get(PROFILE_MID[0]) },
+        1 => { if emblem { engage::app::Mess::get(PROFILE_MID[3]) } else { MenuTextCommand::Engage.get() }},
+        2 => { engage::app::Mess::get("MID_SAVEDATA_SEQ_HUB") }
         3 => { format!("{} 1", MenuTextCommand::Alt).into() }
         4 => { format!("{} 2", MenuTextCommand::Alt).into() }
         _ => { unreachable!() }
     }
 }
 
-pub fn get_random_scaling(ty: i32, rng: &Random) -> i32 {
+pub fn get_random_scaling(ty: i32, rng: Random_2) -> i32 {
     match ty {
-        0 => { 75 + rng.get_value(75) }
-        1 => { 85 + rng.get_value(30) }
-        2..4 => { 90 + rng.get_value(30) }
-        4..9|10..16 => { 80 + rng.get_value(40) }
-        9 => { 75 + rng.get_value(225) }
+        0 => { 75 + rng.get_value_2(75) }
+        1 => { 85 + rng.get_value_2(30) }
+        2..4 => { 90 + rng.get_value_2(30) }
+        4..9|10..16 => { 80 + rng.get_value_2(40) }
+        9 => { 75 + rng.get_value_2(225) }
         _ => { 0 }
     }
 }
@@ -977,8 +985,8 @@ pub fn scale_change_value(index: i32, increase: bool, speed_up: bool) -> u16 {
     preview.scale_preview[index as usize] = new_value;
     new_value
 }
-#[unity2::callback]
-fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
+#[unity::callback]
+fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity::OptionalMethod) {
     let path = format!("{}{}", THUMB_DIR, menu_item.m_name());
     let idx = menu_item.value();
     if let Ok(_) = fs::remove_file(path.as_str()) {
@@ -986,14 +994,20 @@ fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) 
         if let Some(face) = load_face.iter().position(|s| s.index == idx as usize)
         {
             load_face.remove(face);
-            FaceThumbnail::remove(format!("LOAD_{}", idx), true);
+            let key = format!("LOAD_{}", idx);
+            let table = engage::app::FaceThumbnail::s_face_thumb().m_cache_table();
+            let (found, sprite) = table.try_get_value(key.as_str().into());
+            if found && !sprite.is_null() {
+                table.remove(key.as_str().into());
+                engage::unity_engine::Object_2::destroy_2(sprite);
+            }
         }
         let menu = menu_item.get_asset_menu();
         menu.set_next(Some(if load_face.len() == 0 { ProfileSettings } else { FaceSelection }));
     }
 }
-#[unity2::callback]
-fn delete_outfit_data(menu_item: CustomAssetMenuItem3, _: unity2::OptionalMethod) {
+#[unity::callback]
+fn delete_outfit_data(menu_item: CustomAssetMenuItem3, _: unity::OptionalMethod) {
     let list = &mut UnitAssetMenuData::get().loaded_data.loaded_data;
     let name = menu_item.m_name().to_rust_string();
     if let Some(pos) = list.iter().position(|x| x.get_filename() == name) {

@@ -1,9 +1,9 @@
 use bitflags::{bitflags};
-use engage::{gamedata::assettable::*, gamedata::Gamedata, gamedata::item::ItemData, mess::Mess};
-use engage_il2cpp::app::{AssetTable_Result, IAssetTable_ResultMethods, IStructData_1Methods};
-use unity2::Cast;
-use unity::prelude::Il2CppString;
-use crate::{capitalize_first, AssetLabelTable, AssetType};
+use engage::app::{AssetTable_Result, IAssetTable_ResultMethods, IItemDataMethods, IStructBase, IStructData_1Methods};
+use engage::List_1Ext;
+use unity::Cast;
+use unity::system::string::IIl2CppStringMethods;
+use crate::{capitalize_first, get_condition_index, has_condition_index, AssetLabelTable, AssetType};
 
 const ACC: [&str; 10] = ["Band", "Dress", "Ear", "Glass", "Hat", "Kings", "Tiara", "Helm", "Shield", "Hood"];
 bitflags! {
@@ -42,7 +42,7 @@ bitflags! {
     }
 }
 impl AssetItemFlags {
-    pub fn modify_name(&self, value: &String, count: i32) -> unity2::Il2CppString {
+    pub fn modify_name(&self, value: &String, count: i32) -> unity::Il2CppString {
         let mut s = value.clone();
         s = capitalize_first(s.as_str());
         if self.contains(AssetItemFlags::Male) { add_str(&mut s, "M"); }
@@ -64,12 +64,12 @@ impl AssetItemFlags {
         }
         if count > 0 { add_str(&mut s, (count+1).to_string()); }
         if self.contains(AssetItemFlags::Morph) {
-            engage_il2cpp::app::Mess::set_argument_2(0, s);
-            engage_il2cpp::app::Mess::get("MPID_Morph_Prefix")
+            engage::app::Mess::set_argument_2(0, s);
+            engage::app::Mess::get("MPID_Morph_Prefix")
         }
         else if self.contains(AssetItemFlags::God) {
-            engage_il2cpp::app::Mess::set_argument_2(0, s);
-            engage_il2cpp::app::Mess::get("MPID_God_Prefix")
+            engage::app::Mess::set_argument_2(0, s);
+            engage::app::Mess::get("MPID_God_Prefix")
         }
         else { s.into() }
     }
@@ -86,12 +86,12 @@ impl OtherAssetItem {
     pub fn new(label: impl AsRef<str>, asset: impl AsRef<str>, female: bool, flags: i32, is_mess: bool) -> Option<Self> {
         let label = label.as_ref().to_string();
         let lower = label.to_lowercase();
-        let mut asset = AssetItem::new(asset, flags)?;
+        let mut asset = AssetItem::new(asset.as_ref(), flags)?;
         if lower.contains("playable") && lower.starts_with("mpid") { asset.flags.insert(AssetItemFlags::Playable); }
 
         Some(Self{ label, female, is_mess, asset })
     }
-    pub fn get_name(&self, labels: &AssetLabelTable, body_first: bool) -> unity2::Il2CppString {
+    pub fn get_name(&self, labels: &AssetLabelTable, body_first: bool) -> unity::Il2CppString {
         if self.is_mess { self.asset.get_name(self.label.as_str()) }
         else {
             let s1 = labels.get_suffix_name(self.label.as_str());
@@ -118,8 +118,8 @@ impl AssetLabel {
             flag: AssetItemFlags::from_bits(flags).unwrap_or(AssetItemFlags::empty()),
         }
     }
-    pub fn get(&self) -> unity2::Il2CppString {
-        if self.is_mess { self.flag.modify_name(&Mess::get(self.label.as_str()).to_string(), 0)  }
+    pub fn get(&self) -> unity::Il2CppString {
+        if self.is_mess { self.flag.modify_name(&engage::app::Mess::get(self.label.as_str()).to_string(), 0)  }
         else { self.flag.modify_name(&self.label, 0) }
     }
 }
@@ -140,7 +140,7 @@ impl AssetItem {
             "uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_",
             "Info", "Talk", "Demo", "Hub",
         ];
-    pub fn new<'a>(asset_name: impl Into<&'a Il2CppString>, flags: i32) -> Option<Self> {
+    pub fn new(asset_name: impl Into<unity::Il2CppString>, flags: i32) -> Option<Self> {
         let str = asset_name.into();
         let str2 = str.to_string();
         let kind =
@@ -160,7 +160,7 @@ impl AssetItem {
         let flags = AssetItemFlags::from_bits(flags)?;
         Some(Self { hash, count: 0, kind, flags, })
     }
-    pub fn get_name(&self, mid: impl AsRef<str>) -> unity2::Il2CppString {
+    pub fn get_name(&self, mid: impl AsRef<str>) -> unity::Il2CppString {
         let label =
             if self.flags.contains(AssetItemFlags::AccessoryShop) || self.flags.contains(AssetItemFlags::MAID) { format!("MAID_{}", mid.as_ref()) }
             else if self.flags.contains(AssetItemFlags::MPID) { format!("MPID_{}", mid.as_ref()) }
@@ -168,7 +168,7 @@ impl AssetItem {
             else if self.flags.contains(AssetItemFlags::HUB) { format!("Hub{}", mid.as_ref()) }
             else if self.flags.contains(AssetItemFlags::DEMO) { format!("Demo_{}", mid.as_ref()) }
             else { mid.as_ref().to_string() };
-        let mut s = Mess::get(label).to_string();
+        let mut s = engage::app::Mess::get(label).to_string();
 
         if s.len() < 1 { s = mid.as_ref().to_string(); }
         s = capitalize_first(s.as_str());
@@ -176,7 +176,7 @@ impl AssetItem {
     }
 }
 fn add_mess(string: &mut String, mess_id: impl AsRef<str>){
-    let mess = Mess::get(mess_id.as_ref()).to_string();
+    let mess = engage::app::Mess::get(mess_id.as_ref()).to_string();
     if mess.len() > 1 { add_str(string, mess); }
 }
 fn add_str(string: &mut String, value: impl AsRef<str>) {
@@ -195,15 +195,16 @@ pub struct ItemAsset {
 }
 impl ItemAsset {
     pub fn init() -> Vec<Self> {
-        ItemData::get_list().unwrap().iter().flat_map(|item| Self::from_item(item)).collect()
+        engage::app::ItemData::get_list().iter().flat_map(|i| Self::from_item(i)).collect()
     }
-    pub fn from_item(data: &ItemData) -> Option<Self> {
-        let con = AssetTableStaticFields::get_condition_index(data.iid);
-        let entry = AssetTableStaticFields::get().search_lists[2].iter().find(|x| x.condition_indexes.has_condition_index(con)).map(|entry| entry.parent.index)?;
-        Some(Self { entry, hash: data.parent.hash, kind: data.kind as i32 })
+    pub fn from_item(data: engage::app::ItemData) -> Option<Self> {
+        let i = get_condition_index(data.get_iid())?;
+        let sf = engage::app::AssetTable::s_search_lists();
+        let entry  = sf.get(2).iter().find(|x| has_condition_index(*x, i)).map(|x| x.index())?;
+        Some(Self { entry, hash: data.hash(), kind: data.get_kind().value })
     }
     pub fn apply(&self, result: AssetTable_Result) {
-        let entry = engage_il2cpp::app::AssetTable::try_get_2(self.entry);
+        let entry = engage::app::AssetTable::try_get_2(self.entry);
         if !entry.is_null() { result.commit_4(entry); }
     }
 }

@@ -1,28 +1,28 @@
-use engage_il2cpp::{
+use engage::{
     app::{ISingletonProcInst_1Methods, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window},
     unity_engine::{IComponentMethods, ITransformMethods},
     app::{IPhotographCameraController, IPhotographDisposInfo, IPhotographDisposManager, IPhotographSequence},
     combat::ICharacterJointMethods,
     unity_engine::{ICameraMethods, IGameObjectMethods, IRendererMethods, Renderer}
 };
-use unity2::Cast;
+use unity::Cast;
 use crate::{clamp_value, MenuMode};
 
 pub struct PositionRotation {
-    pub pos: engage_il2cpp::unity_engine::Vector3,
-    pub rotation: engage_il2cpp::unity_engine::Quaternion,
+    pub pos: engage::unity_engine::Vector3,
+    pub rotation: engage::unity_engine::Quaternion,
 }
 impl PositionRotation {
     pub const fn default() -> Self {
         Self {
-            pos: engage_il2cpp::unity_engine::Vector3 {x: 0.0, y: 0.0, z: 0.0 },
-            rotation: engage_il2cpp::unity_engine::Quaternion{x: 0.0, y: 0.0, z: 0.0, w: 1.0},
+            pos: engage::unity_engine::Vector3 {x: 0.0, y: 0.0, z: 0.0 },
+            rotation: engage::unity_engine::Quaternion{x: 0.0, y: 0.0, z: 0.0, w: 1.0},
         }
     }
-    pub fn new2(pos: engage_il2cpp::unity_engine::Vector3, rotation: engage_il2cpp::unity_engine::Quaternion) -> Self {
+    pub fn new2(pos: engage::unity_engine::Vector3, rotation: engage::unity_engine::Quaternion) -> Self {
         Self { pos, rotation }
     }
-    pub fn from_transform(transform: engage_il2cpp::unity_engine::Transform, local_rotation: bool) -> Self {
+    pub fn from_transform(transform: engage::unity_engine::Transform, local_rotation: bool) -> Self {
         let pos = transform.get_position();
         let rot = if local_rotation { transform.get_local_rotation() } else { transform.get_rotation() };
         Self::new2(pos, rot)
@@ -34,8 +34,8 @@ pub struct PhotoCameraControl {
     pub init_camera: PositionRotation,
     reset_camera: PositionRotation,
     reset_character: PositionRotation,
-    pub rotation_change: engage_il2cpp::unity_engine::Vector3,
-    character_basis: [engage_il2cpp::unity_engine::Vector3; 3],
+    pub rotation_change: engage::unity_engine::Vector3,
+    character_basis: [engage::unity_engine::Vector3; 3],
     camera_fov: f32,
     cam_translation: [i32; 3],
     cam_bounds: [i32; 3],
@@ -51,11 +51,11 @@ impl PhotoCameraControl {
             init_camera: PositionRotation::default(),
             reset_camera: PositionRotation::default(),
             reset_character: PositionRotation::default(),
-            rotation_change: engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
+            rotation_change: engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
             character_basis: [
-                engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
-                engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
-                engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
+                engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
+                engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
+                engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
             ],
             camera_fov: 60.0,
             cam_translation: [0; 3],
@@ -71,7 +71,7 @@ impl PhotoCameraControl {
             if let Some(p) = crate::photo::get_photosequence(){
                 if bounds {
                     let mut size: [f32; 3] = [0.0; 3];
-                    let char = p.m_dispos_manager().m_current_dispos_info().m_locator().get_component_in_children_3::<engage_il2cpp::combat::Character>();
+                    let char = p.m_dispos_manager().m_current_dispos_info().m_locator().get_component_in_children_3::<engage::combat::Character>();
                     if !char.is_null() {
                         let trans = char.get_transform();
                         if position {
@@ -94,7 +94,7 @@ impl PhotoCameraControl {
                         }
                     }
                 }
-                let camera = engage_il2cpp::unity_engine::Camera::get_main();
+                let camera = engage::unity_engine::Camera::get_main();
                 if !camera.is_null(){
                     let camera_trans = camera.get_transform();
                     let aspect = camera.get_aspect();
@@ -105,7 +105,7 @@ impl PhotoCameraControl {
                         self.reset_character_rotation();
                         self.reset_camera_rotation();
                     }
-                    let joint =  p.m_dispos_manager().m_current_dispos_info().m_locator().get_component_in_children_3::<engage_il2cpp::combat::CharacterJoint>();
+                    let joint =  p.m_dispos_manager().m_current_dispos_info().m_locator().get_component_in_children_3::<engage::combat::CharacterJoint>();
                     if !joint.is_null() {
                         let trans = joint.get_c_head_loc();
                         let head_pos = trans.get_position();
@@ -140,15 +140,15 @@ impl PhotoCameraControl {
     }
     pub fn initialize(&mut self, mode: MenuMode) {
         self.mode = mode;
-        self.character_basis[0] = engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
-        self.character_basis[1] = engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
-        self.character_basis[2] = engage_il2cpp::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
+        self.character_basis[0] = engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
+        self.character_basis[1] = engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
+        self.character_basis[2] = engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0};
         self.cam_translation[0] = 0;
         self.cam_translation[1] = 0;
         self.cam_translation[2] = 0;
         match self.mode {
             MenuMode::PhotoGraph => {
-                let camera = engage_il2cpp::unity_engine::Camera::get_main();
+                let camera = engage::unity_engine::Camera::get_main();
                 if !camera.is_null() {
                     let camera_trans = camera.get_transform();
                     let fov = camera.get_field_of_view();
@@ -158,7 +158,7 @@ impl PhotoCameraControl {
                 }
             }
             MenuMode::UnitInfo => {
-                let transform = engage_il2cpp::app::UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara().get_transform();
+                let transform = engage::app::UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara().get_transform();
                 self.reset_character = PositionRotation::from_transform(transform, true);
                 self.current_character = PositionRotation::from_transform(transform, true);
             }
@@ -171,11 +171,11 @@ impl PhotoCameraControl {
             let x = -1.0*rot.x;
             let y = -1.0*rot.y;
             let z = -1.0*rot.z;
-            para.rotate_3(x, y,z, engage_il2cpp::unity_engine::Space::self_());
-            let camera = engage_il2cpp::unity_engine::Camera::get_main();
+            para.rotate_3(x, y,z, engage::unity_engine::Space::self_());
+            let camera = engage::unity_engine::Camera::get_main();
             if !camera.is_null() {
                 let transform = camera.get_transform();
-                transform.rotate_3(x, y, z, engage_il2cpp::unity_engine::Space::self_());
+                transform.rotate_3(x, y, z, engage::unity_engine::Space::self_());
                 self.rotation_change.x = 0.0;
                 self.rotation_change.y = 0.0;
                 self.rotation_change.z = 0.0;
@@ -187,11 +187,11 @@ impl PhotoCameraControl {
     pub fn camera_rotation(&mut self, x: f32, y: f32, z: f32) {
         if let Some(para) = self.get_camera_parameter_transform() {
             if self.camera_rotation_check(x, y, z){
-                para.rotate_3(x, y, z, engage_il2cpp::unity_engine::Space::self_());
-                let camera = engage_il2cpp::unity_engine::Camera::get_main();
+                para.rotate_3(x, y, z, engage::unity_engine::Space::self_());
+                let camera = engage::unity_engine::Camera::get_main();
                 if !camera.is_null() {
                     let transform = camera.get_transform();
-                    transform.rotate_3(x, y, z, engage_il2cpp::unity_engine::Space::self_());
+                    transform.rotate_3(x, y, z, engage::unity_engine::Space::self_());
                 }
                 self.rotation_change.x = wrap_angle(self.rotation_change.x + x);
                 self.rotation_change.y = wrap_angle(self.rotation_change.y + y);
@@ -204,7 +204,7 @@ impl PhotoCameraControl {
             para.set_local_rotation(self.reset_camera.rotation);
             para.set_position(self.reset_camera.pos);
         }
-        let camera = engage_il2cpp::unity_engine::Camera::get_main();
+        let camera = engage::unity_engine::Camera::get_main();
         if !camera.is_null() {
             let trans = camera.get_transform();
             trans.set_local_rotation(self.reset_camera.rotation);
@@ -221,7 +221,7 @@ impl PhotoCameraControl {
     /// Rotates Character with angles in degrees
     pub fn character_rotation(&mut self, x: f32, y: f32, z: f32) {
         if let Some(transform) = self.get_character_transform() {
-            transform.rotate_3(x, y, z, engage_il2cpp::unity_engine::Space::self_());
+            transform.rotate_3(x, y, z, engage::unity_engine::Space::self_());
             let q = transform.get_local_rotation();
             self.current_character.rotation.x = q.x;
             self.current_character.rotation.y = q.y;
@@ -244,7 +244,7 @@ impl PhotoCameraControl {
     pub fn reset_camera_position(&mut self) {
         if let Some(para) = self.get_camera_parameter_transform() {
             para.set_position(self.init_camera.pos);
-            let camera = engage_il2cpp::unity_engine::Camera::get_main();
+            let camera = engage::unity_engine::Camera::get_main();
             if !camera.is_null() {
                 let t = camera.get_transform();
                 t.set_position(self.init_camera.pos)
@@ -261,22 +261,22 @@ impl PhotoCameraControl {
             transform.set_local_rotation(self.current_character.rotation);
         }
     }
-    pub fn get_character_transform(&self) -> Option<engage_il2cpp::unity_engine::Transform> {
+    pub fn get_character_transform(&self) -> Option<engage::unity_engine::Transform> {
         match self.mode {
             MenuMode::PhotoGraph => {
                 crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info().m_character_cmp().get_transform())
             }
             MenuMode::UnitInfo => {
-                Some(engage_il2cpp::app::UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara().get_transform())
+                Some(engage::app::UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara().get_transform())
             }
             _ => None,
         }
     }
-    pub fn get_main_camera() -> Option<engage_il2cpp::unity_engine::Camera> {
-        let camera = engage_il2cpp::unity_engine::Camera::get_main();
+    pub fn get_main_camera() -> Option<engage::unity_engine::Camera> {
+        let camera = engage::unity_engine::Camera::get_main();
         if !camera.is_null() { Some(camera) } else { None }
     }
-    pub fn get_camera_parameter_transform(&self) -> Option<engage_il2cpp::unity_engine::Transform> {
+    pub fn get_camera_parameter_transform(&self) -> Option<engage::unity_engine::Transform> {
         crate::photo::get_photosequence().map(|p| p.m_camera_controller().m_current_parameter().get_transform())
     }
     pub fn translate_camera(&mut self, r: [i32; 3]) {
@@ -307,7 +307,7 @@ impl PhotoCameraControl {
                 self.current_character.pos.x = clamp_value(self.current_character.pos.x + rxyz[0], -1.25, 1.0);
                 self.current_character.pos.y = clamp_value(self.current_character.pos.y + rxyz[1], -1.50, 1.75);
                 self.current_character.pos.z = clamp_value(self.current_character.pos.z + rxyz[2], -2.75, 2.25);
-                let pos = engage_il2cpp::unity_engine::Vector3{
+                let pos = engage::unity_engine::Vector3{
                     x: self.current_character.pos.x,
                     y: self.current_character.pos.y,
                     z: self.current_character.pos.z,

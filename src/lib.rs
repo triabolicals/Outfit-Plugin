@@ -1,26 +1,29 @@
 use cobapi::{Event, SystemEvent};
-use engage::{gamemessage::GameMessage, proc::ProcInst, sequence::mainsequence::MainSequence};
+use engage::{
+    prelude::*,
+    app::{IProcInst, ISingletonProcInst_1Methods},
+    prelude::SystemObject
+};
+use unity::prelude::*;
 use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
 #[allow(static_mut_refs)] pub mod enums;
 #[allow(static_mut_refs)] pub mod assets;
-
+const TITLE_LOOP_SEQUENCE: i32 = -988690862;
+const UNIT_SELECT_SUB_MENU: i32 = -845322556;
 // Required to get `event_install` function to fully compile?
 extern "C" fn dvc_check_warning(event: &Event<SystemEvent>) {
     if let Event::Args(ev) = event {
         match ev {
             SystemEvent::ProcInstBind {proc, parent: _} => {
-                let hash = proc.borrow().hashcode;
+                let hash = proc.borrow().m_hash_code();
                 match hash {
-                    engage::proc::TITLE_LOOP_SEQUENCE => {
-                        if let Some(main_sequence) = MainSequence::get_instance() {
-                            if main_sequence.pad == 1 {
-                                main_sequence.pad += 1;
-                                GameMessage::create_key_wait(
-                                    main_sequence,
-                                    "Outfit plugin will be ignored for this session.\nDVC's version of the Outfit Plugin will be used."
-                                );
-                            }
+                    TITLE_LOOP_SEQUENCE => {
+                        let main = engage::app::MainSequence::get_instance();
+                        let v = unity::field_get_value_at_offset::<i32>(main, 0x74);
+                        if v == 1 {
+                            unity::field_set_value_at_offset::<i32>(main, 0x74, v + 1);
+                            engage::app::GameMessage::create_key_wait(main, "Outfit plugin will be ignored for this session.\nDVC's version of the Outfit Plugin will be used.");
                         }
                     }
                     _ => {}
@@ -31,36 +34,38 @@ extern "C" fn dvc_check_warning(event: &Event<SystemEvent>) {
     }
 }
 extern "C" fn event_install(event: &Event<SystemEvent>) {
-    if MainSequence::get_instance().is_some_and(|v| v.pad == 0) {
-        if let Event::Args(ev) = event {
-            match ev {
-                SystemEvent::ProcInstBind { proc, parent: _ } => {
-                    let hash = proc.borrow().hashcode;
-                    match hash {
-                        engage::proc::TITLE_LOOP_SEQUENCE => {
-                            if !UnitAssetMenuData::get().init {
-                                outfit_core::install_outfit_plugin(false);
-                                skyline::install_hooks!(
-                                    assets::dress::modify_colors,
-                                    assets::asset_table_setup_person_outfit,
-                                    assets::asset_table_result_setup_hook_outfit,
-                                    // assets::transform::change_dragon2,
-                                    assets::asset_table_result_god_setup_outfit,
-                                    // assets::transform::transformation_chain_atk,
-                                    assets::dress::combat_character_play_facial,
-                                );
-                            } else { outfit_core::reset_faces(true); }
-                        }
-                       // engage::proc::UNIT_SELECT_SUB_MENU => { menu_item_add(&mut proc.borrow_mut()); }
-                        _ => {}
+    let main = engage::app::MainSequence::get_instance();
+    if !main.is_null() { return; }
+    let v = unity::field_get_value_at_offset::<i32>(main, 0x74);
+    if v != 0 { return; }
+    if let Event::Args(ev) = event {
+        match ev {
+            SystemEvent::ProcInstBind { proc, parent: _ } => {
+                let hash = proc.borrow().m_hash_code();
+                match hash {
+                    TITLE_LOOP_SEQUENCE  => {
+                        if !UnitAssetMenuData::get().init {
+                            outfit_core::install_outfit_plugin(false);
+                            skyline::install_hooks!(
+                                assets::dress::modify_colors,
+                                assets::asset_table_setup_person_outfit,
+                                assets::asset_table_result_setup_hook_outfit,
+                                assets::transform::change_dragon2,
+                                assets::asset_table_result_god_setup_outfit,
+                                assets::transform::transformation_chain_atk,
+                                assets::dress::combat_character_play_facial,
+                            );
+                        } else { outfit_core::reset_faces(true); }
                     }
+                    UNIT_SELECT_SUB_MENU => { menu_item_add(*proc.borrow()); }
+                    _ => {}
                 }
-                _ => {}
             }
+            _ => {}
         }
     }
 }
-// fn menu_item_add(proc: &mut ProcInst) { outfit_core::add_sub_unit_menu_item(proc); }
+fn menu_item_add(proc: engage::app::ProcInst) { outfit_core::add_sub_unit_menu_item(proc); }
 #[skyline::main(name = "outfits")]
 pub fn main() {
     cobapi::register_system_event_handler(event_install);

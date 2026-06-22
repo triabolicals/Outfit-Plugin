@@ -1,9 +1,5 @@
 use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
-    unit::*,
-    gamedata::{Gamedata, PersonData},
-};
-use engage_il2cpp::{
     app::{
         AssetTable_Modes, AssetTable_Result,
         IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods,
@@ -11,10 +7,10 @@ use engage_il2cpp::{
         IBitField32, IGameUserDataMethods, IPersonDataMethods, ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods
     },
     List_1Ext,
-    system::collections::generic::IList_1
+    system::collections::generic::IList_1,
+    app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager}
 };
-use engage_il2cpp::app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager};
-use unity2::Cast;
+use unity::Cast;
 pub use crate::playerdata::*;
 use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
     room::hub_room_set_by_result,
@@ -169,9 +165,9 @@ impl UnitAssetMenuData {
         if data.mode != MenuMode::PhotoGraph {
             AnimData::remove(result, true, true);
             result.set_body_anim(result.m_hub_anim());
-            result.set_m_demo_anim(unity2::Il2CppString::null());
-            result.set_m_talk_anim(unity2::Il2CppString::null());
-            result.set_m_hub_anim(unity2::Il2CppString::null());
+            result.set_m_demo_anim(unity::Il2CppString::null());
+            result.set_m_talk_anim(unity::Il2CppString::null());
+            result.set_m_hub_anim(unity::Il2CppString::null());
             result.set_left_hand("null");
             result.set_right_hand("null");
             result.replace(AssetTable_Modes::combat());
@@ -184,20 +180,20 @@ impl UnitAssetMenuData {
         if !alt { gender } else if gender == 2 { 1 } else { 2 }
     }
     pub fn get() -> &'static mut UnitAssetMenuData { unsafe { &mut UNIT_ASSET } }
-    pub fn get_unit() -> Option<engage_il2cpp::app::Unit>{
+    pub fn get_unit() -> Option<engage::app::Unit>{
         if Self::is_shop() {
-            let person = engage_il2cpp::app::PersonData::try_get_from_hash(Self::get().preview.person);
+            let person = engage::app::PersonData::try_get_from_hash(Self::get().preview.person);
             if !person.is_null() {
-                let unit = engage_il2cpp::app::UnitPool::get_from_person(person, false);
+                let unit = engage::app::UnitPool::get_from_person(person, false);
                 if !unit.is_null() { Some(unit) } else { None }
             }
             else { None }
         }
         else {
-            let map_mind = engage_il2cpp::app::MapMind::get_instance();
+            let map_mind = engage::app::MapMind::get_instance();
             if !map_mind.is_null() { Some(map_mind.get_unit()) }
             else{
-                let sortie = engage_il2cpp::app::SortieSelectionUnitManager::get_instance();
+                let sortie = engage::app::SortieSelectionUnitManager::get_instance();
                 if !sortie.is_null() {
                     let unit = sortie.m_unit();
                     if !unit.is_null() { Some(unit) } else { None }
@@ -282,7 +278,7 @@ impl UnitAssetMenuData {
         }
         menu.data.iter().find(|x| x.person == hash)
     }
-    pub fn get_unit_data(unit: engage_il2cpp::app::Unit) -> Option<&'static UnitAssetData>  {
+    pub fn get_unit_data(unit: engage::app::Unit) -> Option<&'static UnitAssetData>  {
         let person = unit.get_person();
         let hash = person.hash();
         Self::get_by_person_data(hash, false)
@@ -293,16 +289,16 @@ impl UnitAssetMenuData {
                 else { None }
             )
     }
-    pub fn set_god(god: engage_il2cpp::app::GodData){ Self::set_by_hash(god.hash()); }
+    pub fn set_god(god: engage::app::GodData){ Self::set_by_hash(god.hash()); }
     pub fn set_by_hash(person: i32) -> bool {
         let menu = Self::get();
         let mut engaged = false;
         let gender;
         let photo = menu.mode == MenuMode::PhotoGraph;
-        let person_data = engage_il2cpp::app::PersonData::try_get_from_hash(person);
+        let person_data = engage::app::PersonData::try_get_from_hash(person);
         if !person_data.is_null() {
             menu.god_mode = false;
-            let unit = engage_il2cpp::app::UnitPool::get_from_person(person_data, false);
+            let unit = engage::app::UnitPool::get_from_person(person_data, false);
             if !unit.is_null(){
                 engaged = unit.is_engaging_2();
                 gender = unit.get_dress_gender().value;
@@ -319,19 +315,19 @@ impl UnitAssetMenuData {
             }
         }
         else {
-            let god = engage_il2cpp::app::GodData::try_get_from_hash(person);
+            let god = engage::app::GodData::try_get_from_hash(person);
             if !god.is_null() {
                 let female = god.get_female() as i32;
                 menu.god_mode = true;
                 gender =
                     if god.is_hero() {
-                        let hero = engage_il2cpp::app::UnitPool::get_hero(false);
+                        let hero = engage::app::UnitPool::get_hero(false);
                         unit_dress_gender(hero)
                     } else { female + 1 };
             }
             else { return false; }
         }
-        let s = engage_il2cpp::app::GameUserData::get_instance().get_sequence().value;
+        let s = engage::app::GameUserData::get_instance().get_sequence().value;
         if photo {
             if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == person).cloned(){ menu.preview.preview_data = data; }
             else if let Some(data) = menu.data.iter().find(|x| x.person == person){
@@ -343,8 +339,8 @@ impl UnitAssetMenuData {
             }
         }
         else {
-            let p1 = engage_il2cpp::app::PersonData::try_get_from_hash(person);
-            let p2 = engage_il2cpp::app::GodData::try_get_from_hash(person);
+            let p1 = engage::app::PersonData::try_get_from_hash(person);
+            let p2 = engage::app::GodData::try_get_from_hash(person);
             if !p1.is_null() || p2.is_null() {
                 if let Some(data) = Self::get_by_person_data(person, true) {
                     let index = if s != 4 { if engaged && !menu.god_mode { 1 } else { 0 } } else { 2 };
@@ -378,14 +374,19 @@ impl UnitAssetMenuData {
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
         true
     }
-    pub fn set_unit(unit: engage_il2cpp::app::Unit) -> bool {
+    pub fn set_unit(unit: engage::app::Unit) -> bool {
         if unit.is_null() || unit.get_person().is_null() { false }
         else { Self::set_by_hash(unit.get_person().hash()) }
     }
-    pub fn get_shop_unit() -> Option<&'static mut Unit> {
+    pub fn get_shop_unit() -> Option<engage::app::Unit> {
         let data = Self::get();
         if data.god_mode { None }
-        else { PersonData::try_get_hash(data.preview.person).and_then(|p| UnitPool::get_from_person_force_mask(p, -1)) }
+        else {
+            crate::utils::person_map(
+                engage::app::PersonData::try_get_from_hash(data.preview.person),
+                |p| engage::app::UnitPool::get_from_person(p, false)
+            )
+        }
     }
     pub fn set_reload(kind: ReloadPreview, delay: bool) {
         let data = Self::get();
@@ -421,11 +422,11 @@ impl UnitAssetMenuData {
                 let db = get_outfit_data();
                 if let Some(appearance) = db.dress.personal.get(index) {
                     appearance.apply_appearance(result, 2, false, None, &db.hashes, true);
-                    result.set_ride_model(unity2::Il2CppString::null());
-                    result.set_ride_dress_model(unity2::Il2CppString::null());
+                    result.set_ride_model(unity::Il2CppString::null());
+                    result.set_ride_dress_model(unity::Il2CppString::null());
                     result.set_left_hand("null");
                     result.set_right_hand("null");
-                    result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage_il2cpp::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
+                    result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
                     hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
                 }
             }
@@ -491,7 +492,7 @@ impl UnitAssetMenuData {
         let hash = Self::get_preview().person;
         Self::get().data.iter().find(|x| x.person == hash ).map(|x| x.flag).unwrap_or(0)
     }
-    pub fn set_assets(result: AssetTable_Result, unit: engage_il2cpp::app::Unit, asset_conditions: &AssetConditions) {
+    pub fn set_assets(result: AssetTable_Result, unit: engage::app::Unit, asset_conditions: &AssetConditions) {
         if il2str(result.get_body_model()).is_some_and(|v| v.contains("AT")) { return; }
         if il2str(result.get_dress_model()).is_some_and(|v| v.contains("AT")) { return; }
         let mode = asset_conditions.mode;
@@ -523,7 +524,7 @@ impl UnitAssetMenuData {
             data.set_result(result, mode, is_engaged, asset_conditions.broken);
         }
     }
-    pub fn set_god_assets(result: AssetTable_Result, mode: i32, god: engage_il2cpp::app::GodData, darkness: bool) {
+    pub fn set_god_assets(result: AssetTable_Result, mode: i32, god: engage::app::GodData, darkness: bool) {
         let menu = Self::get();
         let hash = god.hash();
         if UnitAssetMenuData::is_photo_graph()  {
@@ -620,8 +621,8 @@ impl UnitAssetMenuData {
         format!("{}/{}/{}", menu.values[0], menu.values[1], menu.values[2])
     }
     pub fn set_original_assets() -> (Vec<i32>, Vec<i32>){
-        let search_lists = engage_il2cpp::app::AssetTable::s_search_lists();
-        let flags = engage_il2cpp::app::AssetTable::s_condition_flags();
+        let search_lists = engage::app::AssetTable::s_search_lists();
+        let flags = engage::app::AssetTable::s_condition_flags();
         let db = get_outfit_data();
         let menu = Self::get_preview();
         let mut modes: (Vec<i32>, Vec<i32>) = (vec![], vec![]);

@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
-use unity2::system::string::IIl2CppStringMethods;
+use unity::system::string::IIl2CppStringMethods;
 use crate::{hash_string, AssetType};
-use engage_il2cpp::system::collections::generic::IList_1Methods;
+use engage::system::collections::generic::IList_1Methods;
 #[derive(Default)]
 pub struct OutfitHashes {
     pub male_ou: Vec<(i32, i32)>,
@@ -66,32 +66,32 @@ impl OutfitHashes {
             _ => {}
         }
     }
-    pub fn get_body_hash(&self, body: impl Into<unity2::Il2CppString>) -> Option<i32> {
+    pub fn get_body_hash(&self, body: impl Into<unity::Il2CppString>) -> Option<i32> {
         let hash = body.into();
         let hash_code = hash.get_hash_code();
         if self.body.contains_key(&hash_code) { Some(hash_code) }
         else if self.o_body.contains_key(&hash_code) { Some(hash_code) }
         else { None }
     }
-    pub fn get_ohair(&self, head_hair_hash: i32) -> Option<unity2::Il2CppString> {
+    pub fn get_ohair(&self, head_hair_hash: i32) -> Option<unity::Il2CppString> {
         self.head_hair.get(&head_hair_hash).and_then(|hash| self.o_hair.get(hash)).map(|v| v.as_str().into())
     }
-    pub fn get_obody(&self, ubody_hash: i32) -> Option<unity2::Il2CppString> {
+    pub fn get_obody(&self, ubody_hash: i32) -> Option<unity::Il2CppString> {
         self.male_ou.iter().find(|x| x.0 == ubody_hash)
             .or_else(|| self.female_ou.iter().find(|x| x.0 == ubody_hash))
             .map(|x| x.1)
             .and_then(|x| self.o_body.get(&x))
             .map(|x| x.as_str().into())
     }
-    pub fn get_mount_obody(&self, mount_hash: i32) -> Option<unity2::Il2CppString> {
+    pub fn get_mount_obody(&self, mount_hash: i32) -> Option<unity::Il2CppString> {
         self.mount_ou.iter()
             .find(|x| x.0 == mount_hash)
             .map(|x| x.1)
             .and_then(|x| self.o_body.get(&x))
             .map(|x| x.as_str().into())
     }
-    pub fn get_oacc(&self, uacc_hash: i32) -> Option<unity2::Il2CppString> { self.oacc_pair.get(&uacc_hash).and_then(|x| self.o_acc.get(x)).map(|x| x.as_str().into()) }
-    pub fn add_acc(&mut self, asset: impl Into<unity2::Il2CppString>) -> i32 {
+    pub fn get_oacc(&self, uacc_hash: i32) -> Option<unity::Il2CppString> { self.oacc_pair.get(&uacc_hash).and_then(|x| self.o_acc.get(x)).map(|x| x.as_str().into()) }
+    pub fn add_acc(&mut self, asset: impl Into<unity::Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
@@ -110,7 +110,7 @@ impl OutfitHashes {
         self.body.insert(ubody_hash, asset.clone());
         if female { self.female_u.push(ubody_hash); } else { self.male_u.push(ubody_hash); }
     }
-    pub fn add_body(&mut self, asset: impl Into<unity2::Il2CppString>, is_female: bool) -> i32 {
+    pub fn add_body(&mut self, asset: impl Into<unity::Il2CppString>, is_female: bool) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         if self.body.contains_key(&hashcode) { return hashcode }
@@ -119,21 +119,21 @@ impl OutfitHashes {
         if is_female { self.female_u.push(hashcode); } else { self.male_u.push(hashcode); }
         hashcode
     }
-    pub fn add_head(&mut self, asset: impl Into<unity2::Il2CppString>) -> i32 {
+    pub fn add_head(&mut self, asset: impl Into<unity::Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
         self.head.insert(hashcode, str.clone());
         hashcode
     }
-    pub fn add_hair(&mut self, asset: impl Into<unity2::Il2CppString>) -> i32 {
+    pub fn add_hair(&mut self, asset: impl Into<unity::Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
         self.hair.insert(hashcode, str.clone());
         hashcode
     }
-    pub fn add_ride_model(&mut self, asset: impl Into<unity2::Il2CppString>) -> i32 {
+    pub fn add_ride_model(&mut self, asset: impl Into<unity::Il2CppString>) -> i32 {
         let asset = asset.into();
         let hashcode = asset.get_hash_code();
         let str = asset.to_string();
@@ -141,12 +141,12 @@ impl OutfitHashes {
         let spilt = str.split("_").collect::<Vec<&str>>();
         if spilt.len() > 2 {
             let obody = format!("oBody_{}_{}", spilt[1], spilt[2]);
-            let hash = hash_string(&obody);
+            let hash = hash_string(obody.as_str());
             if self.o_body.contains_key(&hash) { self.mount_ou.push((hashcode, hash)); }
         }
         hashcode
     }
-    pub fn get_engaged_hair(&self, model: unity2::Il2CppString) -> Option<unity2::Il2CppString> {
+    pub fn get_engaged_hair(&self, model: unity::Il2CppString) -> Option<unity::Il2CppString> {
         let mut str = model.to_string();
         if str.contains("oHair_") && !str.ends_with("e") {
             if str.chars().last().is_some_and(|c| !c.is_numeric()) { str.pop(); }
@@ -166,7 +166,13 @@ impl OutfitHashes {
             });
     }
     pub fn create_uo_pairs(&mut self) {
+        let uhead_null = hash_string("uHead_null");
+        let null = hash_string("null");
+        let ohair_null = hash_string("oHair_null");
+        self.head_hair.insert(uhead_null, ohair_null);
+        self.head_hair.insert(null, null);
         let v: Vec<_> =
+
         self.body.iter()
             .map(|(hash, asset)| (*hash, hash_string(asset.replace("uBody", "oBody"))))
             .filter(|(u, o)| self.o_body.contains_key(o) && !self.female_ou.iter().any(|i| i.0 == *u) && !self.male_ou.iter().any(|i| i.0 == *u))

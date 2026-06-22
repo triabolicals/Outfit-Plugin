@@ -1,15 +1,12 @@
-use engage::{gameuserdata::GameUserData, random::Random,
-    sequence::hubaccessory::room::HubAccessoryRoom,
-    unitinfo::UnitInfo, util::get_singleton_proc_instance,
-    gamesound::{GameSound, GameSoundFadeSpeedType}
-};
-use engage_il2cpp::{
+use engage::{
     system::collections::generic::IList_1Methods,
+    app::ISingletonProcInst_1Methods,
     app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods},
     List_1Ext
 };
-use unity2::Cast;
-use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, Mount, UnitAssetMenuData, ACC_LOC, V_EVENTS, anim::AnimData, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, apply_result_hair, set_color_by_i32};
+use engage::app::{HubAccessoryRoom, IGameUserDataMethods, IHubAccessoryRoom, IProcInstMethods, IRandom_2Methods, ISingletonClass_1Methods, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window, UnitInfo};
+use unity::Cast;
+use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, UnitAssetMenuData, V_EVENTS, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, set_color_by_i32};
 use super::*;
 
 #[derive(PartialEq, Copy, Clone)]
@@ -81,7 +78,7 @@ impl AssetType {
         let is_engaged = menu_index == 16 || menu_index == 17;
         let result = if is_engaged {
             let pid = if menu_index == 16 { "PID_青リュール_男性" } else { "PID_青リュール_女性" };
-            let result = AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), pid, engage_il2cpp::combat::CharacterAppearance::get_constions(crate::get_default_asset_conditions()));
+            let result = AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), pid, engage::combat::CharacterAppearance::get_constions(crate::get_default_asset_conditions()));
             result
         }
         else { UnitAssetMenuData::get_result() };
@@ -104,7 +101,7 @@ impl AssetType {
                 AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
                 AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
                 AssetType::AOC(kind) => {
-                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage_il2cpp::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
+                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
                     else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
                 }
                 AssetType::Rig => { preview.preview_data.rig = hash; },
@@ -199,13 +196,13 @@ impl CustomMenuItem for AssetType {
             Self::Mount(_) =>  EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
         }
     }
-    fn get_name(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_name(&self, menu_item: CustomAssetMenuItem3) -> unity::Il2CppString {
         menu_item.m_name()
     }
-    fn get_detail_box_name(&self, menu_item: CustomAssetMenuItem3) -> Option<unity2::Il2CppString> {
+    fn get_detail_box_name(&self, menu_item: CustomAssetMenuItem3) -> Option<unity::Il2CppString> {
         Some(menu_item.m_name())
     }
-    fn get_help(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_help(&self, menu_item: CustomAssetMenuItem3) -> unity::Il2CppString {
         let db = get_outfit_data();
         let menu_idx = menu_item.get_asset_menu().menu_kind().to_index();
         if let Some(mode2) = db.try_get_asset(*self, menu_item.value()){
@@ -255,19 +252,19 @@ impl CustomMenuItem for AssetType {
             }
         }
     }
-    fn get_body(&self, menu_item: CustomAssetMenuItem3) -> unity2::Il2CppString {
+    fn get_body(&self, menu_item: CustomAssetMenuItem3) -> unity::Il2CppString {
         let idx = self.to_index() + 50;
         match self {
             AssetType::ColorPreset(kind) => { format!("{} (Preset)", MenuText::get_command(1140+*kind as i32)).into() }
             AssetType::AOC(kind) => {
                 let db = get_outfit_data();
-                let mut body = format!("{} ({})", MenuText::get_command(idx), if db.get_aoc_gender_hash(*kind as i32, menu_item.value()) == Some(engage_il2cpp::app::Gender::male()) { "Male" } else { "Female" });
+                let mut body = format!("{} ({})", MenuText::get_command(idx), if db.get_aoc_gender_hash(*kind as i32, menu_item.value()) == Some(engage::app::Gender::male()) { "Male" } else { "Female" });
                 body.push_str(&format!(" [{}/5]", *kind +1).as_str());
                 left_right_enclose(&body)
             },
             AssetType::Acc(kind) => make_body_asset_body_label(MenuText::get_command(idx), 5, *kind as i32),
             AssetType::Mount(kind) => {
-                if GameUserData::get_sequence() == 3 { MenuText::get_command(idx) }
+                if engage::app::GameUserData::get_instance().get_sequence().value == 3 { MenuText::get_command(idx) }
                 else { make_body_asset_body_label(MenuText::get_command(idx), 5, *kind as i32) }
             },
             AssetType::Head => make_body_asset_body_label(Head.get_name(menu_item), 2, 0),
@@ -302,7 +299,7 @@ impl CustomMenuItem for AssetType {
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
             AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
             AssetType::AOC(kind) => {
-                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage_il2cpp::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
+                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
                 else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
             }
             AssetType::Rig => { preview.preview_data.rig = hash; },
@@ -310,18 +307,25 @@ impl CustomMenuItem for AssetType {
                 preview.preview_data.voice = hash;
                 let db = get_outfit_data();
                 if let Some(voice) = db.hashes.voice.get(&hash) {
-                    let rng = Random::get_system();
-                    if let Some(char) = get_singleton_proc_instance::<HubAccessoryRoom>().and_then(|v| v.character.as_ref())
-                        .or_else(|| UnitInfo::get_instance().map(|v| &v.windows[0].unit_info_window_chara_model.char))
-                    {
+                    let rng = engage::app::Random_2::get_system();
+                    let room = HubAccessoryRoom::get_instance();
+                    let character =
+                    if !room.is_null() { Some(room.m_character()) }
+                    else { Some(UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara()) };
+                    if let Some(character) = character.filter(|c| !c.is_null()){
                         let event =
                             if voice.contains("Shop") {
-                                if rng.get_value(2) == 0 { format!("V_{}_Thanks", voice) }
+                                if rng.get_value_2(2) == 0 { format!("V_{}_Thanks", voice) }
                                 else { format!("V_{}_Tutorial", voice) }
                             }
-                            else { V_EVENTS[rng.get_value(V_EVENTS.len() as i32) as usize].to_string() };
-                        GameSound::stop_all_voice(GameSoundFadeSpeedType::Fast);
-                        GameSound::person_voice2(voice.into(), None, Some(event.into()), Some(char));
+                            else { V_EVENTS[rng.get_value_2(V_EVENTS.len() as i32) as usize].to_string() };
+                        engage::app::GameSound::stop_all_voice(engage::app::GameSound_FadeSpeedType::fast());
+                        engage::app::GameSound::person_voice_2(
+                            voice.as_str(),
+                            unity::Il2CppString::null(),
+                            event,
+                            character
+                        );
                     }
                 }
             }
@@ -337,6 +341,6 @@ impl CustomMenuItem for AssetType {
         BasicMenu_Result::se_decide()
     }
 }
-pub fn make_body_asset_body_label(label: unity2::Il2CppString, page_count: i32, page: i32) -> unity2::Il2CppString {
+pub fn make_body_asset_body_label(label: unity::Il2CppString, page_count: i32, page: i32) -> unity::Il2CppString {
     if page_count == 0 { label } else { left_right_enclose(&format!("{} [{}/{}]", label, page+1, page_count)) }
 }

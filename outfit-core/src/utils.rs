@@ -1,11 +1,11 @@
-use engage::{gamedata::assettable::AssetTableResult, mess::Mess, random::Random, util::get_instance};
-use engage_il2cpp::app::{IRandom_2Methods, Mess_IconCategory, Random_2};
-use engage_il2cpp::combat::Kaneko;
-use engage_il2cpp::unity_engine::{IGameObjectMethods, IRectTransformMethods, Transform};
-use unity::{il2cpp::class::VirtualInvoke, prelude::*};
-use unity2::{Cast, ClassIdentity};
-use unity2::system::string::IIl2CppStringMethods;
-use crate::assets::new_asset_table_accessory;
+use engage::{
+    app::{IRandom_2Methods, Mess_IconCategory, Pad, Random_2},
+    combat::Kaneko, nn::hid::NpadButton,
+    unity_engine::{IGameObjectMethods, IRectTransformMethods, Transform}
+};
+use unity::{
+    Cast, ClassIdentity, system::string::IIl2CppStringMethods, il2cpp::VirtualInvoke
+};
 pub trait Randomizer<T> {
     fn get_random_element(&self, rng: Random_2) -> Option<&T>;
     fn get_remove(&mut self, rng: Random_2) -> Option<T>;
@@ -24,7 +24,7 @@ impl<T> Randomizer<T> for Vec<T> {
         else { None }
     }
 }
-
+/*
 pub fn print_asset_table_result(result: &AssetTableResult, mode: i32) {
     if let Some(pid) = result.pid.as_ref() { println!("Asset Table Result PID: {} [Mode: {}]", Mess::get_name(pid.to_string().as_str()), mode); }
     else { println!("Asset Table Result Mode: {}", mode); }
@@ -44,38 +44,34 @@ pub fn print_asset_table_result(result: &AssetTableResult, mode: i32) {
     if let Some(voice) = result.sound.voice.as_ref() { println!("Voice: {}", voice); }
 }
 
+ */
+
 
 pub fn clamp_value<T: PartialEq + PartialOrd>(value: T, min: T, max: T) -> T {
     if value < min { min } else if value > max { max } else { value }
 }
 
-pub fn get_nested_virtual_methods_mut(namespace: &str, class_name: &str, nested_class: &str, method_name: &str) -> Option<&'static mut VirtualInvoke> {
-    if let Some(cc) = Il2CppClass::from_name(namespace, class_name).unwrap().get_nested_types().iter()
-        .find(|x| x.get_name() == nested_class) {
-        let menu_mut = Il2CppClass::from_il2cpptype(cc.get_type()).unwrap();
-        menu_mut.get_virtual_method_mut(method_name)
-    }
-    else { None }
+pub fn get_virtual_methods_mut(namespace: &str, class_name: &str, method_name: &str) -> Option<&'static mut VirtualInvoke> {
+    let klass = unity::Class::lookup(namespace, class_name);
+    klass.raw_mut().get_virtual_method_mut(method_name)
 }
 pub fn r_l_press(is_l: bool, is_r: bool, trigger: bool) -> bool {
-    let pad = get_instance::<engage::pad::Pad>();
-    if trigger && ( pad.old_buttons.right() || pad.old_buttons.left() ) { false }
-    else { is_l == pad.npad_state.buttons.left() && is_r == pad.npad_state.buttons.right() }
+    if trigger { (is_l && Pad::is_trigger(NpadButton::left())) || (is_r &&  Pad::is_trigger(NpadButton::right())) }
+    else { (is_l && Pad::is_button(NpadButton::left())) || (is_r &&  Pad::is_button(NpadButton::right())) }
 }
 pub fn is_up_down_press() -> bool {
-    let pad = get_instance::<engage::pad::Pad>();
-    pad.old_buttons.up() || pad.old_buttons.down() || pad.npad_state.buttons.up() || pad.npad_state.buttons.down()
+    Pad::is_button(NpadButton::up()) || Pad::is_button(NpadButton::down())
 }
 
-pub fn left_right_enclose(string: &String) -> unity2::Il2CppString {
+pub fn left_right_enclose(string: &String) -> unity::Il2CppString {
     format!("{}{}{}",
-            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
+            engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
             string,
-            engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
+            engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
     ).into()
 }
-pub fn get_default_asset_conditions() -> unity2::Array::<unity2::Il2CppString> {
-    let array = unity2::Array::new(unity2::Il2CppString::class().raw(), 1).unwrap();
+pub fn get_default_asset_conditions() -> unity::Array::<unity::Il2CppString> {
+    let array = unity::Array::new(unity::Il2CppString::class().raw(), 1).unwrap();
     array.set(0, "".into());
     array
 }
@@ -86,24 +82,24 @@ pub fn capitalize_first(s: &str) -> String {
         Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
     }
 }
-pub fn hash_string<'a>(str: impl Into<&'a Il2CppString>) -> i32 {
+pub fn hash_string<'a>(str: impl Into<unity::Il2CppString>) -> i32 {
     let str = str.into();
     str.get_hash_code()
 }
-pub fn il2str(str: unity2::Il2CppString) -> Option<String> {
+pub fn il2str(str: unity::Il2CppString) -> Option<String> {
     if str.is_null() { None } else { Some(str.to_rust_string()) }
 }
-pub fn try_get_il2cpp_hash(str: unity2::Il2CppString) -> Option<i32> {
+pub fn try_get_il2cpp_hash(str: unity::Il2CppString) -> Option<i32> {
     if str.is_null() { None } else { Some(str.get_hash_code()) }
 }
 
-pub fn get_skin_mesh_renderers(go: engage_il2cpp::unity_engine::GameObject) -> Option<unity2::Array::<engage_il2cpp::unity_engine::Component>> {
-    let array = go.get_components_in_children_2(unity2::SystemType::from_il2cpp_type(engage_il2cpp::unity_engine::SkinnedMeshRenderer::class().raw().get_type()).unwrap(), true);
+pub fn get_skin_mesh_renderers(go: engage::unity_engine::GameObject) -> Option<unity::Array::<engage::unity_engine::Component>> {
+    let array = go.get_components_in_children_2(unity::SystemType::from_il2cpp_type(engage::unity_engine::SkinnedMeshRenderer::class().raw().get_type()).unwrap(), true);
     if array.is_null() { None } else { Some(array) }
 }
-pub fn get_rect_transform_child(transform: Transform, child_name: &str) -> Option<engage_il2cpp::unity_engine::RectTransform> {
+pub fn get_rect_transform_child(transform: Transform, child_name: &str) -> Option<engage::unity_engine::RectTransform> {
     let child = Kaneko::find_in_children(transform, child_name);
-    if !child.is_null() { child.try_cast::<engage_il2cpp::unity_engine::RectTransform>() }
+    if !child.is_null() { child.try_cast::<engage::unity_engine::RectTransform>() }
     else { None }
 
 }
@@ -122,4 +118,10 @@ pub fn change_rect_transform_in_child_anchor(transform: Transform, name: &str, d
         an.y += dy;
         child.set_anchored_position(an);
     }
+}
+pub fn job_map<T>(job: engage::app::JobData, map: impl FnOnce(engage::app::JobData) -> T) -> Option<T> {
+    if !job.is_null() { Some(map(job)) } else { None }
+}
+pub fn person_map<T>(person: engage::app::PersonData, map: impl FnOnce(engage::app::PersonData) -> T) -> Option<T> {
+    if !person.is_null() { Some(map(person)) } else { None }
 }

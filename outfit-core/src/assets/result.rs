@@ -1,8 +1,9 @@
-use engage::gamedata::assettable::AssetTableResult;
-use engage_il2cpp::app::{AssetTable, AssetTable_Accessory, AssetTable_Modes, AssetTable_Result, IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_Result, IAssetTable_ResultMethods};
-use engage_il2cpp::system::collections::generic::IList_1;
-use engage_il2cpp::unity_engine::Color;
-use unity2::{Cast, Il2CppString};
+use engage::{
+    app::{AssetTable, AssetTable_Modes, AssetTable_Result, IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods, IAssetTable_Result, IAssetTable_ResultMethods},
+    system::collections::generic::IList_1,
+    unity_engine::Color
+};
+use unity::{Cast, Il2CppString};
 use crate::new_asset_table_accessory;
 
 pub fn set_color_by_u8_slice(result: AssetTable_Result, idx: usize, v: [u8; 4]) {

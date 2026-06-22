@@ -1,30 +1,24 @@
-use std::sync::OnceLock;
-use engage_il2cpp::{
+use engage::{
 	app::{
 		accessorymenuitem::*,
-		IAccessoryMenuItemContent, IBasicMenuItem,
-		IBasicMenuItemMethods, BasicMenu_Result, BasicMenuItem_Attribute, BasicMenuItem,
+		IAccessoryMenuItemContent, IBasicMenuItem, IBasicMenuItemMethods,
+		BasicMenu_Result, BasicMenuItem_Attribute, BasicMenuItem, IBasicMenuItemContentMethods,
+		AccessoryMenuItemContent, ISpriteAtlasManager_2, IBasicMenuItemContent
 	},
 	unity_engine::{
 		IGameObjectMethods, IObject_2Methods,
 		ui::{IGraphicMethods, IImageMethods}
 	},
-	app::IBasicMenuItemContentMethods,
 	tm_pro::ITMP_TextMethods,
-	app::{AccessoryMenuItemContent, ISpriteAtlasManager_2},
 	system::collections::generic::IDictionary_2Methods,
 	unity_engine::{IRectTransformMethods, RectTransform},
-	app::IBasicMenuItemContent
 };
-use unity::{prelude::*};
-use unity2::{Cast, ClassIdentity, FromIlInstance, IlNull};
+use unity::{Cast, ClassIdentity, FromIlInstance, IlNull};
 use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData};
 use crate::menu::icons::CustomMenuIcon;
 use super::{CustomAssetMenu, items::{CustomMenuItem, *}};
 
-pub static CUSTOM_ASSET_MENU_ITEM: OnceLock<&'static Il2CppClass> = OnceLock::new();
-
-#[unity2::inject(
+#[unity::inject(
 	namespace = "App",
 	name = "CustomAssetMenuItem",
 	parent= AccessoryMenuItem
@@ -54,8 +48,8 @@ impl CustomAssetMenuItem3 {
 	fn new_internal() -> Self {
 		let item = Self::instantiate().unwrap();
 		IBasicMenuItemMethods::ctor(item);
-		item.set_m_inactive_text_color(engage_il2cpp::unity_engine::Color::get_white());
-		item.set_m_active_text_color(engage_il2cpp::unity_engine::Color{r: 0.75, g: 0.95, b: 1.0, a: 1.0});
+		item.set_m_inactive_text_color(engage::unity_engine::Color::get_white());
+		item.set_m_active_text_color(engage::unity_engine::Color{r: 0.75, g: 0.95, b: 1.0, a: 1.0});
 		item.set_vtable();
 		item
 	}
@@ -64,13 +58,13 @@ impl CustomAssetMenuItem3 {
 		item.set_menu_item_kind(menu_item_type);
 		item
 	}
-	pub fn new_menu(menu_type: CustomAssetMenuKind, name: unity2::Il2CppString) -> Self {
+	pub fn new_menu(menu_type: CustomAssetMenuKind, name: unity::Il2CppString) -> Self {
 		let item = Self::new_internal();
 		if !name.is_null() { IBasicMenuItemMethods::set_name(item, name); }
 		item.set_menu_item_kind(Menu(menu_type));
 		item
 	}
-	pub fn new_asset(kind: AssetType, hash: i32, name: unity2::Il2CppString, decided: bool, original: bool) -> Self {
+	pub fn new_asset(kind: AssetType, hash: i32, name: unity::Il2CppString, decided: bool, original: bool) -> Self {
 		let item = Self::new_internal();
 		IBasicMenuItemMethods::set_name(item, name);
 		item.set_m_decided(decided);
@@ -106,7 +100,7 @@ impl CustomAssetMenuItem3 {
 		let is_original = original == asset.hash;
 		item.set_is_original(is_original);
 		if is_original {
-			let yellow = engage_il2cpp::unity_engine::Color{ r: 1.0, g: 1.0, b: 0.0, a: 1.0};
+			let yellow = engage::unity_engine::Color{ r: 1.0, g: 1.0, b: 0.0, a: 1.0};
 			item.set_cursor_color(yellow);
 			item.set_m_inactive_text_color(yellow);
 			item.set_m_active_text_color(yellow);
@@ -120,7 +114,7 @@ impl CustomAssetMenuItem3 {
 	}
 	pub fn as_basic_menu_item(self) -> BasicMenuItem { unsafe { self.cast() } }
 	pub fn get_asset_menu(self) -> CustomAssetMenu { unsafe { IBasicMenuItemMethods::get_menu(self).cast() } }
-	pub fn get_color(self) -> Option<engage_il2cpp::unity_engine::Color> {
+	pub fn get_color(self) -> Option<engage::unity_engine::Color> {
 		let kind = self.menu_item_kind();
 		match kind {
 			Asset(AssetType::ColorPreset(_))|ResetColor(_)|RGBA(_) => {
@@ -131,11 +125,11 @@ impl CustomAssetMenuItem3 {
 					let g = ((value >> 8) & 255) as f32 / 255.0;
 					let b = ((value >> 16) & 255) as f32 / 255.0;
 					if r + g + b < 0.30 { None }
-					else { Some(engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0}) }
+					else { Some(engage::unity_engine::Color{r, g, b, a: 1.0}) }
 				}
 			}
 			_ => {
-				if self.is_original() { Some(engage_il2cpp::unity_engine::Color{r: 1.0, g: 1.0, b: 0.0, a: 1.0}) }
+				if self.is_original() { Some(engage::unity_engine::Color{r: 1.0, g: 1.0, b: 0.0, a: 1.0}) }
 				else { None }
 			}
 		}
@@ -165,16 +159,16 @@ impl CustomAssetMenuItem3 {
 				content.m_name_text().set_text_2(name_trimmed.as_str(), true);
 				let index = self.get_index();
 				let key = format!("LOAD_{}", index);
-				let (found, sprite) = engage_il2cpp::app::FaceThumbnail::s_face_thumb().m_cache_table().try_get_value(key.into());
+				let (found, sprite) = engage::app::FaceThumbnail::s_face_thumb().m_cache_table().try_get_value(key.into());
 				if found && !sprite.is_null() {
 					content.m_kind_icon_object().set_active(true);
 					let rec = content.m_kind_icon_object().get_component::<RectTransform>();
 					if !rec.is_null() {
-						rec.set_size_delta(engage_il2cpp::unity_engine::Vector2{x: 128.0, y: 50.0});
-						rec.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 90.0, y: 0.0});
+						rec.set_size_delta(engage::unity_engine::Vector2{x: 128.0, y: 50.0});
+						rec.set_anchored_position(engage::unity_engine::Vector2{x: 90.0, y: 0.0});
 					}
 					let rec_name = content.m_name_object().get_component::<RectTransform>();
-					if !rec_name.is_null() { rec_name.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 174.0, y: -40.0}); }
+					if !rec_name.is_null() { rec_name.set_anchored_position(engage::unity_engine::Vector2{x: 174.0, y: -40.0}); }
 					content.m_kind_icon_image().set_sprite(sprite);
 					return;
 				}
@@ -184,16 +178,16 @@ impl CustomAssetMenuItem3 {
 			content.m_fixed_cursor_object().set_active(is_decided);
 			let icon = menu_kind.get_icon(self);
 			let rect = content.m_name_object().get_component::<RectTransform>();
-			if !rect.is_null() { rect.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 104.0, y: -40.0}); }
+			if !rect.is_null() { rect.set_anchored_position(engage::unity_engine::Vector2{x: 104.0, y: -40.0}); }
 			let rect = content.m_kind_icon_object().get_component::<RectTransform>();
 			if !rect.is_null() {
-				rect.set_anchored_position(engage_il2cpp::unity_engine::Vector2{x: 70.0, y: 0.0});
-				rect.set_size_delta(engage_il2cpp::unity_engine::Vector2{x: 48.0, y: 48.0});
+				rect.set_anchored_position(engage::unity_engine::Vector2{x: 70.0, y: 0.0});
+				rect.set_size_delta(engage::unity_engine::Vector2{x: 48.0, y: 48.0});
 			}
 			if icon == CustomMenuIcon::Color {
 				let mut rgb: Option<(u8, u8, u8)> = None;
 				let preview = UnitAssetMenuData::get_preview();
-				content.m_kind_icon_image().set_sprite(engage_il2cpp::unity_engine::Sprite::null());
+				content.m_kind_icon_image().set_sprite(engage::unity_engine::Sprite::null());
 				if idx >= 1140 {
 					let kind = (idx - 1140) % 16;
 					if preview.preview_data.colors[kind as usize].has_color() { idx = 100 + kind; }
@@ -213,12 +207,12 @@ impl CustomAssetMenuItem3 {
 				}
 				if let Some((r, g, b)) = rgb.filter(|(r, g, b)| *r > 0 || *g > 0 || *b > 0) {
 					content.m_kind_icon_object().set_active(true);
-					content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color{r: r as f32 / 255.0, g: g as f32 / 255.0, b: b as f32 / 255.0, a: 1.0});
+					content.m_kind_icon_image().set_color(engage::unity_engine::Color{r: r as f32 / 255.0, g: g as f32 / 255.0, b: b as f32 / 255.0, a: 1.0});
 				}
 				else { content.m_kind_icon_object().set_active(false); }
 			}
 			else {
-				content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
+				content.m_kind_icon_image().set_color(engage::unity_engine::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
 				if let Some(icon2) = icon.get_icon() {
 					// if let Some(icon_key) = icon.get_system_label() { println!("MenuItemIndex {}: {}", idx, icon_key); }
 					content.m_kind_icon_image().set_sprite(icon2);
@@ -228,7 +222,7 @@ impl CustomAssetMenuItem3 {
 		}
 	}
 }
-#[unity2::injected_methods]
+#[unity::injected_methods]
 impl CustomAssetMenuItem3 {
 	#[override_virtual(name = "BuildAttribute")]
 	pub fn build_attribute(self) -> BasicMenuItem_Attribute { self.menu_item_kind().build_attribute() }
@@ -259,16 +253,16 @@ impl CustomAssetMenuItem3 {
 	#[override_virtual(name = "OnBuildMenuItemContent")]
 	pub fn on_build_menu_item_content(self) {
 		if self.is_original() {
-			let yellow = engage_il2cpp::unity_engine::Color { r: 1.0, g: 1.0, b: 0.0, a: 1.0 };
+			let yellow = engage::unity_engine::Color { r: 1.0, g: 1.0, b: 0.0, a: 1.0 };
 			self.set_cursor_color(yellow);
 			self.set_text_color(yellow, false);
 			self.set_text_color(yellow, true);
 		}
 		else {
-			let original = engage_il2cpp::unity_engine::Color { r: 0.60, g: 0.95, b: 1.0, a: 1.0 };
+			let original = engage::unity_engine::Color { r: 0.60, g: 0.95, b: 1.0, a: 1.0 };
 			self.set_cursor_color(original);
 			self.set_text_color(original , false);
-			self.set_text_color(engage_il2cpp::unity_engine::Color::get_white(), true);
+			self.set_text_color(engage::unity_engine::Color::get_white(), true);
 		}
 		self.set_icon();
 	}
@@ -390,22 +384,22 @@ impl CustomAssetMenuItem {
 		}
 		item
 	}
-	pub fn get_name(this: &CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> &'static Il2CppString {
+	pub fn get_name(this: &CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> &'static Il2CppString {
 		this.menu_kind.get_name(this)
 	}
-	pub fn x_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
+	pub fn x_call(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.x_call(this)
 	}
-	pub fn minus_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
+	pub fn minus_call(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.minus_call(this)
 	}
-	pub fn custom_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
+	pub fn custom_call(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.custom_call(this)
 	}
-	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
+	pub fn on_select(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) {
 		this.on_select_base();
 		let rgb: Option<(u8, u8, u8)>;
 		match this.menu_kind {
@@ -439,7 +433,7 @@ impl CustomAssetMenuItem {
 		this.menu_kind.on_select(this);
 		this.set_color();
 	}
-	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
+	pub fn build_attribute(this: &CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> BasicMenuItemAttribute { this.menu_kind.build_attribute() }
 	pub fn rebuild_text(&mut self) {
 		Self::on_build_menu_item_content(self, None);
 		let menu_kind = self.menu_kind.clone();
@@ -454,7 +448,7 @@ impl CustomAssetMenuItem {
 		if decided { ami.set_decide(); } else { ami.unset_decide(); }
 		self.set_color();
 	}
-	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
+	pub fn on_deselect(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) {
 		let original = this.original;
 		let kind = this.menu_kind.clone();
 		if let Some(game_color) = GameColor::get() {
@@ -511,11 +505,11 @@ impl CustomAssetMenuItem {
 			}
 		}
 	}
-	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) -> BasicMenuResult {
+	pub fn a_call(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) -> BasicMenuResult {
 		let s = this.menu_kind.clone();
 		s.a_call(this)
 	}
-	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: unity2::OptionalMethod) {
+	pub fn on_build_menu_item_content(this: &mut CustomAssetMenuItem, _optional_method: unity::OptionalMethod) {
 		let idx = this.hash;
 		let kind = this.menu_kind.clone();
 		let kind_idx = kind.to_index();
@@ -578,7 +572,7 @@ impl CustomAssetMenuItem {
 	}
 }
  */
-pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, method_info:  unity2::OptionalMethod) {
+pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, method_info:  unity::OptionalMethod) {
 	unsafe { build_text(this, method_info) }
 	if !UnitAssetMenuData::get().is_preview { return; }
 	let custom_item = this.get_menu_item();
@@ -592,19 +586,19 @@ pub fn accessory_menu_item_content_build_text(this: AccessoryMenuItemContent, me
 		let decided = custom_item.get_m_decided();
 		this.m_fixed_cursor_object().set_active(decided);
 		if custom_item.is_original() {
-			let yellow = engage_il2cpp::unity_engine::Color { r: 1.0, g: 1.0, b: 0.0, a: 1.0 };
+			let yellow = engage::unity_engine::Color { r: 1.0, g: 1.0, b: 0.0, a: 1.0 };
 			custom_item.set_cursor_color(yellow);
 			custom_item.set_text_color(yellow, false);
 			custom_item.set_text_color(yellow, true);
 		}
 		else {
-			let original = engage_il2cpp::unity_engine::Color { r: 0.60, g: 0.95, b: 1.0, a: 1.0 };
+			let original = engage::unity_engine::Color { r: 0.60, g: 0.95, b: 1.0, a: 1.0 };
 			custom_item.set_cursor_color(original);
 			custom_item.set_text_color(original , false);
-			custom_item.set_text_color(engage_il2cpp::unity_engine::Color::get_white(), true);
+			custom_item.set_text_color(engage::unity_engine::Color::get_white(), true);
 		}
 	}
 	return;
 }
 #[skyline::from_offset(0x27b8510)]
-fn build_text(this: AccessoryMenuItemContent, optional_method: unity2::OptionalMethod);
+fn build_text(this: AccessoryMenuItemContent, optional_method: unity::OptionalMethod);

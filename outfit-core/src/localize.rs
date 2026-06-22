@@ -1,6 +1,5 @@
 use std::{fmt::{Display, Formatter}, collections::HashMap, sync::{OnceLock, RwLock}};
-use engage::{language::{Language, LanguageLangs}, mess::Mess};
-use engage_il2cpp::app::Mess_IconCategory;
+use engage::app::Mess_IconCategory;
 
 pub static LOCAL_TEXT: OnceLock<RwLock<MenuText>> = OnceLock::new();
 
@@ -95,52 +94,52 @@ impl Display for MenuTextCommand {
 }
 
 impl MenuTextCommand {
-    pub fn on_off(on: bool) -> unity2::Il2CppString { if on { Self::On } else { Self::Off }.get() }
-    pub fn to_right(self, other: Self) -> unity2::Il2CppString {
+    pub fn on_off(on: bool) -> unity::Il2CppString { if on { Self::On } else { Self::Off }.get() }
+    pub fn to_right(self, other: Self) -> unity::Il2CppString {
         format!("{}{}", self.get(), other.get()).into()
     }
-    pub fn insert_right<T: Display>(self, str: T) -> unity2::Il2CppString {
+    pub fn insert_right<T: Display>(self, str: T) -> unity::Il2CppString {
         format!("{} {}", self.get(), str).into()
     }
-    pub fn insert_left<T: Display>(self, str: T) -> unity2::Il2CppString {
+    pub fn insert_left<T: Display>(self, str: T) -> unity::Il2CppString {
         format!("{} {}", str, self.get()).into()
     }
-    pub fn get_with_sys_sprite(self, sys: &str) -> unity2::Il2CppString{
-        format!("{}{}", Mess::create_sprite_tag_str(2, sys), self.get()).into()
+    pub fn get_with_sys_sprite(self, sys: &str) -> unity::Il2CppString{
+        format!("{}{}", engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), sys), self.get()).into()
     }
-    pub fn get_with_value<T: Display>(self, value: T) -> unity2::Il2CppString {
+    pub fn get_with_value<T: Display>(self, value: T) -> unity::Il2CppString {
         format!("{}: {}", self.get(), value).into()
     }
-    pub fn get(&self) -> unity2::Il2CppString {
+    pub fn get(&self) -> unity::Il2CppString {
         let index = *self as usize;
         match index {
-            0..38 => { engage_il2cpp::app::Mess::get(MIDS[index]) }
+            0..38 => { engage::app::Mess::get(MIDS[index]) }
             50..60 => { ADDED[index - 50].into() }
             200..214 => {
-                engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), KEY[index-200]) }
+                engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), KEY[index-200]) }
             214 => {
                 format!("{}{}",
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Left"),
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "Right")
                 ).into()
             }
             215 => {
                 format!("{}{}",
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "L"),
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "R")
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "L"),
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "R")
                 ).into()
             }
             216 => {
                 format!("{}{}",
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZL"),
-                        engage_il2cpp::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZR")
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZL"),
+                        engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), "ZR")
                 ).into()
             }
             _ => { format!("C{}", index).into() }
         }
     }
-    pub fn get_from_index(index: i32) -> unity2::Il2CppString {
-        if index < MIDS.len() as i32 { engage_il2cpp::app::Mess::get(MIDS[index as usize]) }
+    pub fn get_from_index(index: i32) -> unity::Il2CppString {
+        if index < MIDS.len() as i32 { engage::app::Mess::get(MIDS[index as usize]) }
         else { format!("C {}", index).into() }
     }
     pub fn get_gender(is_female: bool) -> Self {
@@ -153,27 +152,27 @@ pub struct MenuText {
     pub command: HashMap<i32, &'static str>,
 }
 impl MenuText {
-    pub fn get_help(id: i32) -> Option<unity2::Il2CppString> {
+    pub fn get_help(id: i32) -> Option<unity::Il2CppString> {
         let texts = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok()?;
         texts.help.get(&id)
             .map(|s| {
                 let mut str = s.replace("\\n", "\n");
                 KEY.iter().for_each(|&k| {
                     if str.contains(format!("$({})", k).as_str()) {
-                        str = str.replace(format!("$({})", k).as_str(), Mess::create_sprite_tag_str(2, k).to_string().as_str());
+                        str = str.replace(format!("$({})", k).as_str(), engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), k).to_string().as_str());
                     }
                 });
                 str.into()
             })
     }
-    pub fn get_help_with_arg<T: Display>(id: i32, arg: T) -> Option<unity2::Il2CppString> {
+    pub fn get_help_with_arg<T: Display>(id: i32, arg: T) -> Option<unity::Il2CppString> {
         let texts = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok()?;
         texts.help.get(&id)
             .map(|s| {
                 let mut str = s.replace("\\n", "\n");
                 KEY.iter().for_each(|&k| {
                     if str.contains(format!("$({})", k).as_str()) {
-                        str = str.replace(format!("$({})", k).as_str(), Mess::create_sprite_tag_str(2, k).to_string().as_str());
+                        str = str.replace(format!("$({})", k).as_str(), engage::app::Mess::create_sprite_tag(Mess_IconCategory::system(), k).to_string().as_str());
                     }
                 });
                 if str.contains("$$") { str = str.replace("$$", arg.to_string().as_str()); }
@@ -185,7 +184,7 @@ impl MenuText {
         let command = Self::parse_to_map(Self::get_command_text());
         Self { help, command }
     }
-    pub fn get_command(id: i32) -> unity2::Il2CppString {
+    pub fn get_command(id: i32) -> unity::Il2CppString {
         let id = if id >= 1140 { 1140 + ((id - 1140) % 16) } else { id };
         if let Some(texts) = LOCAL_TEXT.get_or_init(|| RwLock::new(Self::init())).read().ok(){
             let alt = (id / 10) * 10;
@@ -205,24 +204,13 @@ impl MenuText {
         }).collect()
     }
     fn get_help_text() -> &'static str {
-        match Language::get_lang() {
-            LanguageLangs::CNTraditional => include_str!("localize/help/tw.txt"),
-            _ => include_str!("localize/help/en.txt"),
-        }
+        let lang = engage::app::Language::get_lang();
+        if lang.value == engage::app::Language_Langs::cn_traditional().value { include_str!("localize/help/tw.txt") }
+        else { include_str!("localize/help/en.txt") }
     }
     fn get_command_text() -> &'static str {
-        match Language::get_lang() {
-            LanguageLangs::CNTraditional => include_str!("localize/command/tw.txt"),
-            /*
-            LanguageLangs::JPJapanese => include_str!("localize/command/ja.txt"),
-            LanguageLangs::USFrench|LanguageLangs::EUFrench => include_str!("localize/command/fr.txt"),
-            LanguageLangs::USSpanish|LanguageLangs::EUSpanish => include_str!("localize/command/es.txt"),
-            LanguageLangs::EUItalian => include_str!("localize/command/it.txt"),
-
-            LanguageLangs::CNSimplified =>
-            LanguageLangs::KRKorean => {}
-            */
-            _ => { include_str!("localize/command/en.txt") }
-        }
+        let lang = engage::app::Language::get_lang();
+        if lang.value == engage::app::Language_Langs::cn_traditional().value { include_str!("localize/help/tw.txt") }
+        else { include_str!("localize/help/en.txt") }
     }
 }

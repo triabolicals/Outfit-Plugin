@@ -131,9 +131,9 @@ impl Mount {
             }
         }.into()
     }
-    pub fn get_gender_race(&self, gender: engage_il2cpp::app::Gender) -> &'static str {
-        let female = engage_il2cpp::app::Gender::female() == gender;
-        if gender == engage_il2cpp::app::Gender::other() { "AT" }
+    pub fn get_gender_race(&self, gender: engage::app::Gender) -> &'static str {
+        let female = engage::app::Gender::female() == gender;
+        if gender == engage::app::Gender::other() { "AT" }
         else {
             match self {
                 Mount::None => if female { "AF" } else { "AM" },
@@ -145,14 +145,14 @@ impl Mount {
             }
         }
     }
-    pub fn determine_gender(str: impl AsRef<str>) -> Option<(Self, engage_il2cpp::app::Gender)> {
+    pub fn determine_gender(str: impl AsRef<str>) -> Option<(Self, engage::app::Gender)> {
         ["AM", "BM", "CM", "DM", "EM","FM"].iter()
             .position(|x| str.as_ref().contains(x))
-            .map(|x|{ (Mount::from_i32(x as i32), engage_il2cpp::app::Gender::male()) })
+            .map(|x|{ (Mount::from_i32(x as i32), engage::app::Gender::male()) })
             .or_else(||
                 ["AF", "BF", "CF", "DF", "EF","FF"].iter()
                     .position(|x| str.as_ref().contains(x))
-                    .map(|x| (Mount::from_i32(x as i32), engage_il2cpp::app::Gender::female()))
+                    .map(|x| (Mount::from_i32(x as i32), engage::app::Gender::female()))
             )
     }
     pub fn determine_mount(str: impl AsRef<str>) -> Mount {

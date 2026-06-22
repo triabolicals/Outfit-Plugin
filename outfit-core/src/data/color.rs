@@ -1,7 +1,5 @@
 use std::fmt::Display;
-use engage::{gamedata::assettable::AssetTableResult, stream::Stream};
-use engage_il2cpp::app::{IStream_2Methods, Stream_2};
-use unity::engine::Color;
+use engage::app::{IStream_2Methods, Stream_2};
 use crate::localize::MenuTextCommand;
 pub use super::*;
 
@@ -82,19 +80,14 @@ impl ColorPreset {
                 acc | value
             })
     }
-    pub fn set_color(color: &mut Color, value: i32) {
-        color.r = ((value & 255) as f32) / 255.0;
-        color.g = (((value >> 8) & 255) as f32) / 255.0;
-        color.b = (((value >> 16) & 255) as f32) / 255.0;
-    }
-    pub fn get_name(&self) -> unity2::Il2CppString {
-        let s =  engage_il2cpp::app::Mess::get(self.label.as_str());
+    pub fn get_name(&self) -> unity::Il2CppString {
+        let s =  engage::app::Mess::get(self.label.as_str());
         if self.engaged { format!("{} {}", MenuTextCommand::Engage, s).into() } else { s }
     }
 }
 pub struct EyePreset { pub color: i32, pub label: AssetLabel, pub count: i32, }
 impl EyePreset {
-    pub fn get_name(&self) -> unity2::Il2CppString {
+    pub fn get_name(&self) -> unity::Il2CppString {
         if self.count == 0 { self.label.get() }
         else { format!("{} {}", self.label.get(), self.count+1).into() }
     }

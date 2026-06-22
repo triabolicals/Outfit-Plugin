@@ -1,8 +1,6 @@
-use engage::{gamesound::GameSound};
-use unity::prelude::*;
 use crate::{data::room::hub_room_set_by_result, room::ReloadType};
 pub use crate::menu::*;
-use engage_il2cpp::{
+use engage::{
     app::{
         accessoryshopchangerootproc::*,
         AccessoryShopChangeRoot,
@@ -11,13 +9,12 @@ use engage_il2cpp::{
         IBasicMenuMethods,
         IProcInst, IProcInstMethods
     },
-    unity_engine::IGameObjectMethods,
-    unity_engine::{IAnimatorMethods, ITransformMethods}
+    unity_engine::{IGameObjectMethods, IAnimatorMethods, ITransformMethods},
+    tm_pro::ITMP_TextMethods
 };
-use engage_il2cpp::tm_pro::ITMP_TextMethods;
-use unity2::{Cast, FromIlInstance, IntPtr};
+use unity::{Cast, FromIlInstance, IlNull, IntPtr};
 
-pub fn create_accessory_shop_change_root_proc(proc: impl Into<engage_il2cpp::app::ProcInst>, root: AccessoryShopChangeRoot) -> AccessoryShopChangeRootProc{
+pub fn create_accessory_shop_change_root_proc(proc: impl Into<engage::app::ProcInst>, root: AccessoryShopChangeRoot) -> AccessoryShopChangeRootProc{
     let change_root = AccessoryShopChangeRootProc::instantiate().unwrap();
     let next_unit = AccessoryShopChangeRootProc_ChangeUnitToNextEventHandler::new(root.into(), accessory_change_root_next_unit_method_info().into());
     let previous_unit = AccessoryShopChangeRootProc_ChangeUnitToPrevEventHandler::new(root.into(), accessory_change_root_previous_unit_method_info().into());
@@ -49,7 +46,7 @@ fn change_character(this: AccessoryShopChangeRoot, next: bool, watching: bool) {
         asset_menu.rebuild_menu(MainShop, false);
         hub_room_set_by_result(Some(result), ReloadType::All);
         if let Some(name) = selected.get_name() { this.m_unit_name().set_text_2(name, true); }
-        GameSound::post_event("Chara_Change", None);
+        engage::app::GameSound::post_event("Chara_Change", engage::combat::Character::null());
     }
     if watching {
         this.m_menu_object().set_active(false);
@@ -65,24 +62,24 @@ fn change_character(this: AccessoryShopChangeRoot, next: bool, watching: bool) {
     }
     else { this.m_accessory_detail_info_window().show(); }
 }
-#[unity2::callback]
-pub extern "C" fn accessory_change_root_next_unit(this: AccessoryShopChangeRoot, watching: bool, _: unity2::OptionalMethod) {
+#[unity::callback]
+pub extern "C" fn accessory_change_root_next_unit(this: AccessoryShopChangeRoot, watching: bool, _: unity::OptionalMethod) {
     let menu = this.m_accessory_shop_change_menu();
     if menu.m_kind().value == 0 {
         if this.m_accessory_shop_change_menu().m_desc_index() < 4 { return; }
         change_character(this, true, watching);
     }
 }
-#[unity2::callback]
-pub extern "C" fn accessory_change_root_previous_unit(this: AccessoryShopChangeRoot, watching: bool, _: unity2::OptionalMethod) {
+#[unity::callback]
+pub extern "C" fn accessory_change_root_previous_unit(this: AccessoryShopChangeRoot, watching: bool, _: unity::OptionalMethod) {
     let menu = this.m_accessory_shop_change_menu();
     if  menu.m_kind().value  == 0 {
         if this.m_accessory_shop_change_menu().m_desc_index() < 4 { return; }
         change_character(this, false, watching);
     }
 }
-#[unity2::callback]
-pub extern "C" fn accessory_change_root_key_on_start_watching(this: AccessoryShopChangeRoot, _: unity2::OptionalMethod) {
+#[unity::callback]
+pub extern "C" fn accessory_change_root_key_on_start_watching(this: AccessoryShopChangeRoot, _: unity::OptionalMethod) {
     if this.m_accessory_shop_change_menu().m_desc_index() < 4 { return; }
     /*
     if let Some(object) = GameObject::find("KeyHelpCamera") {
@@ -96,17 +93,17 @@ pub extern "C" fn accessory_change_root_key_on_start_watching(this: AccessorySho
     this.on_start_watching();
     this.m_accessory_equipment_info_window().close();
 }
-#[unity2::callback]
-pub extern "C" fn accessory_change_root_key_end_watching(this: AccessoryShopChangeRoot, _: unity2::OptionalMethod) {
+#[unity::callback]
+pub extern "C" fn accessory_change_root_key_end_watching(this: AccessoryShopChangeRoot, _: unity::OptionalMethod) {
     if this.m_accessory_shop_change_menu().m_desc_index() < 4 { return; }
     this.on_end_watching();
     this.m_accessory_equipment_info_window().open();
     this.m_accessory_detail_info_window().hide();
 }
-#[unity2::callback]
-pub extern "C" fn accessory_change_root_key_on_show_ui(this: AccessoryShopChangeRoot, _: unity2::OptionalMethod) {
+#[unity::callback]
+pub extern "C" fn accessory_change_root_key_on_show_ui(this: AccessoryShopChangeRoot, _: unity::OptionalMethod) {
     if !this.m_unit_name_object().is_null() {
-        let anim = this.m_unit_name_object().get_component::<engage_il2cpp::unity_engine::Animator>();
+        let anim = this.m_unit_name_object().get_component::<engage::unity_engine::Animator>();
         if !anim.is_null() { if anim.get_bool("isClosed") { anim.play_2("Open"); } }
     }
     let help = this.m_key_help_all_object();

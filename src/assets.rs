@@ -1,17 +1,19 @@
-use engage_il2cpp::app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase};
-use unity2::Cast;
-// pub mod transform;
+use engage::{
+    prelude::*,
+    app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase}
+};
+use unity::Cast;
+pub mod transform;
 pub mod dress;
 use outfit_core::*;
-use outfit_core::room::CharacterEffect;
 
 #[skyline::hook(offset=0x1bb4180)]
 pub fn asset_table_setup_person_outfit(
     this: AssetTable_Result,
     mode: i32,
-    person: engage_il2cpp::app::PersonData,
-    conditions: unity2::Array<unity2::Il2CppString>,
-    method_info: unity2::OptionalMethod) -> AssetTable_Result
+    person: engage::app::PersonData,
+    conditions: unity::Array<unity::Il2CppString>,
+    method_info: unity::OptionalMethod) -> AssetTable_Result
 {
     let result = call_original!(this, mode, person, conditions, method_info);
     if is_tiki_engage(result) { return result;}
@@ -26,10 +28,10 @@ pub fn asset_table_setup_person_outfit(
 pub fn asset_table_result_setup_hook_outfit(
     this: AssetTable_Result,
     mode: i32,
-    unit: engage_il2cpp::app::Unit,
-    equipped: engage_il2cpp::app::ItemData,
-    conds: unity2::Array<unity2::Il2CppString>,
-    method_info: unity2::OptionalMethod
+    unit: engage::app::Unit,
+    equipped: engage::app::ItemData,
+    conds: unity::Array<unity::Il2CppString>,
+    method_info: unity::OptionalMethod
 ) -> AssetTable_Result
 {
     let result = call_original!(this, mode, unit, equipped, conds, method_info);
@@ -42,10 +44,10 @@ pub fn asset_table_result_setup_hook_outfit(
 pub fn asset_table_result_god_setup_outfit(
     this: AssetTable_Result,
     mode: i32,
-    god_data: engage_il2cpp::app::GodData,
+    god_data: engage::app::GodData,
     is_darkness: bool,
-    conds: unity2::Array<unity2::Il2CppString>,
-    method_info: unity2::OptionalMethod
+    conds: unity::Array<unity::Il2CppString>,
+    method_info: unity::OptionalMethod
 ) -> AssetTable_Result
 {
     let result = call_original!(this, mode, god_data, is_darkness, conds, method_info);

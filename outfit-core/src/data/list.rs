@@ -1,11 +1,11 @@
 use std::{collections::HashMap, io::{Cursor, Read}};
-use engage_il2cpp::{
+use engage::{
     app::BasicMenuItem,
     List_1Ext,
     prelude::List_1,
     system::collections::generic::IList_1Methods
 };
-use unity2::Cast;
+use unity::Cast;
 use crate::{Asset, AssetColor, AssetType, ColorPreset, OutfitHashes, UnitAssetMenuData, data::{item::*, util::parse_label}, EyePreset, CustomAssetMenuItem3};
 
 pub struct OutfitLists {
@@ -28,7 +28,7 @@ impl OutfitLists {
     pub fn new() -> Self {
         let mut null = AssetGroup{
             label: "MID_SYS_None",
-            list: ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"].iter().flat_map(|x| AssetItem::new(x, 0)).collect(),
+            list: ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"].iter().flat_map(|x| AssetItem::new(*x, 0)).collect(),
         };
         null.list[1].flags.insert(AssetItemFlags::NoPhotograph);
         let null_hash = crate::utils::hash_string("null");
@@ -143,7 +143,7 @@ impl OutfitLists {
         };
         self.null.list.iter().filter(|v| v.kind == kind2 ).for_each(|v|{
             let item = CustomAssetMenuItem3::new_asset2(&v, self.null.label);
-            engage_il2cpp::app::IBasicMenuItemMethods::set_name(item, engage_il2cpp::app::Mess::get("MID_SYS_None"));
+            engage::app::IBasicMenuItemMethods::set_name(item, engage::app::Mess::get("MID_SYS_None"));
             menu_item_list.add(item.as_basic_menu_item());
         });
         if char {
@@ -264,7 +264,7 @@ impl AssetLabelTable {
     pub fn get_body(&self, asset: &str) -> Option<(&String, &AssetLabel)> {
         self.body.iter().find(|s| asset.contains(s.0))
     }
-    pub fn get_suffix_name(&self, asset: &str) -> Option<unity2::Il2CppString> {
+    pub fn get_suffix_name(&self, asset: &str) -> Option<unity::Il2CppString> {
         self.get_suffix(asset).map(|x|{
             let out = x.1.get();
             if asset.ends_with(x.0) { out }

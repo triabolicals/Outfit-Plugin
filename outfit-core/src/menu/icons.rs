@@ -1,6 +1,8 @@
-use engage_il2cpp::app::{AccessoryData_Kinds, GameIcon, ISpriteAtlasManager_2};
-use engage_il2cpp::system::collections::generic::IDictionary_2Methods;
-use unity2::Cast;
+use engage::{
+    app::{AccessoryData_Kinds, GameIcon, ISpriteAtlasManager_2},
+    system::collections::generic::IDictionary_2Methods
+};
+use unity::Cast;
 
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
@@ -70,7 +72,7 @@ impl CustomMenuIcon {
             _ => None,
         }
     }
-    pub fn get_icon(&self) -> Option<engage_il2cpp::unity_engine::Sprite> {
+    pub fn get_icon(&self) -> Option<engage::unity_engine::Sprite> {
         if let Some(system_label) = self.get_system_label() { to_option_sprite(GameIcon::try_get_system(system_label)) } else {
             match self {
                 Self::Engaged(i) => {
@@ -95,4 +97,4 @@ impl CustomMenuIcon {
         }
     }
 }
-fn to_option_sprite(s: engage_il2cpp::unity_engine::Sprite) -> Option<engage_il2cpp::unity_engine::Sprite> { if s.is_null() { None } else { Some(s) } }
+fn to_option_sprite(s: engage::unity_engine::Sprite) -> Option<engage::unity_engine::Sprite> { if s.is_null() { None } else { Some(s) } }

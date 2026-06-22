@@ -8,11 +8,9 @@ titleid = "01006A800016E000"
 
 [dependencies]
 skyline = { git = "https://github.com/ultimate-research/skyline-rs", version="0.6.0" }
-unity = { version = "0.3.0", git = "https://github.com/triabolicals/unity", branch = "macro" }
-engage = { git = "https://github.com/triabolicals/engage", branch = "macro" }
 bitflags = "2.11.0"
 
-engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", features = [
+engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", rev="af588e6", features = [
     "app-assettable", "app-assettable-types", "app-chapterdata", "app-gmapsequence", "app-unitinfo", "app-unitinfo-types", "app-hubsequence", "app-gmapsequence-types",
     "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon", "app-unitpool",
     "app-unit", "app-unit-types", "app-random_2", "app-basicmenu", "app-basicmenucontent", "app-basicmenuselect", "app-accessoryshopchangerootproc",
@@ -36,15 +34,9 @@ engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp", 
     "app-titlebar", "app-ut", "app-yesmenuitem", "app-basicdialogitemyes", "app-basicdialog",
     "app-photographsequence", "app-photographeditdisposmenu", "app-photographcameracontroller", "app-photographdisposinfo", "app-photographtopsequence",
     "combat-characterfactoryasync", "app-photographpausedata", "app-gameuserdata-types",
-    "root_motion-final_ik-lookatik",
+    "root_motion-final_ik-lookatik", "app-gamesound", "app-keyhelpdata", "app-keyhelptitlebarcontroller", "app-keyhelp", "app-language", "app-language-types", "app-unitedit",
 ] }
-unity2 = { git = "https://github.com/DivineDragonFanClub/unity2"}
-
-[patch."https://github.com/triabolicals/engage"]
-engage = {path = "/Users/trile/Project/lib/engage"}
-
-[patch."https://github.com/triabolicals/unity"]
-unity = {path = "/Users/trile/Project/lib2/unity"}
+unity-nx = { version = "0.1.0" }
 
 [profile.dev]
 panic = "abort"

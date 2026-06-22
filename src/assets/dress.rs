@@ -1,15 +1,17 @@
-use engage_il2cpp::app::{AssetTable_Modes, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IGodUnit, IJobDataMethods, IPersonDataMethods, IStructData_1Methods, IUnitMethods, Unit_Status};
-use engage_il2cpp::combat::{ICharacterAssetForm, ICharacterMethods};
-use unity2::{Cast, IlNull};
+use engage::{
+    app::{AssetTable_Modes, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IGodUnit, IJobDataMethods, IPersonDataMethods, IStructData_1Methods, IUnitMethods, Unit_Status},
+    combat::{ICharacterAssetForm, ICharacterMethods}
+};
+use unity::{Cast, IlNull};
 use outfit_core::anim::AnimData;
 use super::*;
 
 pub fn commit_for_unit_dress(
     result: AssetTable_Result,
     mode: i32,
-    unit: engage_il2cpp::app::Unit,
-    equipped: engage_il2cpp::app::ItemData,
-    conds: unity2::Array<unity2::Il2CppString>,
+    unit: engage::app::Unit,
+    equipped: engage::app::ItemData,
+    conds: Array<Il2CppString>,
     conditions: &mut AssetConditions
 ) {
     let mmode = AssetTable_Modes{value: mode};
@@ -21,7 +23,7 @@ pub fn commit_for_unit_dress(
     }
     let condition_unit =
         if conditions.flags.contains(AssetFlags::Vision) {
-            let owner = engage_il2cpp::app::UnitUtil::get_vision_owner(unit);
+            let owner = engage::app::UnitUtil::get_vision_owner(unit);
             if !owner.is_null() { owner }
             else { unit }
         } else { unit };
@@ -30,15 +32,15 @@ pub fn commit_for_unit_dress(
         let jid = condition_unit.get_job().get_jid().to_rust_string();
         /*
         if has_enemy_tiki(unit) {
-            result.setup_4(1, engage_il2cpp::app::PersonData::get("PID_E001_Boss".into()), conds);
-            result.get_sound().voice_id = unity2::Il2CppString::null();
+            result.setup_4(1, engage::app::PersonData::get("PID_E001_Boss".into()), conds);
+            result.get_sound().voice_id = unity::Il2CppString::null();
             return
         }
         else if is_dragonstone(equipped) && equipped.is_some_and(|i| i.iid.str_contains("チキ") && i.kind == 9) {
             result.setup_for_person(1, PersonData::get("PID_G001_チキ_竜化"),conds);
         }
         else if !get_outfit_data().apply_monster_asset(result, unit, mode) {
-            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == engage_il2cpp::app::Gender::male() {
+            if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == engage::app::Gender::male() {
                 result.setup_for_person_job_item(1, PersonData::get("PID_ラファール_竜化"), Some(condition_unit.job), None, conds);
             }
             else { result.setup_for_person_job_item(1, PersonData::get("PID_エル_竜化"), Some(condition_unit.job), None, conds); }
@@ -70,9 +72,9 @@ pub fn commit_for_unit_dress(
                 AssetFlags::set_condition_key(data.get_mid(), true);
                 AssetFlags::set_condition_key(data.get_asset_id(), true);
                 conditions.flags.set_condition_flag(AssetFlags::Engaged, false);
-                let gender = if data.get_female() == 1 { engage_il2cpp::app::Gender::female() } else { engage_il2cpp::app::Gender::male() };
+                let gender = if data.get_female() == 1 { engage::app::Gender::female() } else { engage::app::Gender::male() };
                 conditions.flags.set_gender(gender);
-                result.commit_2(mmode, condition_unit.get_person(), engage_il2cpp::app::JobData::null(), equipped);
+                result.commit_2(mmode, condition_unit.get_person(), engage::app::JobData::null(), equipped);
                 db.correct_anims(result, unit, profile_flag, conditions);
                 return;
             }
@@ -85,9 +87,7 @@ pub fn commit_for_unit_dress(
             result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
         }
         profile_flag = data.get_active_flag(conditions.flags.contains(AssetFlags::Engaged));
-        // println!("Setting AssetSets");
         UnitAssetMenuData::set_assets(result, condition_unit, conditions);
-        // println!("Assets Set");
     }
     else {
         result.commit_2(mmode, condition_unit.get_person(), condition_unit.get_job(), equipped);
@@ -95,8 +95,8 @@ pub fn commit_for_unit_dress(
     }
     if is_monster_body(result) {
         if conditions.flags.contains(AssetFlags::Vision) {
-            result.setup_5(mmode, engage_il2cpp::app::PersonData::get("PID_S004_リン".into()), engage_il2cpp::app::JobData::get("JID_紋章士_リン".into()), equipped, conds);
-            db.anims.set_vision_anims(result, engage_il2cpp::app::Gender::female(), mode);
+            result.setup_5(mmode, engage::app::PersonData::get("PID_S004_リン".into()), engage::app::JobData::get("JID_紋章士_リン".into()), equipped, conds);
+            db.anims.set_vision_anims(result, engage::app::Gender::female(), mode);
         }
         return;
     }
@@ -106,9 +106,7 @@ pub fn commit_for_unit_dress(
         return;
     }
     if conditions.flags.contains(AssetFlags::CombatTranforming) { AnimData::remove(result, true, true); }
-    // println!("Correction Anims");
     db.correct_anims(result, unit, profile_flag, conditions);
-    // println!("Finished Correction Anims");
 }
 fn hair_adjustment(result: AssetTable_Result) {
     /*
@@ -124,16 +122,16 @@ fn hair_adjustment(result: AssetTable_Result) {
      */
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]
-pub fn modify_colors(this: engage_il2cpp::combat::CharacterAppearance, go: engage_il2cpp::unity_engine::GameObject, _: unity2::OptionalMethod) {
+pub fn modify_colors(this: engage::combat::CharacterAppearance, go: engage::unity_engine::GameObject, _: unity::OptionalMethod) {
     get_head_hair_colors(go);
     call_original!(this, go, None);
     apply_preview_head_hair_color(this, go);
 }
 #[skyline::hook(offset=0x2b011f0)]
-fn combat_character_play_facial(this: engage_il2cpp::combat::Character, state_hash: i32, transition: f32, optional_method: unity2::OptionalMethod) {
+fn combat_character_play_facial(this: engage::combat::Character, state_hash: i32, transition: f32, optional_method: unity::OptionalMethod) {
     if !UnitAssetMenuData::get().is_preview {
         let builder = this.get_builder().appearance();
-        let hash = unity2::field_get_value_at_offset::<i32>(builder, 0xd4);
+        let hash = unity::field_get_value_at_offset::<i32>(builder, 0xd4);
         if let Some(person) = UnitAssetMenuData::get_current_profile(hash) {
             if let Some(pos) = FACIAL_STATES.iter().enumerate().position(|(i, s)| s.1 == state_hash && i < 4){
                 let exp = person.expression[pos] as usize;

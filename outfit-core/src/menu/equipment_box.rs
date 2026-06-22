@@ -1,25 +1,29 @@
-use engage_il2cpp::{
+use engage::{
     List_1Ext,
-    app::{AccessoryData_Kinds, BasicMenuItem, IAccessoryDetailInfoWindow, IAccessoryDetailInfoWindow_BodyParts, IAccessoryEquipmentInfo, IAccessoryEquipmentInfoMethods, IAccessoryMenuItemContent, IAccessoryMenuItemMethods, IBasicMenuItem, IBasicMenuItemContentMethods, IBasicMenuItemMethods},
+    app::{
+        AccessoryData_Kinds,
+        BasicMenuItem,IBasicMenuItem, IBasicMenuItemContentMethods, IBasicMenuItemMethods,
+        accessorydetailinfowindow::*, accessoryequipmentinfo::*, accessorymenuitem::*, accessorymenuitemcontent::*,
+    },
     prelude::List_1,
     system::collections::generic::IList_1Methods,
-    unity_engine::{GameObject, IComponentMethods, IGameObjectMethods, IObject_2Methods, ITransformMethods},
-    unity_engine::ui::{IGraphicMethods, IImageMethods},
-    app::AccessoryMenuItemContent,
+    unity_engine::{
+        gameobject::*,
+        IComponentMethods, IObject_2Methods, ITransformMethods, IRectTransformMethods,
+        ui::{IGraphicMethods, IImageMethods},
+    },
     tm_pro::ITMP_TextMethods,
-    unity_engine::IRectTransformMethods
 };
-use engage_il2cpp::tm_pro::{ITMP_Text, TextMeshProUGUI};
-use unity2::{Cast, FromIlInstance, IlNull};
+use unity::{Cast, FromIlInstance, IlNull};
 use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData, items::Profile, menu::icons::CustomMenuIcon, FACIAL_STATES};
 const BLANK: &'static str = "------";
-pub fn build_equipment_window(this: engage_il2cpp::app::AccessoryEquipmentInfo, is_room: bool) {
+pub fn build_equipment_window(this: engage::app::AccessoryEquipmentInfo, is_room: bool) {
     let content = this.m_content_object();
     if content.is_null() { return; }
     let transform = content.get_transform();
     let child_1 = transform.get_child(0).get_game_object();
     for i in 0..4 {
-        let obj = engage_il2cpp::unity_engine::Object_2::instantiate_3(child_1);
+        let obj = engage::unity_engine::Object_2::instantiate_3(child_1);
         obj.set_name(format!("Acc{}",i+6));
         if let Some(go) = obj.try_cast::<GameObject>() {
             let go_t = go.get_transform();
@@ -30,7 +34,7 @@ pub fn build_equipment_window(this: engage_il2cpp::app::AccessoryEquipmentInfo, 
     this.set_m_menu_item_list(list);
     let count = transform.get_child_count();
     for i in 0..count {
-        let item = engage_il2cpp::app::AccessoryMenuItem::instantiate().unwrap();
+        let item = engage::app::AccessoryMenuItem::instantiate().unwrap();
         IBasicMenuItemMethods::ctor(item);
         item.set_m_index(i);
         item.set_m_accessory_kind(AccessoryData_Kinds{value: i});
@@ -111,7 +115,7 @@ impl EquipmentBoxMode {
             if let Some(equip) = get_equipment_box(){ if open { equip.open() } else { equip.close() } }
         }
     }
-    pub fn set_rows(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, row: i32) {
+    pub fn set_rows(equipment: engage::app::AccessoryEquipmentInfo, row: i32) {
         let content_transform = equipment.m_content_object().get_transform();
         let child_count = content_transform.get_child_count();
         for i in 0..child_count {
@@ -119,14 +123,14 @@ impl EquipmentBoxMode {
             child.get_game_object().set_active(i < row);
         }
     }
-    pub fn set_profile(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
+    pub fn set_profile(equipment: engage::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
         let (name, flag) =
             profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| { (v.get_name(), d.profile[v.to_index()].flag) }))
                 .unwrap_or_else(|| (get_current_profile_name(), UnitAssetMenuData::get_preview().preview_data.flag));
         if let Some(con) = get_content(equipment, 0) { set_icon_text_to_content(con, CustomMenuIcon::KeyItem.get_icon(), Some(name)); }
         Self::set_profile_flags(equipment, flag);
     }
-    pub fn set_profile_flags(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, flag: i32) {
+    pub fn set_profile_flags(equipment: engage::app::AccessoryEquipmentInfo, flag: i32) {
         Self::set_rows(equipment, 5);
         let engage =
             if flag & 6 == 2 { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::on_off(false)) }
@@ -138,21 +142,21 @@ impl EquipmentBoxMode {
         set_content_data_slot(equipment, 3,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
         set_content_data_slot(equipment, 4, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
     }
-    pub fn set_viewing_mode(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: usize) {
+    pub fn set_viewing_mode(equipment: engage::app::AccessoryEquipmentInfo, slot: usize) {
         let (kind, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
-        set_content_data_slot(equipment, slot, icon.get_icon(), Some(format!("Viewing: {}", engage_il2cpp::app::Mess::get(kind)).into()));
+        set_content_data_slot(equipment, slot, icon.get_icon(), Some(format!("Viewing: {}", engage::app::Mess::get(kind)).into()));
     }
-    pub fn set_expression(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: usize) {
+    pub fn set_expression(equipment: engage::app::AccessoryEquipmentInfo, slot: usize) {
         set_content_data_slot(equipment, slot, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
     }
-    pub fn set_profile_name(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
+    pub fn set_profile_name(equipment: engage::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
         let name = profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| v.get_name()))
             .unwrap_or_else(|| get_current_profile_name());
 
-        let name = format!("{} [Preview: {}]", name, engage_il2cpp::app::Mess::get(if UnitAssetMenuData::get().is_shop_combat { "MID_TUT_CATEGORY_TITLE_Battle" } else { "MID_SAVEDATA_SEQ_HUB" }));
+        let name = format!("{} [Preview: {}]", name, engage::app::Mess::get(if UnitAssetMenuData::get().is_shop_combat { "MID_TUT_CATEGORY_TITLE_Battle" } else { "MID_SAVEDATA_SEQ_HUB" }));
         set_content_data_slot(equipment, 0, CustomMenuIcon::KeyItem.get_icon(), Some(name.as_str().into()))
     }
-    pub fn set_asset(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: usize, kind: AssetType, data: Option<&PlayerOutfitData>) {
+    pub fn set_asset(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, kind: AssetType, data: Option<&PlayerOutfitData>) {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
         match kind {
@@ -173,19 +177,19 @@ impl EquipmentBoxMode {
                 let h =
                 data.as_ref().and_then(|d|
                     db.try_get_asset(kind, d.get_asset_hash(kind))
-                        .map(|v| unity2::Il2CppString::from(v.as_str()))
+                        .map(|v| unity::Il2CppString::from(v.as_str()))
                         .or_else(|| Some(BLANK.into()))
                 ).or_else(||
                     db.try_get_asset(kind, preview.get_original_asset_hash(kind))
                         .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)))
-                        .map(|v| unity2::Il2CppString::from(v.as_str()))
+                        .map(|v| unity::Il2CppString::from(v.as_str()))
                         .or_else(|| Some(BLANK.into()))
                 );
                 set_content_data_slot(equipment, slot, kind.default_icon().get_icon(), h);
             }
         }
     }
-    pub fn set_data(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, page: EquipmentBoxPage, data: Option<&PlayerOutfitData>) {
+    pub fn set_data(equipment: engage::app::AccessoryEquipmentInfo, page: EquipmentBoxPage, data: Option<&PlayerOutfitData>) {
         if UnitAssetMenuData::is_photo_graph() { return; }
         let preview = UnitAssetMenuData::get_preview();
         match page {
@@ -226,10 +230,10 @@ impl EquipmentBoxMode {
                 /*
                 let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(
                     if UnitAssetMenuData::get_current_dress_gender() == 2 {
-                        engage_il2cpp::app::Gender::female() } else { engage_il2cpp::app::Gender::male() }
+                        engage::app::Gender::female() } else { engage::app::Gender::male() }
                 );
                 for x in 0..4 {
-                    let hash = if gender == engage_il2cpp::app::Gender::female() { data.aoc_alt[x] } else { data.aoc[x] };
+                    let hash = if gender == engage::app::Gender::female() { data.aoc_alt[x] } else { data.aoc[x] };
                     let aoc_name =
                         db.try_get_asset(AssetType::AOC(x as u8), hash)
                         .or_else(|| db.try_get_asset(AssetType::AOC(x as u8), preview.original_assets[10 + x]).filter(|_| no_data))
@@ -268,7 +272,7 @@ impl EquipmentBoxMode {
             }
         }
     }
-    pub fn change_equipment_box(self, equipment: engage_il2cpp::app::AccessoryEquipmentInfo) {
+    pub fn change_equipment_box(self, equipment: engage::app::AccessoryEquipmentInfo) {
         if UnitAssetMenuData::is_photo_graph()   { return; }
         if let Some(con) = get_content(equipment, 0) {
             let profile_name = get_current_profile_name();
@@ -357,7 +361,7 @@ impl EquipmentBoxMode {
         if UnitAssetMenuData::is_photo_graph()   { return; }
         if let Some(equipment) = get_equipment_box(){ self.change_equipment_box(equipment); }
     }
-    pub fn change_cursor(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, kind: Option<i32>) {
+    pub fn change_cursor(equipment: engage::app::AccessoryEquipmentInfo, kind: Option<i32>) {
         if UnitAssetMenuData::is_photo_graph()  { return; }
         if let Some(k) = kind { equipment.show_cursor_3(AccessoryData_Kinds{value: k}); }
         else { equipment.hide_cursor(); }
@@ -379,15 +383,15 @@ impl EquipmentBoxMode {
         }
     }
 }
-pub fn get_equipment_box() -> Option<engage_il2cpp::app::AccessoryEquipmentInfo> {
+pub fn get_equipment_box() -> Option<engage::app::AccessoryEquipmentInfo> {
     let go =  GameObject::find("EquipmentAcc");
     if !go.is_null() {
-        let equip = go.get_component::<engage_il2cpp::app::AccessoryEquipmentInfo>();
+        let equip = go.get_component::<engage::app::AccessoryEquipmentInfo>();
         if !equip.is_null() { Some(equip) } else { None }
     }
     else { None }
 }
-pub fn get_content(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: i32) -> Option<AccessoryMenuItemContent> {
+pub fn get_content(equipment: engage::app::AccessoryEquipmentInfo, slot: i32) -> Option<AccessoryMenuItemContent> {
     let item = equipment.m_menu_item_list().get(slot);
     if !item.is_null() {
         let content = unsafe { item.get_menu_item_content().cast::<AccessoryMenuItemContent>() };
@@ -395,23 +399,23 @@ pub fn get_content(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: 
     }
     None
 }
-pub fn set_content_data_slot(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: usize, icon: Option<engage_il2cpp::unity_engine::Sprite>, name: Option<unity2::Il2CppString>) {
+pub fn set_content_data_slot(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, icon: Option<engage::unity_engine::Sprite>, name: Option<unity::Il2CppString>) {
     let menu_item = equipment.m_menu_item_list().get(slot as i32);
     if !menu_item.is_null() {
         let content = unsafe { menu_item.get_menu_item_content().cast::<AccessoryMenuItemContent>() };
         if !content.is_null() { set_icon_text_to_content(content, icon, name); }
     }
 }
-pub fn set_icon_text_to_content(content: AccessoryMenuItemContent, icon: Option<engage_il2cpp::unity_engine::Sprite>, name: Option<unity2::Il2CppString>) {
+pub fn set_icon_text_to_content(content: AccessoryMenuItemContent, icon: Option<engage::unity_engine::Sprite>, name: Option<unity::Il2CppString>) {
     if let Some(icon) = icon {
-        content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
+        content.m_kind_icon_image().set_color(engage::unity_engine::Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0});
         content.m_kind_icon_object().set_active(true);
         content.m_kind_icon_image().set_sprite(icon);
     }
     else { content.m_kind_icon_object().set_active(false); }
     if let Some(name) = name { content.m_name_text().set_text_2(name, true); }
 }
-pub fn set_content_icon_color(equipment: engage_il2cpp::app::AccessoryEquipmentInfo, slot: usize, kind: i32, color: Option<i32>) {
+pub fn set_content_icon_color(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, kind: i32, color: Option<i32>) {
     let item = equipment.m_menu_item_list().get(slot as i32);
     if !item.is_null() {
         if let Some(content) = item.get_menu_item_content().try_cast::<AccessoryMenuItemContent>() {
@@ -424,26 +428,26 @@ pub fn set_icon_to_color(content: AccessoryMenuItemContent, kind: i32, color: Op
     let preview = UnitAssetMenuData::get_preview();
     if let Some(c) = color.filter(|c| *c > 0) {
         content.m_kind_icon_object().set_active(true);
-        content.m_kind_icon_image().set_sprite(engage_il2cpp::unity_engine::Sprite::null());
+        content.m_kind_icon_image().set_sprite(engage::unity_engine::Sprite::null());
         let r = (c & 255) as f32 / 255.0;
         let g = ((c >> 8) & 255) as f32 / 255.0;
         let b = ((c >> 16) & 255) as f32 / 255.0;
-        content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
+        content.m_kind_icon_image().set_color(engage::unity_engine::Color{r, g, b, a: 1.0});
     }
     else {
         if preview.preview_data.colors[kind as usize].has_color() {
             content.m_kind_icon_object().set_active(true);
-            content.m_kind_icon_image().set_sprite(engage_il2cpp::unity_engine::Sprite::null());
+            content.m_kind_icon_image().set_sprite(engage::unity_engine::Sprite::null());
             let c = UnitAssetMenuData::get_preview().preview_data.colors[kind as usize].get_f32();
-            content.m_kind_icon_image().set_color(engage_il2cpp::unity_engine::Color{r: c[0], g: c[1], b: c[2], a: 1.0});
+            content.m_kind_icon_image().set_color(engage::unity_engine::Color{r: c[0], g: c[1], b: c[2], a: 1.0});
         }
         else {
             let i = 4*kind as usize;
             if preview.original_color[i] > 0 || preview.original_color[i+1] > 0 || preview.original_color[i+2] > 0 {
-                content.m_kind_icon_image().set_sprite(engage_il2cpp::unity_engine::Sprite::null());
+                content.m_kind_icon_image().set_sprite(engage::unity_engine::Sprite::null());
                 content.m_kind_icon_object().set_active(true);
                 content.m_kind_icon_image().set_color(
-                    engage_il2cpp::unity_engine::Color{
+                    engage::unity_engine::Color{
                         r: preview.original_color[i] as f32 / 255.0 ,
                         g: preview.original_color[i+1] as f32 / 255.0 ,
                         b: preview.original_color[i+2] as f32 / 255.0 ,
@@ -456,11 +460,11 @@ pub fn set_icon_to_color(content: AccessoryMenuItemContent, kind: i32, color: Op
     }
 
 }
-pub fn set_detail_box(name: Option<unity2::Il2CppString>, help: Option<unity2::Il2CppString>, body: Option<unity2::Il2CppString>, sprite: Option<engage_il2cpp::unity_engine::Sprite>) {
+pub fn set_detail_box(name: Option<unity::Il2CppString>, help: Option<unity::Il2CppString>, body: Option<unity::Il2CppString>, sprite: Option<engage::unity_engine::Sprite>) {
     //if UnitAssetMenuData::is_photo_graph()  { return; }
     let helpwdw = GameObject::find("WdwAccHelp");
     if !helpwdw.is_null() {
-        let detail = helpwdw.get_component::<engage_il2cpp::app::AccessoryDetailInfoWindow>();
+        let detail = helpwdw.get_component::<engage::app::AccessoryDetailInfoWindow>();
         if !detail.is_null() {
             if let Some(help) = help { detail.m_message().set_text_2(help, true); }
             if let Some(name) = name { detail.m_accessory_name().set_text_2(name, true); }

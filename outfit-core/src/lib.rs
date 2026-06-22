@@ -1,14 +1,13 @@
 use std::sync::OnceLock;
-pub use unity::prelude::*;
 use engage::{
-    spriteatlasmanager::FaceThumbnailStaticFields, gamedata::GamedataArray,
-    keyhelp::KeyHelpData, proc::ProcInst,
+    app::{IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods, PhotographEditDisposMenu, PhotographTopSequence},
+    List_1Ext,
+    unity_engine::{IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2Methods, SkinnedMeshRenderer},
+    app::{IKeyHelpDataMethods, ISpriteAtlasManager_2, IStructDataArray_1Methods},
+    system::collections::generic::{IDictionary_2Methods, IList_1Methods}
 };
-use engage_il2cpp::app::{BasicMenu, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods, PhotographEditDisposMenu, PhotographTopSequence};
-use engage_il2cpp::List_1Ext;
-use engage_il2cpp::unity_engine::{IComponentMethods, IGameObjectMethods, IMaterialMethods, IObject_2Methods, SkinnedMeshRenderer};
-use unity2::{injection, Cast, Class, ClassIdentity};
-use unity2::injection::{DefaultInjectedMembers, InjectedClass};
+use unity::{injection::*, Cast, Class, ClassIdentity};
+pub use engage::prelude::*;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -35,7 +34,7 @@ pub use shop::*;
 pub use assets::*;
 pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
-pub const VERSION: &'static str = "2.7.3d";
+pub const VERSION: &'static str = "2.7.4";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -52,25 +51,25 @@ extern "C" {
         namespace_len: usize,
         name: *const u8,
         name_len: usize,
-        class: *mut unity2::il2cpp::class::Il2CppClass,
-        parent_ctor: *const unity2::MethodInfo,
+        class: *mut unity::il2cpp::class::Il2CppClass,
+        parent_ctor: *const unity::MethodInfo,
     ) -> bool;
 }
 pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
 pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| OutfitData::init()) }
 
-fn photo_off(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
+fn photo_off(_proc: engage::app::ProcInst, _: unity::OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::Inactive;
 }
-fn photo_on(_proc: &ProcInst, _optional_method: unity2::OptionalMethod) {
+fn photo_on(_proc: engage::app::ProcInst, _optional_method: unity::OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::PhotoGraph;
     UnitAssetMenuData::init_photo_profiles();
 }
 
 pub fn register<T: InjectedClass>() -> Option<Class> {
-    let class = injection::build::<T>();
-    let parent_ctor: Option<&'static unity2::MethodInfo> =
+    let class = build::<T>();
+    let parent_ctor: Option<&'static unity::MethodInfo> =
         T::Parent::class().raw().get_method_from_name(".ctor", 0).map(|mi| &*mi);
     let registered = unsafe {
         cobapi_register_injected_class(
@@ -79,41 +78,18 @@ pub fn register<T: InjectedClass>() -> Option<Class> {
             T::NAME.as_ptr(),
             T::NAME.len(),
             class.raw_mut(),
-            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity2::MethodInfo),
+            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity::MethodInfo),
         )
     };
     registered.then_some(class)
 }
-/*
-    configure: impl FnOnce(ClassBuilder<T::Parent>) -> ClassBuilder<T::Parent>,
-) -> Option<Class> {
-    let class = configure(T::class_builder()).build();
-    T::fill_cache(class);
-
-    let parent_ctor: Option<&'static unity2::MethodInfo> =
-        T::Parent::class().raw().get_method_from_name(".ctor", 0).map(|mi| &*mi);
-
-    let registered = unsafe {
-        cobapi_register_injected_class(
-            T::NAMESPACE.as_ptr(),
-            T::NAMESPACE.len(),
-            T::NAME.as_ptr(),
-            T::NAME.len(),
-            class.raw_mut(),
-            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity2::MethodInfo),
-        )
-    };
-    registered.then_some(class)
-}
-
- */
 pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_dvc = is_dvc;
     if UnitAssetMenuData::get().init {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
-    if register::<CreateUnitInfoModel>().is_none() { println!("[Outfit] MyComponent was already registered"); }
+    if register::<CreateUnitInfoModel>().is_none() { println!("[Outfit] CreateUnitInfoModel was already registered"); }
     if register::<CustomAssetMenu>().is_none() { println!("[Outfit] CustomAssetMenu was already registered"); }
     if register::<CustomAssetMenuItem3>().is_none() { println!("[Outfit] CustomAssetMenuItem was already registered"); }
     if register::<CreatePhotographCharacter>().is_none() { println!("[Outfit] CreatePhotographCharacter was already registered"); }
@@ -144,26 +120,11 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     if let Some(y_call) =  PhotographEditDisposMenu::class().raw_mut().get_virtual_method_mut("YCall") {
         y_call.method_ptr = photo::photograph_edit_dispos_menu_minus as _;
     }
-    if let Some(method) = Il2CppClass::from_name("App", "ShopUnitSelectMenuItemContent").ok()
-        .and_then(|k| k.get_virtual_method_mut("Build"))
-    {
-        method.method_ptr = unitselect::shop_unit_select_menu_item_content_build as _;
-    }
-    if let Some(method) = Il2CppClass::from_name("App", "AccessoryMenuItemContent").ok()
-        .and_then(|k| k.get_virtual_method_mut("BuildText"))
-    {
-        method.method_ptr = accessory_menu_item_content_build_text as _;
-    }
-    get_nested_virtual_methods_mut("App", "SortieUnitSelect", "UnitMenuItem", "YCall").map(|method| method.method_ptr = unit_item_y_call as _);
-    get_nested_virtual_methods_mut("App", "MapUnitCommandMenu", "ItemMenuItem", "XCall").map(|method| method.method_ptr = unit_item_y_call as _);
-    /*
-    if let Some(klass) = Il2CppClass::from_name("App", "AccessoryShopChangeMenu").ok() {
-        klass._2.actual_size = size_of::<CustomAssetMenu>() as u32;
-        klass._2.instance_size = size_of::<CustomAssetMenu>() as u32;
-    }
-
-     */
-
+    get_virtual_methods_mut("App", "ShopUnitSelectMenuItemContent", "Build").map(|k| k.method_ptr = unitselect::shop_unit_select_menu_item_content_build as _);
+    get_virtual_methods_mut("App", "AccessoryMenuItemContent", "BuildText").map(|k| k.method_ptr = accessory_menu_item_content_build_text as _);
+    get_virtual_methods_mut("App", "SortieUnitSelect.UnitMenuItem", "YCall").map(|k| k.method_ptr = unit_item_y_call as _);
+    get_virtual_methods_mut("App", "MapUnitCommandMenu.ItemMenuItem", "XCall").map(|k| k.method_ptr = unit_item_y_call as _);
+    
     skyline::patching::Patch::in_text(0x2173ba4).bytes(&[0x40, 0x01, 0x80, 0x52]).unwrap();
     // skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
     // skyline::patching::Patch::in_text(0x27b66d4).bytes(&[0x08, 0x01, 0x80, 0x52]).unwrap();
@@ -172,32 +133,27 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_loaded = false;
     UnitAssetMenuData::get().init = true;
     UnitAssetMenuData::get().data.clear();
-    /*
-    if let Some(key) = KeyHelpData::try_get_mut("KHID_写真撮影_配置編集") {
-        let y_button = KeyHelpData::instantiate().unwrap();
-        y_button.button_index = 3;
-        y_button.mid = "MID_MENU_ACCESSORY_SHOP_ACCESSORY".into();
-        key.add(y_button);
+    let help = engage::app::KeyHelpData::get("KHID_写真撮影_配置編集".into());
+    if !help.is_null() {
+        let new = engage::app::KeyHelpData::new();
+        new.set_button_index(3i8);
+        new.set_mid("MID_MENU_ACCESSORY_SHOP_ACCESSORY");
+        help.add(new);
     }
-
-     */
-    /*
-    let thumbs = &engage::spriteatlasmanager::FaceThumbnail::class().get_static_fields_mut::<FaceThumbnailStaticFields>().face_thumb;
-    let s = thumbs.cache_table.entries.iter().filter(|i| i.key.is_some()).map(|c| c.key.unwrap().to_string()).collect::<Vec<String>>();
-
-    s.iter().for_each(|i|{
-        if let Some(sprite) = thumbs.cache_table.get_item(i.into()) {
-            let o_key = format!("o_{}", i);
-            let alt_key = format!("a_{}", i);
-            thumbs.cache_table.add(o_key.as_str().into(), sprite);
-            thumbs.cache_table.add(alt_key.as_str().into(), sprite);
+    let table = engage::app::FaceThumbnail::s_face_thumb().m_cache_table();
+    let s: Vec<String> = table.iter().filter_map(|(k, v)| il2str(k)).collect();
+    s.iter().for_each(|k|{
+        let (found, sprite) = table.try_get_value(k.as_str().into());
+        if found && !sprite.is_null() {
+            let o_key = format!("o_{}", k);
+            let alt_key = format!("a_{}", k);
+            table.add(o_key.into(), sprite);
+            table.add(alt_key.into(), sprite);
         }
     });
-
-     */
     init
 }
-pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
+pub fn get_head_hair_colors(go: engage::unity_engine::GameObject) {
     if go.is_null() { return; }
     let data = UnitAssetMenuData::get();
     if data.is_preview {
@@ -208,7 +164,7 @@ pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
                 data.preview.has_hair_acc = false;
                 for x in 0..4 { data.preview.original_color[x] = 0; }
                 for hair in ["c_spine1_jnt", "meshHairGP"]{
-                    let h = engage_il2cpp::combat::Kaneko::find_in_children(go.get_transform(), hair);
+                    let h = engage::combat::Kaneko::find_in_children(go.get_transform(), hair);
                     if !h.is_null() {
                         let go = h.get_game_object();
                         data.preview.has_hair_acc =
@@ -254,7 +210,7 @@ pub fn get_head_hair_colors(go: engage_il2cpp::unity_engine::GameObject) {
     }
 }
 
-pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppearance, go: engage_il2cpp::unity_engine::GameObject) {
+pub fn apply_preview_head_hair_color(this: engage::combat::CharacterAppearance, go: engage::unity_engine::GameObject) {
     if go.is_null() { return; }
     let data = UnitAssetMenuData::get();
     let mut rgb: Option<[u8; 3]> = None;
@@ -262,7 +218,7 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
     let data2 =
         if data.is_preview { Some(data.preview.preview_data.clone()) }
         else {
-            let hash = unity2::field_get_value_at_offset::<i32>(this, 0xd4);
+            let hash = unity::field_get_value_at_offset::<i32>(this, 0xd4);
             UnitAssetMenuData::get_by_person_data(hash, false).and_then(|p| p.profile.get(p.profile_index(false) as usize).cloned())
         };
 
@@ -284,7 +240,7 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
                 let b = rgb[2] as f32 / 255.0;
                 if j >= 8 &&  j < 14  {
                     if let Some(m) = get_mt_eye(go) {
-                        m.set_color_2(colors[j-8], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
+                        m.set_color_2(colors[j-8], engage::unity_engine::Color{r, g, b, a: 1.0});
                     }
                 }
                 else if j == 2 {
@@ -292,10 +248,10 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
                         arr.iter()
                             .map(|r| unsafe { r.cast::<SkinnedMeshRenderer>() })
                             .for_each(|smr| {
-                                engage_il2cpp::app::Ut::get_instance_materials(smr).iter().for_each(|m| {
+                                engage::app::Ut::get_instance_materials(smr).iter().for_each(|m| {
                                     if m.get_name().to_rust_string().contains("MtSkin") {
                                         m.set_float("_Makeup", 0.0);
-                                        m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color { r, g, b, a: 1.0 });
+                                        m.set_color_2(colors[0], engage::unity_engine::Color { r, g, b, a: 1.0 });
                                     }
                                 });
                             });
@@ -303,7 +259,7 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
                 }
                 else if j == 14 {
                     if let Some(m) = get_material_from_go(go, "MtHair2").or_else(|| get_material_from_go(go, "MtOdd")){
-                        m.set_color_2(colors[0], engage_il2cpp::unity_engine::Color{r, g, b, a: 1.0});
+                        m.set_color_2(colors[0], engage::unity_engine::Color{r, g, b, a: 1.0});
                     }
                 }
             }
@@ -312,17 +268,16 @@ pub fn apply_preview_head_hair_color(this: engage_il2cpp::combat::CharacterAppea
         room::head_acc(go, flag & 64 != 0);
         room::hair_acc(go, flag & 16 != 0);
     }
-    println!("Finished with Colors");
 }
-fn get_mt_eye(go: engage_il2cpp::unity_engine::GameObject) -> Option<engage_il2cpp::unity_engine::Material>{
+fn get_mt_eye(go: engage::unity_engine::GameObject) -> Option<engage::unity_engine::Material>{
     get_material_from_go(go, "MtEye")
 }
 
-fn get_material_from_go(go: engage_il2cpp::unity_engine::GameObject, name: &str) -> Option<engage_il2cpp::unity_engine::Material> {
+fn get_material_from_go(go: engage::unity_engine::GameObject, name: &str) -> Option<engage::unity_engine::Material> {
     if let Some(arr) = get_skin_mesh_renderers(go) {
         arr.iter()
-            .map(|r| unsafe { r.cast::<engage_il2cpp::unity_engine::SkinnedMeshRenderer>() })
-            .flat_map(|r| engage_il2cpp::app::Ut::get_instance_materials(r).iter())
+            .map(|r| unsafe { r.cast::<engage::unity_engine::SkinnedMeshRenderer>() })
+            .flat_map(|r| engage::app::Ut::get_instance_materials(r).iter())
             .find(|m| m.get_name().to_rust_string().contains(name))
     }
     else { None }

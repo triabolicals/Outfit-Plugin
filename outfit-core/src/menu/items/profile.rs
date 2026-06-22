@@ -74,14 +74,14 @@ impl Profile {
             _ => unreachable!(),
         }
     }
-    pub fn get_name(&self) -> unity2::Il2CppString {
+    pub fn get_name(&self) -> unity::Il2CppString {
         match self {
-            Self::Battle=> engage_il2cpp::app::Mess::get("MID_TUT_CATEGORY_TITLE_Battle"),
+            Self::Battle=> engage::app::Mess::get("MID_TUT_CATEGORY_TITLE_Battle"),
             Self::EngagedDark => {
-                if UnitAssetMenuData::get().god_mode { engage_il2cpp::app::Mess::get("MCID_M007") }
+                if UnitAssetMenuData::get().god_mode { engage::app::Mess::get("MCID_M007") }
                 else { MenuTextCommand::Engage.get() }
             },
-            Self::Hub => engage_il2cpp::app::Mess::get("MID_SAVEDATA_SEQ_HUB"),
+            Self::Hub => engage::app::Mess::get("MID_SAVEDATA_SEQ_HUB"),
             Self::Alt1 => format!("{} 1", MenuText::get_command(40)).into(),
             Self::Alt2 => format!("{} 2", MenuText::get_command(40)).into(),
         }
