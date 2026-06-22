@@ -37,7 +37,7 @@ use engage::{
     prelude::{Cast, Object},
 };
 use unity::{field_set_value_at_offset, ClassIdentity, FromIlInstance, Il2CppString, IlNull, IntPtr, SystemObject};
-use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, UnitAssetMenuData, FACIAL_STATES};
+use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
 use crate::data::change_root::create_accessory_shop_change_root_proc;
 use crate::data::unitselect::create_accessory_unit_select;
 
@@ -574,7 +574,7 @@ pub extern "C" fn create_accessory_change_menu(this: HubAccessoryShopSequence, _
         TitleBar::get_instance().hide_footer();
     }
 }
-fn accessory_shop_change_create_bind(proc: impl Into<engage::app::ProcInst> + Copy, return_handler: AccessoryShopChangeRoot_ReturnEventHandler) -> Option<AccessoryShopChangeRoot> {
+fn accessory_shop_change_create_bind(proc: impl Into<ProcInst> + Copy, return_handler: AccessoryShopChangeRoot_ReturnEventHandler) -> Option<AccessoryShopChangeRoot> {
     let canvas = BasicMenuContent::get_canvas();
     let canvas_transform = canvas.get_transform();
     let x = ResourceManager_2::instantiate_2("UI/Hub/Shop/Prefabs/ShopAccChangeRoot", canvas_transform);
@@ -611,7 +611,7 @@ fn accessory_shop_change_create_bind(proc: impl Into<engage::app::ProcInst> + Co
             }
             let equipment_info = root.m_equipment_info_window_object();
             if !equipment_info.is_null() {
-                let window = equipment_info.get_component::<engage::app::AccessoryEquipmentInfo>();
+                let window = equipment_info.get_component::<AccessoryEquipmentInfo>();
                 if !window.is_null() {
                     crate::build_equipment_window(window, true);
                     root.set_m_accessory_equipment_info_window(window);
@@ -626,6 +626,7 @@ fn accessory_shop_change_create_bind(proc: impl Into<engage::app::ProcInst> + Co
             HubAccessoryRoom::set_view_mode(HubAccessoryRoom_ViewMode{value: 1});
             let result = data.unit_select.get_result(!data.is_shop_combat);
             hub_room_set_by_result(Some(result), ReloadType::All);
+            crate::start_key_help(OutfitMenuKind::AccessoryShop);
             Some(root)
         }
         else { None }

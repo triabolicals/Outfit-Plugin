@@ -35,7 +35,7 @@ extern "C" fn dvc_check_warning(event: &Event<SystemEvent>) {
 }
 extern "C" fn event_install(event: &Event<SystemEvent>) {
     let main = engage::app::MainSequence::get_instance();
-    if !main.is_null() { return; }
+    if main.is_null() { return; }
     let v = unity::field_get_value_at_offset::<i32>(main, 0x74);
     if v != 0 { return; }
     if let Event::Args(ev) = event {

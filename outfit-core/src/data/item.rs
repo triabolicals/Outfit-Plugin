@@ -1,8 +1,9 @@
 use bitflags::{bitflags};
-use engage::app::{AssetTable_Result, IAssetTable_ResultMethods, IItemDataMethods, IStructBase, IStructData_1Methods};
-use engage::List_1Ext;
-use unity::Cast;
-use unity::system::string::IIl2CppStringMethods;
+use engage::{
+    app::{AssetTable_Result, IAssetTable_ResultMethods, IItemDataMethods, IStructBase, IStructData_1Methods},
+    List_1Ext
+};
+use unity::{Cast, system::string::IIl2CppStringMethods};
 use crate::{capitalize_first, get_condition_index, has_condition_index, AssetLabelTable, AssetType};
 
 const ACC: [&str; 10] = ["Band", "Dress", "Ear", "Glass", "Hat", "Kings", "Tiara", "Helm", "Shield", "Hood"];

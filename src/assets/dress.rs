@@ -2,6 +2,7 @@ use engage::{
     app::{AssetTable_Modes, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IGodUnit, IJobDataMethods, IPersonDataMethods, IStructData_1Methods, IUnitMethods, Unit_Status},
     combat::{ICharacterAssetForm, ICharacterMethods}
 };
+use engage::app::{IItemDataMethods, PersonData};
 use unity::{Cast, IlNull};
 use outfit_core::anim::AnimData;
 use super::*;
@@ -30,23 +31,20 @@ pub fn commit_for_unit_dress(
 
     if conditions.flags.contains(AssetFlags::MapTransform) && mode == 1 {
         let jid = condition_unit.get_job().get_jid().to_rust_string();
-        /*
-        if has_enemy_tiki(unit) {
-            result.setup_4(1, engage::app::PersonData::get("PID_E001_Boss".into()), conds);
-            result.get_sound().voice_id = unity::Il2CppString::null();
+        if transform::has_enemy_tiki(unit) {
+            result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_E001_Boss".into()), conds);
+            result.get_sound().voice_id = Il2CppString::null();
             return
         }
-        else if is_dragonstone(equipped) && equipped.is_some_and(|i| i.iid.str_contains("チキ") && i.kind == 9) {
-            result.setup_for_person(1, PersonData::get("PID_G001_チキ_竜化"),conds);
+        else if { if !equipped.is_null() { equipped.get_iid().to_rust_string().contains("_チキ") && equipped.get_kind().value == 9 } else { false }}{
+            result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_G001_チキ_竜化".into()),conds);
         }
         else if !get_outfit_data().apply_monster_asset(result, unit, mode) {
             if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == engage::app::Gender::male() {
-                result.setup_for_person_job_item(1, PersonData::get("PID_ラファール_竜化"), Some(condition_unit.job), None, conds);
+                result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_ラファール_竜化".into()), conds);
             }
-            else { result.setup_for_person_job_item(1, PersonData::get("PID_エル_竜化"), Some(condition_unit.job), None, conds); }
+            else {result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_エル_竜化".into()), conds); }
         }
-
-         */
         return
     }
     let engaged = condition_unit.is_engaging_2();
@@ -95,7 +93,7 @@ pub fn commit_for_unit_dress(
     }
     if is_monster_body(result) {
         if conditions.flags.contains(AssetFlags::Vision) {
-            result.setup_5(mmode, engage::app::PersonData::get("PID_S004_リン".into()), engage::app::JobData::get("JID_紋章士_リン".into()), equipped, conds);
+            result.setup_5(mmode, PersonData::get("PID_S004_リン".into()), engage::app::JobData::get("JID_紋章士_リン".into()), equipped, conds);
             db.anims.set_vision_anims(result, engage::app::Gender::female(), mode);
         }
         return;
@@ -122,7 +120,7 @@ fn hair_adjustment(result: AssetTable_Result) {
      */
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]
-pub fn modify_colors(this: engage::combat::CharacterAppearance, go: engage::unity_engine::GameObject, _: unity::OptionalMethod) {
+pub fn modify_colors(this: engage::combat::CharacterAppearance, go: engage::unity_engine::GameObject, method_info: unity::OptionalMethod) {
     get_head_hair_colors(go);
     call_original!(this, go, None);
     apply_preview_head_hair_color(this, go);

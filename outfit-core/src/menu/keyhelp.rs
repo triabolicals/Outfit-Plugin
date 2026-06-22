@@ -24,13 +24,14 @@ pub fn start_key_help(kind: OutfitMenuKind){
         }
         OutfitMenuKind::Photo => {
             engage::app::KeyHelp::set_visible(false);
-            engage::TitleBar::open_header("Outfit Menu (Photo Info)", VERSION, "");
+            engage::TitleBar::open_header("Outfit Menu (Photo Mode)", VERSION, "");
             add_key_help(KeyHelpController_Type::plus(), "Hide");
             add_key_help(KeyHelpController_Type::stick_l(), engage::app::Mess::get("MID_KEYHELP_MENU_CAMERA_OPERATION"));
             add_key_help(KeyHelpController_Type::stick_r(), format!("Camera Z / {}",   engage::app::Mess::get("MID_KEYHELP_EDIT_TURN")));
             add_key_help(KeyHelpController_Type::lr(), "Roll");
             add_key_help(KeyHelpController_Type::zlr(), "Tilt");
         }
+        OutfitMenuKind::AccessoryShop => { engage::TitleBar::open_header("Outfit Menu (Shop)", VERSION, "KHID_アクセサリー屋"); }
         _ => {}
     }
 }

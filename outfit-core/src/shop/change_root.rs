@@ -81,15 +81,6 @@ pub extern "C" fn accessory_change_root_previous_unit(this: AccessoryShopChangeR
 #[unity::callback]
 pub extern "C" fn accessory_change_root_key_on_start_watching(this: AccessoryShopChangeRoot, _: unity::OptionalMethod) {
     if this.m_accessory_shop_change_menu().m_desc_index() < 4 { return; }
-    /*
-    if let Some(object) = GameObject::find("KeyHelpCamera") {
-        if let Some(transform) = object.get_component_by_type::<RectTransform>() {
-            let mut pos = transform.get_position();
-            pos.y = 580.0;
-            transform.set_position(pos);
-        }
-    }
-     */
     this.on_start_watching();
     this.m_accessory_equipment_info_window().close();
 }

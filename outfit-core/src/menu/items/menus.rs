@@ -35,7 +35,6 @@ pub enum CustomAssetMenuKind {
     EngagedBody(bool),
     HeadEdit,
     HairEdit,
-    //AnimPreview(u8),
 }
 impl CustomAssetMenuKind {
     pub const SAVE_SELECT_COUNT: usize = 65;
@@ -155,8 +154,7 @@ impl CustomAssetMenuKind {
             MainShop => None,
             PresetAppearanceMenu(alt) => {
                 if UnitAssetMenuData::get_preview().preview_data.flag & 128 != 0 {
-                    if *alt { Some(PresetAppearanceMenu(false)) }
-                    else { Some(MainShop) }
+                    if *alt { Some(PresetAppearanceMenu(false)) } else { Some(MainShop) }
                 }
                 else { Some(MainShop) }
             }
@@ -410,6 +408,7 @@ impl CustomAssetMenuKind {
                             if let Some(body) = db.hashes.body.get(&a.hash){
                                 let name = db.labels.get_suffix_name(body.as_str()).unwrap_or(body.to_string().trim_start_matches("uBody_").into());
                                 let item = CustomAssetMenuItem3::new_asset(AssetType::Body, a.hash, name, current == a.hash, preview.original_assets[0] == a.hash);
+                                item.set_value2(index as i32);
                                 list.add(item.as_basic_menu_item());
                             }
                         });
@@ -716,7 +715,11 @@ impl CustomMenuItem for CustomAssetMenuKind {
                 let page = idx;
                 let female = v2 & 1 != 0;
                 let db = if female { db.list.job_f.get(idx) } else { db.list.job_m.get(idx) };
-                let name = db.map(|v| engage::app::Mess::get(v.label)).unwrap_or_else(|| MenuTextCommand::Class.get());
+                let name = db.map(|v|{
+                    let s = engage::app::Mess::get(v.label);
+                    if s.is_null() || s.to_string().len() > 0  { s } else { engage::app::Mess::get(format!("MJID_{}", v.label)) }
+                }).unwrap_or_else(|| MenuTextCommand::Class.get());
+                
                 left_right_enclose(
                 &format!("{} ({}) [{}/{}]",
                     name, MenuTextCommand::get_gender(UnitAssetMenuData::get_gender(*alt) == 2), page +1, count +1)

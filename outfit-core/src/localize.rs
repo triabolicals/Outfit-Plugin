@@ -205,12 +205,14 @@ impl MenuText {
     }
     fn get_help_text() -> &'static str {
         let lang = engage::app::Language::get_lang();
-        if lang.value == engage::app::Language_Langs::cn_traditional().value { include_str!("localize/help/tw.txt") }
+        if lang.value == engage::app::Language_Langs::cn_traditional().value {
+            include_str!("localize/help/tw.txt")
+        }
         else { include_str!("localize/help/en.txt") }
     }
     fn get_command_text() -> &'static str {
         let lang = engage::app::Language::get_lang();
-        if lang.value == engage::app::Language_Langs::cn_traditional().value { include_str!("localize/help/tw.txt") }
-        else { include_str!("localize/help/en.txt") }
+        if lang.value == engage::app::Language_Langs::cn_traditional().value { include_str!("localize/command/tw.txt") }
+        else { include_str!("localize/command/en.txt") }
     }
 }
