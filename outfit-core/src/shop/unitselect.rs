@@ -273,8 +273,8 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     }
 }
 pub fn shop_unit_select_menu_item_content_build(this: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem, _: unity::OptionalMethod) {
-    this.build(item);
-    set_name_sprite(this, item);
+    unsafe { shop_select_build(this, item, None) };
+    if UnitAssetMenuData::get().is_preview { set_name_sprite(this, item); }
 }
 
 pub extern "C" fn create_accessory_unit_select(this: engage::app::HubAccessoryShopSequence, _: unity::OptionalMethod) {
@@ -303,3 +303,5 @@ pub extern "C" fn create_accessory_unit_select(this: engage::app::HubAccessorySh
          */
     }
 }
+#[skyline::from_offset(0x2479d90)]
+fn shop_select_build(this: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem, l: unity::OptionalMethod);

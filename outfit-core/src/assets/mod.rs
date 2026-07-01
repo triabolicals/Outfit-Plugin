@@ -164,6 +164,6 @@ pub fn find_mode_1_hair(condition_index: i32) -> Option<String> {
     AssetTable::s_search_lists().get(1).iter().find(|a|{
         let con_idx = a.m_condition_indexes();
         let condition_match = con_idx.m_list().iter().flat_map(|i| i.iter()).any(|i| i == condition_index);
-        condition_match && !a.get_hair_model().is_null()
-    }).map(|v| v.get_hair_model().to_rust_string())
+        condition_match && !a.get_head_model().is_null()
+    }).map(|v| v.get_head_model().to_rust_string())
 }

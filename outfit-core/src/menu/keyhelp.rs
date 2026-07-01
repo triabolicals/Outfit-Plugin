@@ -37,9 +37,9 @@ pub fn start_key_help(kind: OutfitMenuKind){
 }
 pub fn add_key_help(key_help_button: KeyHelpController_Type, text: impl Into<unity::Il2CppString>) {
     let title = engage::app::TitleBar::get_instance().m_current_title();
-    if !title.is_null() { return; }
+    if title.is_null() { return; }
     let key_controller =  title.key_help();
-    if !key_controller.is_null() { return; }
+    if key_controller.is_null() { return; }
     let help = key_controller.m_help_object().get(key_help_button.value);
     if !help.is_null() {
         help.set_active(true);

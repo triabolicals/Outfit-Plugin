@@ -430,15 +430,15 @@ fn force_load(result: Option<AssetTable_Result>, reload_type: ReloadType) {
         }
         else {
             let info = engage::app::UnitInfo::get_instance();
-            if let Some(unit) = UnitAssetMenuData::get_unit() {
+            // if let Some(unit) = UnitAssetMenuData::get_unit().filter(|u| !u.is_null() ) {
                 let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
-                let character = CharacterFactoryAsync_2::create_common(result, unit.get_pid(), char_model_window.m_game_object(), false, false, false);
+                let character = CharacterFactoryAsync_2::create_common(result, "PID_不明", char_model_window.m_game_object(), false, false, false);
                 let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
                 create_character_object.set_character(character);
                 create_character_object.set_unit_info_window(char_model_window);
                 let action = engage::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
                 character.call_on_setup_done(action);
-            }
+          //  }
         }
     }
 }

@@ -56,6 +56,8 @@ use engage::{
 		IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
 	},
 };
+use engage::app::IMapTerrainInfoMethods;
+use engage::prelude::ClassIdentity;
 use unity::{Cast, ClassIdentity, FromIlInstance, IlNull, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
@@ -114,6 +116,7 @@ impl CustomAssetMenu {
 		crate::utils::change_rect_transform_in_child_anchor(transform, "BodyParts", 100.0, 0.0);
 	}
 	pub fn create_bind_unit_info(proc: impl Into<engage::app::ProcInst>, unit: engage::app::Unit){
+		if unit.is_null() { return; }
 		let menu_data = UnitAssetMenuData::get();
 		if let Some(root) = Self::get_root() {
 			let content: AccessoryShopChangeMenuContent = unsafe { root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() };
@@ -157,6 +160,8 @@ impl CustomAssetMenu {
 				}
 			});
 			Self::adjust_content(root);
+			let info = engage::app::MapTerrainInfo::get_instance();
+			if !info.is_null() { info.hide_all(); }
 		}
 	}
 	pub fn create_photo_graph_bind(proc: impl Into<engage::app::ProcInst>) {
@@ -339,10 +344,8 @@ impl CustomAssetMenu{
 					let go = self.equipment().get_game_object();
 					if !go.is_null() { engage::unity_engine::Object_2::destroy_2(go); }
 				}
-				if !self.unit_name().is_null() {
-					let go = self.unit_name().get_game_object();
-					if !go.is_null() { engage::unity_engine::Object_2::destroy_2(go); }
-				}
+				let name = engage::unity_engine::GameObject::find("CharacterName");
+				if !name.is_null() { engage::unity_engine::Object_2::destroy_2(name); }
 				AccessoryShopChangeRoot::unload_prefab();
 				UnitInfo::chara_only_off();
 				UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
@@ -351,6 +354,7 @@ impl CustomAssetMenu{
 					sortie.m_window().get_game_object().set_active(true);
 					sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(true);
 					sortie.disp_all();
+					sortie.setting_title();
 					let unit_manager = SortieSelectionUnitManager::get_instance();
 					if !unit_manager.is_null() {
 						let unit = unit_manager.m_unit();
@@ -370,10 +374,14 @@ impl CustomAssetMenu{
 						UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
 					}
 				}
+				else {
+					let tilebar = TitleBar::get_instance();
+					tilebar.close_header();
+				}
 				BackgroundManager::unbind();
 			}
             MenuMode::PhotoGraph => {
-				let tilebar = engage::app::TitleBar::get_instance();
+				let tilebar = TitleBar::get_instance();
 				tilebar.close_header();
 			}
 			_ => {}
@@ -514,16 +522,21 @@ fn model_camera_control(rgb: bool) -> bool {
 pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
 	let sortie = SortieSelectionUnitManager::get_instance();
 	if !sortie.is_null() {
+		println!("Sortie");
 		if !sortie.m_unit().is_null() {
+			println!("Unit Found: {}", sortie.m_unit().get_name());
 			CustomAssetMenu::create_bind_unit_info(this.m_menu(), sortie.m_unit());
 			return BasicMenu_Result::close_decide();
 		}
 	}
 	let map_mind = engage::app::MapMind::get_instance();
 	if !map_mind.is_null() {
+		println!("MapMind");
 		if !map_mind.get_unit().is_null() {
-			CustomAssetMenu::create_bind_unit_info(this.m_menu(), map_mind.get_unit());
-			return BasicMenu_Result::close_decide();
+			if !map_mind.get_unit().get_person().is_null() {
+				CustomAssetMenu::create_bind_unit_info(this.m_menu(), map_mind.get_unit());
+				return BasicMenu_Result::close_decide();
+			}
 		}
 	}
 	BasicMenu_Result::se_miss()

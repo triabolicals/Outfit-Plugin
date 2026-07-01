@@ -176,13 +176,11 @@ impl EquipmentBoxMode {
             _ => {
                 let h =
                 data.as_ref().and_then(|d|
-                    db.try_get_asset(kind, d.get_asset_hash(kind))
-                        .map(|v| unity::Il2CppString::from(v.as_str()))
+                    db.try_get_asset(kind, d.get_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str()))
                         .or_else(|| Some(BLANK.into()))
                 ).or_else(||
-                    db.try_get_asset(kind, preview.get_original_asset_hash(kind))
-                        .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)))
-                        .map(|v| unity::Il2CppString::from(v.as_str()))
+                    db.try_get_asset(kind, preview.preview_data.get_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str()))
+                        .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str())))
                         .or_else(|| Some(BLANK.into()))
                 );
                 set_content_data_slot(equipment, slot, kind.default_icon().get_icon(), h);
@@ -399,7 +397,7 @@ pub fn get_content(equipment: engage::app::AccessoryEquipmentInfo, slot: i32) ->
     }
     None
 }
-pub fn set_content_data_slot(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, icon: Option<engage::unity_engine::Sprite>, name: Option<unity::Il2CppString>) {
+pub fn set_content_data_slot(equipment: AccessoryEquipmentInfo, slot: usize, icon: Option<engage::unity_engine::Sprite>, name: Option<unity::Il2CppString>) {
     let menu_item = equipment.m_menu_item_list().get(slot as i32);
     if !menu_item.is_null() {
         let content = unsafe { menu_item.get_menu_item_content().cast::<AccessoryMenuItemContent>() };
@@ -415,7 +413,7 @@ pub fn set_icon_text_to_content(content: AccessoryMenuItemContent, icon: Option<
     else { content.m_kind_icon_object().set_active(false); }
     if let Some(name) = name { content.m_name_text().set_text_2(name, true); }
 }
-pub fn set_content_icon_color(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, kind: i32, color: Option<i32>) {
+pub fn set_content_icon_color(equipment: AccessoryEquipmentInfo, slot: usize, kind: i32, color: Option<i32>) {
     let item = equipment.m_menu_item_list().get(slot as i32);
     if !item.is_null() {
         if let Some(content) = item.get_menu_item_content().try_cast::<AccessoryMenuItemContent>() {

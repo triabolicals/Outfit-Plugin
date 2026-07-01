@@ -15,8 +15,8 @@ outfit_core = { path = "outfit-core" }
 skyline = { git = "https://github.com/ultimate-research/skyline-rs", version="0.6.0" }
 # cobapi = { git = "https://github.com/DivineDragonFanClub/cobapi" }
 cobapi = { path = "../lib/cobapi" }
-unity-nx = { version = "0.1.0" }
-engage-il2cpp = { git = "https://github.com/DivineDragonFanClub/engage-il2cpp",  rev="af588e6",features = [
+unity-nx = { git = "https://github.com/DivineDragonFanClub/unity2", tag="0.1.1"}
+engage-il2cpp = { path = "/Users/trile/Project/lib/engage-il2cpp", features = [
     "app-assettable", "app-assettable-types", "app-chapterdata", "app-gmapsequence", "app-unitinfo", "app-unitinfo-types", "app-hubsequence", "app-gmapsequence-types",
     "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon", "app-unitpool",
     "app-unit", "app-unit-types", "app-random_2", "app-basicmenu", "app-basicmenucontent", "app-basicmenuselect", "app-accessoryshopchangerootproc",

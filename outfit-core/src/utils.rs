@@ -3,6 +3,7 @@ use engage::{
     combat::Kaneko, nn::hid::NpadButton,
     unity_engine::{IGameObjectMethods, IRectTransformMethods, Transform}
 };
+use engage::prelude::{ClassIdentity, Il2CppString};
 use unity::{
     Cast, ClassIdentity, system::string::IIl2CppStringMethods, il2cpp::VirtualInvoke
 };
@@ -86,7 +87,7 @@ pub fn hash_string<'a>(str: impl Into<unity::Il2CppString>) -> i32 {
     let str = str.into();
     str.get_hash_code()
 }
-pub fn il2str(str: unity::Il2CppString) -> Option<String> {
+pub fn il2str(str: Il2CppString) -> Option<String> {
     if str.is_null() { None } else { Some(str.to_rust_string()) }
 }
 pub fn try_get_il2cpp_hash(str: unity::Il2CppString) -> Option<i32> {

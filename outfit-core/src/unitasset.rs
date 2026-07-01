@@ -191,12 +191,13 @@ impl UnitAssetMenuData {
         }
         else {
             let map_mind = engage::app::MapMind::get_instance();
-            if !map_mind.is_null() { Some(map_mind.get_unit()) }
+            if !map_mind.is_null() { if map_mind.get_unit().is_null() { None } else { Some(map_mind.get_unit()) } }
             else{
                 let sortie = engage::app::SortieSelectionUnitManager::get_instance();
                 if !sortie.is_null() {
                     let unit = sortie.m_unit();
-                    if !unit.is_null() { Some(unit) } else { None }
+                    if !unit.is_null() { Some(unit) }
+                    else { None }
                 }
                 else { None }
             }
@@ -376,7 +377,10 @@ impl UnitAssetMenuData {
     }
     pub fn set_unit(unit: engage::app::Unit) -> bool {
         if unit.is_null() || unit.get_person().is_null() { false }
-        else { Self::set_by_hash(unit.get_person().hash()) }
+        else {
+            println!("Setting Unit: {}", unit.get_name());
+            Self::set_by_hash(unit.get_person().hash())
+        }
     }
     pub fn get_shop_unit() -> Option<engage::app::Unit> {
         let data = Self::get();

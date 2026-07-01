@@ -3,9 +3,10 @@ use engage::{
     app::{AssetTable_Modes, AssetTable_Result, IAssetTableMethods, IAssetTable_ConditionFlagsMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IJobDataMethods, IPersonDataMethods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnitMethods},
     List_1Ext
 };
+use engage::prelude::Il2CppString;
 use unity::{Cast, IlNull};
 use unity::system::string::IIl2CppStringMethods;
-use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32};
+use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32, get_outfit_data};
 
 pub struct DressData {
     pub job: Vec<JobDressData>,
@@ -66,6 +67,7 @@ impl DressData {
                         if !result_hashes.contains(&hash) {
                             result_hashes.insert(hash);
                             person.index = p.index();
+                            person.data_hash = p.hash();
                             if x > 0 { person.is_female = x == 2; } else { person.generic = !belong.is_null(); }
                             person.count =
                                 if let Some(count) = mpid_count.get_mut(&person.mpid) { *count += 1;*count }
@@ -91,6 +93,8 @@ impl DressData {
                     if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, god.hash(), true) {
                         let hash = person.calc_hash();
                         if !result_hashes.contains(&hash) {
+                            person.data_hash = god.hash();
+                            person.emblem = true;
                             if gid.contains("E00") && !god.get_ascii_name().is_null(){
                                 person.dark = true;
                                 person.mpid = format!("MGID_{}", god.get_ascii_name());
@@ -212,9 +216,10 @@ impl DressData {
         self.personal.iter().find(|x| x.is_female == female && x.mpid == name)
     }
 }
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct PersonalDressData {
     pub mpid: String,
+    pub data_hash: i32,
     pub is_female: bool,
     pub generic: bool,
     pub emblem: bool,
@@ -301,7 +306,7 @@ impl PersonalDressData {
         
         if !new.process_from_asset_table(result, &hash_list) { None } else { Some(new) }
     }
-    pub fn get_menu_name(&self) -> unity::Il2CppString {
+    pub fn get_menu_name(&self) -> Il2CppString {
         if self.count == 0 { engage::app::Mess::get(self.mpid.as_str()) }
         else { format!("{} {}", engage::app::Mess::get(self.mpid.as_str()), self.count + 1).into() }
     }
@@ -321,7 +326,7 @@ impl PersonalDressData {
             }
         }
     }
-    pub fn get_name(&self) -> unity::Il2CppString {
+    pub fn get_name(&self) -> Il2CppString {
         if self.mpid.len() > 3 { engage::app::Mess::get(self.mpid.as_str()) }
         else { "Unk".into() }
     }
@@ -376,6 +381,20 @@ impl PersonalDressData {
         if person.is_null() { return false; }
         let person_hash = person.hash();
         self.other_hashes.contains(&person_hash) || self.hash == person_hash || il2str(person.get_name()).is_some_and(|name| name.to_string() == self.mpid)
+    }
+    pub fn get_by_hash(hash: i32, emblem: bool, female: bool) -> Option<&'static PersonalDressData> {
+        if hash == 276380359 {
+            if female {
+
+            }
+            else {
+
+            }
+        }
+        else {
+            get_outfit_data().dress.personal.iter().find(|x| x.is_female == female && x.data_hash == hash && emblem == x.emblem)
+        }
+
     }
 }
 pub struct JobTransformData {

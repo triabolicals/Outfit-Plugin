@@ -169,10 +169,10 @@ impl OutfitHashes {
         let uhead_null = hash_string("uHead_null");
         let null = hash_string("null");
         let ohair_null = hash_string("oHair_null");
+        self.o_hair.insert(ohair_null, "oHair_null".to_string());
         self.head_hair.insert(uhead_null, ohair_null);
         self.head_hair.insert(null, null);
         let v: Vec<_> =
-
         self.body.iter()
             .map(|(hash, asset)| (*hash, hash_string(asset.replace("uBody", "oBody"))))
             .filter(|(u, o)| self.o_body.contains_key(o) && !self.female_ou.iter().any(|i| i.0 == *u) && !self.male_ou.iter().any(|i| i.0 == *u))

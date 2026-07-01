@@ -248,13 +248,11 @@ impl OutfitData {
                     }
                 }
             });
-        println!("Finished with Assets");
         let dress = DressData::init(&mut hashes);
         let anims = AnimData::init(&mut assets);
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
-        println!("Finished OutfitData");
         Self {
             dress, anims, hashes,
             list: new_list,
@@ -392,7 +390,8 @@ impl OutfitData {
             let hair = result.get_hair_model();
             if !hair.is_null() {   //  Hair Adjustment
                 if !hair.contains("null"){
-                    if result.get_accessories().items().iter()
+                    if result.m_accessories().items().iter()
+                        .filter(|x| !x.is_null() )
                         .any(|x|{
                             let model = x.get_model();
                             if !model.is_null() { model.contains("Hair") } else { false }

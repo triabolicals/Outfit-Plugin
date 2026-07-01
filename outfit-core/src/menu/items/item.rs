@@ -428,7 +428,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             Menu(menu) => menu.get_help(menuitem),
             UnitName => {
                 let help = MenuText::get_help(400).unwrap();
-                if let Some(unit) = UnitAssetMenuData::get_shop_unit() {
+                if let Some(unit) = UnitAssetMenuData::get_shop_unit().filter(|u| !u.is_null()) {
                     let name = unit.m_edit().m_name();
                     if !name.is_null() {
                         let person = unit.get_person();
