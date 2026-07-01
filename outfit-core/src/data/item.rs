@@ -196,7 +196,10 @@ impl ItemAsset {
         ItemData::get_list().unwrap().iter().flat_map(|item| Self::from_item(item)).collect()
     }
     pub fn from_item(data: &ItemData) -> Option<Self> {
-        let con = AssetTableStaticFields::get_condition_index(data.iid);
+        let mut con = AssetTableStaticFields::get_condition_index(data.iid);
+        if con <= 0 && !data.aid.is_null(){
+            con = AssetTableStaticFields::get_condition_index(data.aid);
+        }
         let entry = AssetTableStaticFields::get().search_lists[2].iter().find(|x| x.condition_indexes.has_condition_index(con)).map(|entry| entry.parent.index)?;
         Some(Self { entry, hash: data.parent.hash, kind: data.kind as i32 })
     }
