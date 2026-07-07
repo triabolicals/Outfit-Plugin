@@ -6,6 +6,7 @@ use engage::{
     app::{IItemDataMethods, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographPauseDataMethods, IPhotographSequence}
 };
 use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result}, menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand}, room::ReloadType, CustomAssetMenuItem3};
+use crate::data::dress::PersonalDressDataFlags;
 use super::*;
 
 #[repr(C)]
@@ -347,13 +348,13 @@ impl CustomAssetMenuKind {
                 let female = UnitAssetMenuData::get_gender(*cross) == 2;
                 let photo = UnitAssetMenuData::is_photo_graph();
                 db.dress.personal.iter().enumerate()
-                    .filter(|(_, d)| female == d.is_female && ((!d.morph == photo) || !photo))
+                    .filter(|(_, d)| female == d.flags.contains(PersonalDressDataFlags::Female) && ((!d.flags.contains(PersonalDressDataFlags::Morph) == photo) || !photo))
                     .for_each(|(i, d)|{
-                        if !d.morph {
+                        if !d.flags.contains(PersonalDressDataFlags::Morph) {
                             let item =  CustomAssetMenuItem3::new(PresetAppearance);
                             item.set_value(i as i32);
                             let index = (d.index & 0xFFFFFF) << 1;
-                            item.set_value2( if d.emblem { 1 } else { 0 } | index);
+                            item.set_value2( if d.flags.contains(PersonalDressDataFlags::FromGod) { 1 } else { 0 } | index);
                             item.set_name(d.get_menu_name());
                             list.add(item.as_basic_menu_item());
                         }

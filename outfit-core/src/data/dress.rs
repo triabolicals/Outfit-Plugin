@@ -1,10 +1,15 @@
 use std::collections::{HashMap, HashSet};
+use bitflags::{bitflags, Flags};
 use engage::{
+    app::{FaceThumbnail, GodData, ISpriteAtlasManager_2Methods, PersonData, ResourceManager_2, TelopManager},
     app::{AssetTable_Modes, AssetTable_Result, IAssetTableMethods, IAssetTable_ConditionFlagsMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBitField32, IGodDataMethods, IJobDataMethods, IPersonDataMethods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnitMethods},
-    List_1Ext
+    Dictionary_2Ext,
+    List_1Ext,
+    combat::{CharacterAppearance},
+    prelude::Il2CppString,
+    unity_engine::Sprite
 };
-use engage::prelude::Il2CppString;
-use unity::{Cast, IlNull};
+use unity::{Cast};
 use unity::system::string::IIl2CppStringMethods;
 use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32, get_outfit_data};
 
@@ -44,74 +49,117 @@ impl DressData {
                     }
                 }
             });
-        let gender_con = ["", "男性", "女装"];
         let result = AssetTable_Result::new();
         let conditions = engage::app::AssetTable::s_condition_flags();
-        engage::app::PersonData::get_list()
-            .iter()
-            .filter(|p| p.get_gender().value != 0 && !p.get_job().is_null() && !p.get_name().is_null())
-            .for_each(|p|{
-                let (a, b) = if p.is_hero() || p.get_flag().m_value() & 128 != 0 { (1, 3) } else { (0, 1) };
-                for x in a..b {
-                    result.clear();
-                    conditions.add_2(p.get_pid());
-                    conditions.add_2(p.get_name());
-                    conditions.add_7(engage::app::PersonData::null(), p.get_job(), p.get_asset_force());
-                    if x > 0 { conditions.add_2(gender_con[x]); }
-                    let belong = p.get_belong();
-                    if !belong.is_null() { conditions.add_2(belong ); }
-                    result.commit(AssetTable_Modes::combat());
-                    result.replace(AssetTable_Modes::combat());
-                    if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, p.hash(), false){
-                        let hash = person.calc_hash();
-                        if !result_hashes.contains(&hash) {
-                            result_hashes.insert(hash);
-                            person.index = p.index();
-                            person.data_hash = p.hash();
-                            if x > 0 { person.is_female = x == 2; } else { person.generic = !belong.is_null(); }
-                            person.count =
-                                if let Some(count) = mpid_count.get_mut(&person.mpid) { *count += 1;*count }
-                                else { mpid_count.insert(person.mpid.clone(), 0);0 };
-                            personal.push(person);
-                        }
-                    }
+        let bond_face: Vec<_> = ResourceManager_2::get_s_files().iter().filter_map(|s| il2str(s.0).filter(|s| s.contains("Telop/LevelUp/FaceThumb/"))).collect();
+        ["PID_リュール", "PID_M024_リュール", "GID_リュール"].iter().enumerate().for_each(|(i, lueur)|{
+            let (hash, index) =
+                if i < 2 {
+                    let person = PersonData::get((*lueur).into());
+                    (person.hash(), person.index())
+                }
+                else {
+                    let god = GodData::get((*lueur).into());
+                    (god.hash(), god.index())
+                };
+            ["男性", "女装"].iter().for_each(|gender|{
+                result.clear();
+                conditions.add_2(*lueur);
+                conditions.add_2("MPID_Lueur");
+                conditions.add_2(*gender);
+                result.commit(AssetTable_Modes::combat());
+                result.replace(AssetTable_Modes::combat());
+                if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, hash, i == 2){
+                    result_hashes.insert(person.calc_hash());
+                    if i == 1 { person.flags.set(PersonalDressDataFlags::Dark, true); }
+                    person.flags.set(PersonalDressDataFlags::Lueur, true);
+                    person.index = if i < 2 { index - 1 } else { index + 2000 } + person.flags.contains(PersonalDressDataFlags::Female) as i32;
+                    person.mpid = "MPID_Lueur".to_string();
+                    person.count = i as i32;
+                    personal.push(person);
                 }
             });
-        engage::app::GodData::get_list().iter()
+        });
+        ["PID_青リュール_男性", "PID_青リュール_女性"].iter().enumerate().for_each(|v|{
+            let person = PersonData::get((*v.1).into());
+            let result = AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), person.get_pid(), CharacterAppearance::conditions());
+            if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, person.hash(), false){
+                result_hashes.insert(person.calc_hash());
+                person.flags.set(PersonalDressDataFlags::Female, v.0 == 1);
+                person.flags.set(PersonalDressDataFlags::Alt, true);
+                person.flags.set(PersonalDressDataFlags::Lueur, true);
+                person.mpid = "MPID_Lueur".to_string();
+                person.count = 3;
+                personal.push(person);
+            }
+        });
+        GodData::get_list().iter().filter(|g| !g.is_hero() && ( g.get_force_type().value == 0 || g.get_gid().to_rust_string().contains("GID_E006")))
             .for_each(|god|{
-                let (a, b) = if god.is_hero() { (1, 3) } else { (0, 1) };
-                for x in a..b {
+                let bond_face_path = format!("Telop/LevelUp/FaceThumb/{}", god.get_ascii_name());
+                let has_bond_face = bond_face.contains(&bond_face_path);
+                let dlc_dark = god.get_gid().to_rust_string().contains("GID_E006");
+                let result = result.setup_2(AssetTable_Modes::combat(), god, false, CharacterAppearance::conditions());
+                if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, god.hash(), true) {
+                    person.flags.set(PersonalDressDataFlags::Dark, dlc_dark);
+                    result_hashes.insert(person.calc_hash());
+                    person.mpid = god.get_mid().to_rust_string();
+                    person.index = if dlc_dark { 2500 } else { 2000 } + god.index();
+                    person.count =
+                        if let Some(count) = mpid_count.get_mut(&person.mpid) { *count += 1;*count }
+                        else { mpid_count.insert(person.mpid.clone(), 0);0 };
+                    person.flags.set(PersonalDressDataFlags::HasThumbnail, !FaceThumbnail::get_3(god).is_null());
+                    person.flags.set(PersonalDressDataFlags::HasBondFace, has_bond_face);
+                    personal.push(person)
+                }
+                if god.get_flag().m_value() & 32 == 0 && !dlc_dark {
                     result.clear();
-                    let gid = god.get_gid();
-                    conditions.add_2(gid);
-                    conditions.add_2(god.get_mid());
-                    let asset = god.get_asset_id();
-                    if !asset.is_null() { conditions.add_2(asset); }
-                    if x > 0 { conditions.add_2(gender_con[x]); }
-                    result.commit(AssetTable_Modes::combat());
-                    result.replace(AssetTable_Modes::combat());
+                    let result = result.setup_2(AssetTable_Modes::combat(), god, true, CharacterAppearance::conditions());
                     if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, god.hash(), true) {
-                        let hash = person.calc_hash();
-                        if !result_hashes.contains(&hash) {
-                            person.data_hash = god.hash();
-                            person.emblem = true;
-                            if gid.contains("E00") && !god.get_ascii_name().is_null(){
-                                person.dark = true;
-                                person.mpid = format!("MGID_{}", god.get_ascii_name());
-                            }
-                            result_hashes.insert(hash);
+                        person.flags.set(PersonalDressDataFlags::Dark, true);
+                        let result_hash = person.calc_hash();
+                        if !result_hashes.contains(&result_hash) {
+                            result_hashes.insert(result_hash);
+                            person.flags.set(PersonalDressDataFlags::HasThumbnail, !FaceThumbnail::get_3(god).is_null());
+                            person.flags.set(PersonalDressDataFlags::HasBondFace, has_bond_face);
+                            person.mpid = god.get_mid().to_rust_string();
+                            person.index = god.index() + 2500;
                             person.count =
                                 if let Some(count) = mpid_count.get_mut(&person.mpid) { *count += 1;*count }
                                 else { mpid_count.insert(person.mpid.clone(), 0);0 };
-                            personal.push(person);
+                            personal.push(person)
                         }
                     }
                 }
             });
+
+        PersonData::get_list()
+            .iter()
+            .filter(|p| p.get_gender().value != 0 && il2str(p.get_name()).is_some_and(|v| !v.contains("Lueur")))
+            .for_each(|p|{
+                let result = AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), p.get_pid(), CharacterAppearance::conditions());
+                let belong = p.get_belong();
+                if let Some(mut person) = PersonalDressData::from_asset_table(result, hashes, p.hash(), false){
+                    let hash = person.calc_hash();
+                    if !result_hashes.contains(&hash) {
+                        result_hashes.insert(hash);
+                        person.index = p.index();
+                        person.flags.set(PersonalDressDataFlags::GenericPerson, !p.get_name().to_rust_string().contains("Boss") && !belong.is_null());
+                        person.flags.set(PersonalDressDataFlags::HasJob, !p.get_job().is_null());
+                        person.flags.set(PersonalDressDataFlags::HasThumbnail, !FaceThumbnail::get_2(p).is_null());
+                        let bond_face_path = format!("Telop/LevelUp/FaceThumb/{}", p.get_ascii_name());
+                        person.flags.set(PersonalDressDataFlags::HasBondFace, bond_face.contains(&bond_face_path));
+                        person.count =
+                            if let Some(count) = mpid_count.get_mut(&person.mpid) { *count += 1;*count }
+                            else { mpid_count.insert(person.mpid.clone(), 0);0 };
+                        personal.push(person);
+                    }
+                }
+            });
+        personal.sort_by(|a, b| a.index.cmp(&b.index));
         println!("Appearance Count: {}", personal.len());
         let job_list = engage::app::JobData::get_list();
         let mut transform: Vec<JobTransformData> = job_list.iter().flat_map(|j| JobTransformData::from_job(j)).collect();
-        engage::app::PersonData::get_list().iter().filter(|p| !p.get_job().is_null() && !p.get_aid().is_null())
+        PersonData::get_list().iter().filter(|p| !p.get_job().is_null() && !p.get_aid().is_null())
             .for_each(|p|{
                 let jhash = p.get_job().hash();
                 if !transform.iter().any(|c| c.hash == jhash) {
@@ -184,7 +232,7 @@ impl DressData {
         });
         Self { job, engaged, personal, transform}
     }
-    pub fn get_engaged_dress(&self, asset: unity::Il2CppString) -> Option<&EngagedDressData> {
+    pub fn get_engaged_dress(&self, asset: Il2CppString) -> Option<&EngagedDressData> {
         if asset.is_null() { None }
         else {
             let mut str = asset.to_string();
@@ -204,27 +252,25 @@ impl DressData {
             else { self.get_personal_dress_by_person(person, is_female) }
         }
     }
-    pub fn get_personal_dress_by_person(&self, person: engage::app::PersonData, female: bool) -> Option<&PersonalDressData> {
+    pub fn get_personal_dress_by_person(&self, person: PersonData, female: bool) -> Option<&PersonalDressData> {
         let is_lueur = person.index() == 1 || person.get_flag().m_value() & 128 != 0;
-        self.personal.iter().find(|x| x.hash == person.hash() && !x.generic && ((is_lueur && female == x.is_female) || (!is_lueur)))
-            .or_else(||
-                il2str(person.get_name())
-                    .and_then(|name|self.personal.iter().find(|x| !x.generic && x.mpid == name && female == x.is_female))
-            )
+        self.personal.iter().find(|x|
+            x.hash == person.hash() &&
+            (x.flags.contains(PersonalDressDataFlags::Lueur) == is_lueur) && (x.flags.contains(PersonalDressDataFlags::Female) == female)
+        ).or_else(||
+            il2str(person.get_name())
+                .and_then(|name|self.personal.iter().find(|x| x.mpid == name && x.flags.contains(PersonalDressDataFlags::Female) == female))
+        )
     }
     pub fn get_personal_dress_by_name(&self, name: &str, female: bool) -> Option<&PersonalDressData> {
-        self.personal.iter().find(|x| x.is_female == female && x.mpid == name)
+        self.personal.iter().find(|x| x.flags.contains(PersonalDressDataFlags::Female) == female && x.mpid == name)
     }
 }
 #[derive(Default, Clone)]
 pub struct PersonalDressData {
     pub mpid: String,
     pub data_hash: i32,
-    pub is_female: bool,
-    pub generic: bool,
-    pub emblem: bool,
-    pub morph: bool,
-    pub dark: bool,
+    pub flags: PersonalDressDataFlags,
     pub ubody: i32,
     pub ubody2: i32,
     pub uhair: i32,
@@ -240,6 +286,28 @@ pub struct PersonalDressData {
     pub voice: i32,
     pub engage_hair: i32,
     pub other_hashes: Vec<i32>,
+}
+bitflags! {
+    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    pub struct PersonalDressDataFlags: i32 {
+        const Female = 1;
+        const FromPerson = 1 << 1;
+        const FromGod = 1 << 2;
+        const Dark = 1 << 3;
+        const GenericPerson = 1 << 4;
+        const Morph = 1 << 5;
+        const Alt = 1 << 6;
+        const HasJob = 1 << 7;
+        const Lueur = 1 << 8;
+        const HasThumbnail = 1 << 9;
+        const HasBondFace = 1 << 10;
+    }
+
+}
+impl PersonalDressDataFlags {
+    pub fn valid_for_playable(&self) -> bool {
+        !self.contains(PersonalDressDataFlags::GenericPerson) && self.contains(PersonalDressDataFlags::HasJob)
+    }
 }
 impl PersonalDressData {
     pub fn calc_hash(&self) -> i64 {
@@ -257,7 +325,7 @@ impl PersonalDressData {
         let mut uhair = 0;
         if dress.contains("uBody_Swd0A") && dress.contains("c000") { generic_count += 1; }
         if head.contains("801") || head.contains("851") { generic_count += 1; }
-        if head.contains("c7") { self.morph = true; }
+        if head.contains("c7") { self.flags.set(PersonalDressDataFlags::Morph, true); }
         let hair = result.get_hair_model();
         if !hair.is_null() {
             let h = hair.get_hash_code();
@@ -266,17 +334,17 @@ impl PersonalDressData {
             if hash_list.hair.contains_key(&h) { uhair = h; }
         }
         if let Some(model) = try_find_accessory_model(result, "_Hair") {
-            let h = unity::Il2CppString::from(model).get_hash_code();
+            let h = Il2CppString::from(model).get_hash_code();
             if hash_list.hair.contains_key(&h) { uhair = h }
         }
         if generic_count >= 2 || ubody == 0 || uhead == 0 { return false; }
         self.ubody = ubody;
         self.uhead = uhead;
         self.uhair = uhair;
-        self.is_female = hash_list.female_u.contains(&ubody);
+        self.flags.set(PersonalDressDataFlags::Female, hash_list.female_u.contains(&ubody));
         for i in 0..5 {
             if let Some(model) = try_get_model_at_locator(result, ACC_LOC[i]){
-                let h = unity::Il2CppString::from(model).get_hash_code();
+                let h = Il2CppString::from(model).get_hash_code();
                 if hash_list.acc.contains_key(&h) { self.acc[i] = h; }
             }
         }
@@ -299,11 +367,10 @@ impl PersonalDressData {
     pub fn from_asset_table(result: AssetTable_Result, hash_list: &OutfitHashes, hash: i32, emblem: bool) -> Option<PersonalDressData> {
         let mut new = PersonalDressData::default();
         new.hash = hash;
-        new.emblem = emblem;
+        new.flags.set(PersonalDressDataFlags::FromGod, emblem);
+        new.flags.set(PersonalDressDataFlags::FromPerson, !emblem);
         new.mpid =
-            if emblem { engage::app::GodData::try_get_from_hash(hash).get_mid() }
-            else { engage::app::PersonData::try_get_from_hash(hash).get_name() }.to_rust_string();
-        
+            if emblem { GodData::try_get_from_hash(hash).get_mid() } else { PersonData::try_get_from_hash(hash).get_name() }.to_rust_string();
         if !new.process_from_asset_table(result, &hash_list) { None } else { Some(new) }
     }
     pub fn get_menu_name(&self) -> Il2CppString {
@@ -326,10 +393,86 @@ impl PersonalDressData {
             }
         }
     }
-    pub fn get_name(&self) -> Il2CppString {
-        if self.mpid.len() > 3 { engage::app::Mess::get(self.mpid.as_str()) }
-        else { "Unk".into() }
+    pub fn get_thumbnail_key(&self) -> Option<Sprite> {
+        if self.flags.contains(PersonalDressDataFlags::Lueur) && !self.flags.contains(PersonalDressDataFlags::Dark){
+            let mut key = "Lueur".to_string();
+            if self.flags.contains(PersonalDressDataFlags::Female) { key.push('W'); }
+            if self.flags.contains(PersonalDressDataFlags::Alt) || self.flags.contains(PersonalDressDataFlags::FromGod) {
+                key.push_str("_God");
+            }
+            let sprite = FaceThumbnail::s_face_thumb().try_get(key);
+            if sprite.is_null() { None } else { Some(sprite) }
+        }
+        else if self.flags.contains(PersonalDressDataFlags::HasThumbnail) {
+            if self.flags.contains(PersonalDressDataFlags::FromGod){
+                let sprite = FaceThumbnail::get_3(GodData::try_get_from_hash(self.hash));
+                if sprite.is_null() { None } else { Some(sprite) }
+            }
+            else if self.flags.contains(PersonalDressDataFlags::FromPerson){
+                let sprite = FaceThumbnail::get_2(PersonData::try_get_from_hash(self.hash));
+                if sprite.is_null() { None } else { Some(sprite) }
+            }
+            else {
+                let sprite =  FaceThumbnail::s_face_thumb().try_get("Phantom");
+                if sprite.is_null() { None } else { Some(sprite) }
+            }
+        }
+        else {
+            let sprite =  FaceThumbnail::s_face_thumb().try_get("Phantom");
+            if sprite.is_null() { None } else { Some(sprite) }
+        }
     }
+    pub fn get_bond_face_path(&self) -> Option<String> {
+        if self.flags.contains(PersonalDressDataFlags::Lueur) && !self.flags.contains(PersonalDressDataFlags::Dark){
+            let emblem = self.flags.contains(PersonalDressDataFlags::Alt) || self.flags.contains(PersonalDressDataFlags::FromGod);
+            let female = self.flags.contains(PersonalDressDataFlags::Female);
+            Some(format!("Telop/LevelUp/FaceThumb/{}Lueur{}", if emblem { "God" } else { "" }, if female { "W" } else { "" }))
+        }
+        else if self.flags.contains(PersonalDressDataFlags::HasBondFace) {
+            if self.flags.contains(PersonalDressDataFlags::FromGod) {
+                Some(TelopManager::get_bond_level_face_path_3(GodData::try_get_from_hash(self.hash)).to_rust_string())
+            }
+            else if self.flags.contains(PersonalDressDataFlags::FromPerson) {
+                let person = PersonData::try_get_from_hash(self.hash);
+                let mut key = "Telop/LevelUp/FaceThumb/".to_string();
+                key += person.get_ascii_name().to_rust_string().as_str();
+                Some(key)
+            }
+            else { None }
+        }
+        else { None }
+    }
+    pub fn get_unit_icon(&self, dark: bool) -> Option<String> {
+        if self.flags.contains(PersonalDressDataFlags::Lueur) {
+            let female = self.flags.contains(PersonalDressDataFlags::Female);
+            if self.flags.contains(PersonalDressDataFlags::Dark) || dark { Some(if female { "052Lueur_719" } else { "002Lueur_718"}.to_string() + "ShadowLord_NoWeapon") }
+            else if self.flags.contains(PersonalDressDataFlags::Alt) || self.flags.contains(PersonalDressDataFlags::FromGod){
+                Some(if female { "05" } else { "00" }.to_string() + "1LueurE_001Lueur_NoWeapon")
+            }
+            else { Some(if female { "052Lueur_601"} else { "001Lueur_600"}.to_string() + "DragonLord_NoWeapon") }
+        }
+        else if self.flags.contains(PersonalDressDataFlags::FromPerson) && self.flags.contains(PersonalDressDataFlags::HasJob) {
+            let person = PersonData::try_get_from_hash(self.hash);
+            let gender = person.get_gender();
+            let unit_icon = person.get_unit_icon_id();
+            let job = person.get_job();
+            let job_icon = job.get_unit_icon_id(gender.value == 2);
+            let weapon_icon = job.get_unit_icon_weapon_id();
+            Some(format!("{}_{}_{}", unit_icon, job_icon, weapon_icon))
+        }
+        else if self.flags.contains(PersonalDressDataFlags::FromGod){
+            let god = GodData::try_get_from_hash(self.hash);
+            let icon = god.get_unit_icon_id();
+            if self.flags.contains(PersonalDressDataFlags::Dark) || dark {
+                let key = format!("997Darkness_{}_NoWeapon", icon);
+                if engage::app::GameIcon::tyr_get_unit_icon_index(key.as_str()).is_null() { Some("997Darkness_711Shadow_NoWeapon".to_string()) }
+                else { Some(key) }
+            }
+            else { Some(format!("{}_{}_NoWeapon", icon, icon)) }
+        }
+        else { None }
+    }
+    pub fn get_name(&self) -> Il2CppString { engage::app::Mess::get(self.mpid.as_str()) }
     pub fn apply_appearance(&self, result: AssetTable_Result, mode: i32, promoted: bool, mount: Option<Mount>, outfit_hashes: &OutfitHashes, remove_empty_acc: bool) {
         self.apply(result, mode, promoted, mount, outfit_hashes);
         if mode == 2 {
@@ -349,7 +492,7 @@ impl PersonalDressData {
         }
         else {
             if let Some(ohair) = outfit_hashes.get_ohair(self.uhair).or_else(|| outfit_hashes.get_ohair(self.uhead)){ result.set_head_model(ohair); }
-            else if self.uhair != 0 { result.set_head_model( if self.is_female { "oHair_h850" } else { "oHair_h800" }); }
+            else if self.uhair != 0 { result.set_head_model( if self.flags.contains(PersonalDressDataFlags::Female) { "oHair_h850" } else { "oHair_h800" }); }
             for x in 0..4 {
                 if let Some(acc) = outfit_hashes.get_oacc(self.acc[x]){
                     result.commit_8(new_asset_table_accessory(acc.to_rust_string().as_str(), ACC_LOC[x]));
@@ -382,19 +525,19 @@ impl PersonalDressData {
         let person_hash = person.hash();
         self.other_hashes.contains(&person_hash) || self.hash == person_hash || il2str(person.get_name()).is_some_and(|name| name.to_string() == self.mpid)
     }
-    pub fn get_by_hash(hash: i32, emblem: bool, female: bool) -> Option<&'static PersonalDressData> {
-        if hash == 276380359 {
-            if female {
-
-            }
-            else {
-
-            }
-        }
-        else {
-            get_outfit_data().dress.personal.iter().find(|x| x.is_female == female && x.data_hash == hash && emblem == x.emblem)
-        }
-
+    pub fn get_male_indexes(for_playable: bool) -> Vec<usize> {
+        let db = &get_outfit_data().dress.personal;
+        db.iter().enumerate()
+            .filter(|v| !v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
+            .map(|v| v.0)
+            .collect()
+    }
+    pub fn get_female_indexes(for_playable: bool) -> Vec<usize> {
+        let db = &get_outfit_data().dress.personal;
+        db.iter().enumerate()
+            .filter(|v| v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
+            .map(|v| v.0)
+            .collect()
     }
 }
 pub struct JobTransformData {
@@ -410,10 +553,10 @@ impl JobTransformData {
         !has_condition_index(entry, c1) && !has_condition_index(entry, c2) &&
         Self::check_asset(entry.get_head_model()) && Self::check_asset(entry.get_head_model()) && Self::check_asset(entry.get_ride_dress_model())
     }
-    pub fn check_asset(asset: unity::Il2CppString) -> bool {
+    pub fn check_asset(asset: Il2CppString) -> bool {
         il2str(asset).is_none_or(|a| (a.contains("null") || a.contains("T_c")) && (!a.contains("AM") && !a.contains("AF")))
     }
-    pub fn from_person(person: engage::app::PersonData) -> Option<JobTransformData> {
+    pub fn from_person(person: PersonData) -> Option<JobTransformData> {
         if person.get_job().is_null() { return None; }
         let pid = il2str(person.get_pid()).filter(|x| x.ends_with("_竜化"))?;
         let aid = il2str(person.get_aid()).filter(|x| x.ends_with("竜化"))?;

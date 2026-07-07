@@ -36,6 +36,7 @@ use engage::{
     tm_pro::{ITMP_Text, ITMP_TextMethods},
     prelude::{Cast, Object},
 };
+use engage::app::{ItemData, JobData, Unit};
 use unity::{field_set_value_at_offset, ClassIdentity, FromIlInstance, Il2CppString, IlNull, IntPtr, SystemObject};
 use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
 use crate::data::change_root::create_accessory_shop_change_root_proc;
@@ -526,7 +527,19 @@ pub fn hub_room_set_by_result(result: Option<AssetTable_Result>, reload_type: Re
     }
     else { force_load(result, reload_type); }
 }
-
+pub fn update_class_change_person(unit: Unit, job: JobData) {
+    if !unit.is_null() || job.is_null() { return; }
+    let info = engage::app::UnitInfo::get_instance();
+    let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
+    unit.class_change(job, ItemData::null());
+    let result = AssetTable_Result::get_for_unit_info(unit);
+    let character = CharacterFactoryAsync_2::create_common(result, "PID_不明", char_model_window.m_game_object(), false, false, false);
+    let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
+    create_character_object.set_character(character);
+    create_character_object.set_unit_info_window(char_model_window);
+    let action = engage::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
+    character.call_on_setup_done(action);
+}
 #[unity::inject(namespace = "App", name = "CreateUnitInfoModel", parent=Object)]
 pub struct CreateUnitInfoModel {
     pub unit_info_window: UnitInfoWindowCharaModel,

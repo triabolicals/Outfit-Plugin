@@ -35,7 +35,7 @@ engage-il2cpp = { path = "/Users/trile/Project/lib/engage-il2cpp", features = [
     "app-photographsequence", "app-photographeditdisposmenu", "app-photographcameracontroller", "app-photographdisposinfo", "app-photographtopsequence",
     "combat-characterfactoryasync", "app-photographpausedata", "app-gameuserdata-types",
     "root_motion-final_ik-lookatik", "app-gamesound", "app-keyhelpdata", "app-keyhelptitlebarcontroller", "app-keyhelp", "app-language", "app-language-types", "app-unitedit",
-    "app-mapterraininfo",
+    "app-mapterraininfo", "app-spriteatlasmanager_2",
 ] }
 unity-nx = { git = "https://github.com/DivineDragonFanClub/unity2", tag="0.1.1"}
 

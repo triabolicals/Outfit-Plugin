@@ -3,13 +3,16 @@ use engage::{
     combat::Kaneko, nn::hid::NpadButton,
     unity_engine::{IGameObjectMethods, IRectTransformMethods, Transform}
 };
-use engage::prelude::{ClassIdentity, Il2CppString};
+use engage::prelude::Il2CppString;
 use unity::{
     Cast, ClassIdentity, system::string::IIl2CppStringMethods, il2cpp::VirtualInvoke
 };
 pub trait Randomizer<T> {
     fn get_random_element(&self, rng: Random_2) -> Option<&T>;
     fn get_remove(&mut self, rng: Random_2) -> Option<T>;
+    fn get_remove_filter(&mut self, rng: Random_2, filter: impl Fn(&T) -> bool ) -> Option<T>;
+    fn get_filter(&self, rng: Random_2, filter: impl Fn(&T) -> bool) -> Option<&T>;
+    fn shuffle(&mut self, rng: Random_2, cycles: i32);
 }
 
 impl<T> Randomizer<T> for Vec<T> {
@@ -23,6 +26,26 @@ impl<T> Randomizer<T> for Vec<T> {
         let selection = if len > 1 { rng.get_value_2( len as i32) as usize } else { 0 };
         if len > 0 { Some(self.swap_remove(selection)) }
         else { None }
+    }
+    fn get_remove_filter(&mut self, rng: Random_2, filter: impl Fn(&T) -> bool ) -> Option<T> {
+        let list: Vec<usize> = self.iter().enumerate()
+            .filter(|(_, element)| filter(element))
+            .map(|(index, element)| index).collect();
+
+        list.get_random_element(rng).map(|&index| self.remove(index))
+    }
+    fn get_filter(&self, rng: Random_2, filter: impl Fn(&T) -> bool ) -> Option<&T> {
+        let list: Vec<usize> = self.iter().enumerate()
+            .filter(|(_, element)| filter(element))
+            .map(|(index, element)| index).collect();
+        list.get_random_element(rng).and_then(|&index| self.get(index))
+    }
+    fn shuffle(&mut self, rng: Random_2, cycle: i32) {
+        let range = self.len();
+        if cycle == 0 || range < 4 { return; }
+        for _ in 0..cycle {
+            for x in 0..range { self.swap(x, rng.get_value_2(range as i32) as usize); }
+        }
     }
 }
 /*

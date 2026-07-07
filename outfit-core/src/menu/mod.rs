@@ -57,7 +57,6 @@ use engage::{
 	},
 };
 use engage::app::IMapTerrainInfoMethods;
-use engage::prelude::ClassIdentity;
 use unity::{Cast, ClassIdentity, FromIlInstance, IlNull, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 

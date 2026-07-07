@@ -38,7 +38,7 @@ engage-il2cpp = { path = "/Users/trile/Project/lib/engage-il2cpp", features = [
     "combat-characterproportion", "app-talk3_d-characterfactoryasync_2", "app-unitinfowindowcharamodel-types",
     "system-action", "app-unitinfowindowcharaupdater", "app-bitstruct", "app-unitaccessory", "app-unitaccessorylist", "app-pad", "app-sortieutil",
     "app-titlebar", "app-ut", "combat-animsetdb", "app-mainsequence", "combat-combatrecord", "app-battlecalculator", "app-battleside", "combat-side",
-    "combat-charactergamestatus",
+    "combat-charactergamestatus", "app-spriteatlasmanager_2", "app-telopmanager",
 ] }
 
 
