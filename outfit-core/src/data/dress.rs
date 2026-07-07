@@ -128,11 +128,13 @@ impl DressData {
                         e.condition_indexes.has_condition_index(condition) &&
                             (e.ride_dress_model.is_some() || e.dress_model.is_some_and(|e| e.str_contains("M_c") || e.str_contains("F_c"))))
                         .for_each(|e|{
-                            if let Some(ride_dress) = e.ride_dress_model.as_ref() { mode_2r = Some(ride_dress.to_string()); }
+                            if let Some(ride_dress) = e.ride_dress_model.as_ref() {
+                                if mode_2r.is_none() { mode_2r = Some(ride_dress.to_string()); }
+                            }
                             if let Some(dress) = e.dress_model.as_ref() {
                                 let lower = dress.to_string().to_lowercase();
-                                if lower.contains("m_c")  { mode_2m = Some(dress.to_string()); }
-                                else if lower.contains("f_c") { mode_2f = Some(dress.to_string()); }
+                                if lower.contains("m_c") && mode_2m.is_none() { mode_2m = Some(dress.to_string()); }
+                                else if lower.contains("f_c") && mode_2f.is_none() { mode_2f = Some(dress.to_string()); }
                             }
                         });
                     sf.search_lists[1].iter().filter(|e|
@@ -142,8 +144,8 @@ impl DressData {
                             if let Some(ride_body) = e.ride_model.as_ref() { mode_1r = Some(ride_body.to_string()); }
                             if let Some(body) = e.body_model.as_ref() {
                                 let lower = body.to_string().to_lowercase();
-                                if lower.contains("m_c")  { mode_1m = Some(body.to_string()); }
-                                else if lower.contains("f_c") { mode_1f = Some(body.to_string()); }
+                                if lower.contains("m_c") && mode_1m.is_none() { mode_1m = Some(body.to_string()); }
+                                else if lower.contains("f_c") && mode_1f.is_none() { mode_1f = Some(body.to_string()); }
                             }
                         });
                     let mount = mode_2r.as_ref().map(|s| Mount::determine_mount(s.as_str())).unwrap_or(Mount::None);
@@ -153,8 +155,8 @@ impl DressData {
                                 hash, mount, gender,
                                 hair_color: 0,
                                 dress_model: mode_2m.unwrap(),
-                                ride_dress: mode_1r.clone(),
-                                ride_body: mode_2r.clone(),
+                                ride_dress: mode_2r.clone(),
+                                ride_body: mode_1r.clone(),
                                 body_model: mode_1m,
                             }
                         );
@@ -165,8 +167,8 @@ impl DressData {
                                 hash, mount, gender,
                                 hair_color: 0,
                                 dress_model: mode_2f.unwrap(),
-                                ride_dress: mode_1r,
-                                ride_body: mode_2r,
+                                ride_dress: mode_2r,
+                                ride_body: mode_1r,
                                 body_model: mode_1f,
                             });
                     }
@@ -419,7 +421,6 @@ impl JobTransformData {
                 .map(|x| x.parent.index)
         );
         if !asset_table.is_empty() {
-            println!("Adding transformation from person: {} for {}", Mess::get_name(pid.as_str()), Mess::get_name(job.jid));
             Some(Self{ is_transform: true, hash: job.parent.hash, asset_table, item: None })
         }
         else { None }
@@ -475,9 +476,7 @@ impl JobTransformData {
                     })
             );
         }
-        if !asset_table.is_empty() {
-            println!("JobTransformation Added: {} [Monster: {}]", Mess::get_name(job_data.jid), !is_transform);
-            Some(Self{ is_transform, hash, asset_table, item: None, }) }
+        if !asset_table.is_empty() { Some(Self{ is_transform, hash, asset_table, item: None, }) }
         else { None }
 
     }

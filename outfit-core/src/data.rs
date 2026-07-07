@@ -8,6 +8,7 @@ pub use engage::{
     gamevariable::GameVariableManager,
     random::Random
 };
+use std::io::Write;
 pub use super::*;
 
 mod color;
@@ -537,6 +538,20 @@ impl OutfitData {
         if self.hashes.aoc_m.contains(&hashcode) { Some(Gender::Male) }
         else if self.hashes.aoc_f.contains(&hashcode) { Some(Gender::Female) }
         else { None }
+    }
+    pub fn export(&self) {
+        let path = format!("{}/job.dat", OUTPUT_DATA);
+        if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(path){
+            self.dress.job.iter().for_each(|j|{
+                if let Some(job) = JobData::try_get_hash(j.hash) {
+                    writeln!(&mut file, "Job #{}: {} {} ({}) [{}]", job.parent.index, Mess::get(job.name), j.gender, job.jid, j.mount).unwrap();
+                    writeln!(&mut file, "\tDress Model: {}", j.dress_model).unwrap();
+                    if let Some(body) = j.body_model.as_ref() { writeln!(&mut file, "\tBody Model: {}", body).unwrap(); }
+                    if let Some(ride) = j.ride_body.as_ref() { writeln!(&mut file, "\tRide Body Model: {}", ride).unwrap(); }
+                    if let Some(ride) = j.ride_dress.as_ref() { writeln!(&mut file, "\tRide Dress Model: {}", ride).unwrap(); }
+                }
+            });
+        }
     }
 }
 

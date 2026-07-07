@@ -78,7 +78,6 @@ pub struct OtherAssetItem {
     pub asset: AssetItem,
     pub is_mess: bool,
     pub female: bool,
-
 }
 impl OtherAssetItem {
     pub fn new(label: impl AsRef<str>, asset: impl AsRef<str>, female: bool, flags: i32, is_mess: bool) -> Option<Self> {

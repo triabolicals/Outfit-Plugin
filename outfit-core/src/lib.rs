@@ -79,6 +79,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     OUTFIT_DATA.get_or_init(|| {
         init = true;
         let data = OutfitData::init();
+        data.export();
         data
     });
 
