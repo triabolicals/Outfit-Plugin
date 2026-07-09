@@ -44,19 +44,11 @@ pub const INPUT_DIR: &str = "sd:/engage/outfits/input/";
 pub const CAPTURE_DIR: &str = "sd:/engage/outfits/capture/";
 pub const THUMB_DIR: &str = "sd:/engage/outfits/capture/face/";
 pub use menu::items::AssetType;
+pub use data::PersonalDressDataFlags;
+
 use crate::photo::CreatePhotographCharacter;
 use crate::room::CreateUnitInfoModel;
 
-extern "C" {
-    fn cobapi_register_injected_class(
-        namespace: *const u8,
-        namespace_len: usize,
-        name: *const u8,
-        name_len: usize,
-        class: *mut unity::il2cpp::class::Il2CppClass,
-        parent_ctor: *const unity::MethodInfo,
-    ) -> bool;
-}
 pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
 pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| OutfitData::init()) }
@@ -69,34 +61,24 @@ fn photo_on(_proc: engage::app::ProcInst, _optional_method: unity::OptionalMetho
     UnitAssetMenuData::init_photo_profiles();
 }
 
-pub fn register<T: InjectedClass>() -> Option<Class> {
-    let class = build::<T>();
-    let parent_ctor: Option<&'static unity::MethodInfo> =
-        T::Parent::class().raw().get_method_from_name(".ctor", 0).map(|mi| &*mi);
-    let registered = unsafe {
-        cobapi_register_injected_class(
-            T::NAMESPACE.as_ptr(),
-            T::NAMESPACE.len(),
-            T::NAME.as_ptr(),
-            T::NAME.len(),
-            class.raw_mut(),
-            parent_ctor.map_or(core::ptr::null(), |m| m as *const unity::MethodInfo),
-        )
-    };
-    registered.then_some(class)
-}
 pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     UnitAssetMenuData::get().is_dvc = is_dvc;
+    let _ = std::fs::create_dir_all(OUTPUT_ASSET_TABLE_DIR);
+    let _ = std::fs::create_dir_all(OUTPUT_DATA);
+    let _ = std::fs::create_dir_all(INPUT_DIR);
+    let _ = std::fs::create_dir_all(CAPTURE_DIR);
+    let _ = std::fs::create_dir_all(THUMB_DIR);
+    skyline::install_hooks!(appearance_create_from_result);
+    println!("Installing Outfit Plugin v{} ...", VERSION);
     if UnitAssetMenuData::get().init {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
-    if register::<CreateUnitInfoModel>().is_none() { println!("[Outfit] CreateUnitInfoModel was already registered"); }
-    if register::<CustomAssetMenu>().is_none() { println!("[Outfit] CustomAssetMenu was already registered"); }
-    if register::<CustomAssetMenuItem3>().is_none() { println!("[Outfit] CustomAssetMenuItem was already registered"); }
-    if register::<CreatePhotographCharacter>().is_none() { println!("[Outfit] CreatePhotographCharacter was already registered"); }
-
-    skyline::install_hooks!(appearance_create_from_result);
+    println!("Registering Classes...");
+    if cobapi::injection::register::<CreateUnitInfoModel>().is_ok() {}
+    if cobapi::injection::register::<CustomAssetMenu>().is_ok() {}
+    if cobapi::injection::register::<CustomAssetMenuItem3>().is_ok() {}
+    if cobapi::injection::register::<CreatePhotographCharacter>().is_ok() {}
     let klass = Class::lookup("App", "GameUserData");
     let vtable = klass.raw_mut().get_vtable_mut();
     vtable[4].method_ptr = game_user_data_version as _;
@@ -104,18 +86,13 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     vtable[11].method_ptr = game_user_data_on_serialize as _;
 
     let mut init = false;
-    println!("Installing Outfit Plugin v{} ...", VERSION);
     OUTFIT_DATA.get_or_init(|| {
         init = true;
         let data = OutfitData::init();
         data
     });
 
-    let _ = std::fs::create_dir_all(OUTPUT_ASSET_TABLE_DIR);
-    let _ = std::fs::create_dir_all(OUTPUT_DATA);
-    let _ = std::fs::create_dir_all(INPUT_DIR);
-    let _ = std::fs::create_dir_all(CAPTURE_DIR);
-    let _ = std::fs::create_dir_all(THUMB_DIR);
+
     let vtable = PhotographTopSequence::class().raw_mut().get_vtable_mut();
     vtable[10].method_ptr = photo_off as _;
     vtable[11].method_ptr = photo_on as _;

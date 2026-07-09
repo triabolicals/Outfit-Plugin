@@ -9,6 +9,7 @@ use engage::{
     prelude::Il2CppString,
     unity_engine::Sprite
 };
+use engage::app::Mess;
 use unity::{Cast};
 use unity::system::string::IIl2CppStringMethods;
 use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32, get_outfit_data};
@@ -183,14 +184,15 @@ impl DressData {
                 search_lists.get(2).iter()
                     .filter(|e|
                         has_condition_index(*e, condition) &&
-                        (!e.get_ride_dress_model().is_null() || il2str(e.get_dress_model()).is_some_and(|v|{ let l = v.to_lowercase();  l.contains("m_c") || v.contains("f_c") }))
+                        (!e.get_ride_dress_model().is_null() || il2str(e.get_dress_model()).is_some_and(|v|{
+                            let l = v.to_lowercase();  l.contains("m_c") || v.contains("f_c") }))
                     )
                     .for_each(|e|{
-                        if let Some(ride_dress) = il2str(e.get_ride_dress_model()) { mode_2r = Some(ride_dress); }
+                        if let Some(ride_dress) = il2str(e.get_ride_dress_model()) { if mode_2r.is_none() { mode_2r = Some(ride_dress); } }
                         if let Some(dress) = il2str(e.get_dress_model()) {
                             let lower = dress.to_lowercase();
-                            if lower.contains("m_c") { mode_2m = Some(dress); }
-                            else if lower.contains("f_c") { mode_2f = Some(dress); }
+                            if lower.contains("m_c") && mode_2m.is_none() { mode_2m = Some(dress); }
+                            else if lower.contains("f_c") && mode_2f.is_none()  { mode_2f = Some(dress); }
                         }
                     });
                 search_lists.get(1).iter()
@@ -199,11 +201,11 @@ impl DressData {
                         (!e.get_ride_model().is_null() || il2str(e.get_body_model()).is_some_and(|v|{ let l = v.to_lowercase();  l.contains("m_c") || v.contains("f_c") }))
                     )
                     .for_each(|e| {
-                        if let Some(ride) = il2str(e.get_ride_model()) { mode_1r = Some(ride); }
+                        if let Some(ride) = il2str(e.get_ride_model()) { if mode_1r.is_none() { mode_1r = Some(ride); } }
                         if let Some(body) = il2str(e.get_body_model()) {
                             let lower = body.to_lowercase();
-                            if lower.contains("m_c")  { mode_1m = Some(body); }
-                            else if lower.contains("f_c") { mode_1f = Some(body); }
+                            if lower.contains("m_c") && mode_1m.is_none() { mode_1m = Some(body); }
+                            else if lower.contains("f_c") && mode_1f.is_none() { mode_1f = Some(body); }
                         }
                     });
                     let mount = mode_2r.as_ref().map(|s| Mount::determine_mount(s.as_str())).unwrap_or(Mount::None);
@@ -228,6 +230,9 @@ impl DressData {
                                 body_model: mode_1f,
                             });
                     }
+            }
+            else {
+                println!("JID is not contained in the AssetTable");
             }
         });
         Self { job, engaged, personal, transform}
@@ -288,7 +293,7 @@ pub struct PersonalDressData {
     pub other_hashes: Vec<i32>,
 }
 bitflags! {
-    #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct PersonalDressDataFlags: i32 {
         const Female = 1;
         const FromPerson = 1 << 1;
@@ -302,7 +307,9 @@ bitflags! {
         const HasThumbnail = 1 << 9;
         const HasBondFace = 1 << 10;
     }
-
+}
+impl Default for PersonalDressDataFlags {
+    fn default() -> Self { PersonalDressDataFlags::empty() }
 }
 impl PersonalDressDataFlags {
     pub fn valid_for_playable(&self) -> bool {
@@ -624,7 +631,7 @@ impl JobTransformData {
             );
         }
         if !asset_table.is_empty() {
-            println!("Adding trans for Class: {} [monster: {}]", engage::app::Mess::get_game_data_name(job_data.get_jid()), is_transform);
+            println!("Adding trans for Class: {} [transformation: {}]", engage::app::Mess::get_game_data_name(job_data.get_jid()), is_transform);
             Some(Self{ is_transform, hash, asset_table, item: None})
         }
         else { None }

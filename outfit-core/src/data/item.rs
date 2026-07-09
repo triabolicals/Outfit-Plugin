@@ -203,7 +203,8 @@ impl ItemAsset {
         engage::app::ItemData::get_list().iter().flat_map(|i| Self::from_item(i)).collect()
     }
     pub fn from_item(data: engage::app::ItemData) -> Option<Self> {
-        let i = get_condition_index(data.get_iid()).or_else(|| get_condition_index(data.get_aid()))?;
+        println!("Itemasset: {}", data.index());
+        let i = crate::get_condition_index2(data.get_iid()).or_else(|| crate::get_condition_index2(data.get_aid()))?;
         let sf = engage::app::AssetTable::s_search_lists();
         let entry  = sf.get(2).iter().find(|x| has_condition_index(*x, i)).map(|x| x.index())?;
         Some(Self { entry, hash: data.hash(), kind: data.get_kind().value })

@@ -100,6 +100,15 @@ pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool, map: 
     }
     None
 }
+pub fn get_condition_index2(condition: unity::Il2CppString) -> Option<i32> {
+    if condition.is_null() { None }
+    else {
+        let (found, idx) =
+            AssetTable::s_condition_indexes().try_get_value(condition.into());
+        if found { Some(idx) } else { None }
+    }
+
+}
 pub fn get_condition_index(condition: impl Into<unity::Il2CppString>) -> Option<i32> {
     let (found, idx) =
     AssetTable::s_condition_indexes().try_get_value(condition.into());

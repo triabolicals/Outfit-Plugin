@@ -28,7 +28,7 @@ pub use item::*;
 pub use list::*;
 
 use anim::AnimData;
-use crate::data::dress::{DressData, JobDressData};
+pub use crate::data::dress::{PersonalDressDataFlags, DressData, JobDressData};
 use crate::enums::Mount;
 
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
@@ -249,10 +249,13 @@ impl OutfitData {
                 }
             });
         let dress = DressData::init(&mut hashes);
+        println!("Finished with DressData");
         let anims = AnimData::init(&mut assets);
+        println!("Finished with Anims");
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
+        println!("Finished with Outfit Plugin Data");
         Self {
             dress, anims, hashes,
             list: new_list,
