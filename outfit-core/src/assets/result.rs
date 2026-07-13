@@ -3,8 +3,21 @@ use engage::{
     system::collections::generic::IList_1,
     unity_engine::Color
 };
-use unity::{Cast, Il2CppString};
+use unity::{Cast, Il2CppString, OptionalMethod};
 use crate::new_asset_table_accessory;
+
+pub fn get_result_hash(result: AssetTable_Result, optional_method: OptionalMethod) -> i32 {
+    let mut hash = unsafe { AssetTable_Result::get_hash_code(result) };
+    for x in 0..16 {
+        let scale = get_result_scale_u16(result, x) as i32 / 10;
+        hash = hash.wrapping_add( scale + (10 * x as i32));
+    }
+    for x in 0..8 {
+        let color = get_result_color_i32(result, x);
+        hash = hash.wrapping_add( color + (10 * (x as i32 + 16)));
+    }
+    hash
+}
 
 pub fn set_color_by_u8_slice(result: AssetTable_Result, idx: usize, v: [u8; 4]) {
     set_color_by_u8(result, idx, v[0], v[1], v[2]);

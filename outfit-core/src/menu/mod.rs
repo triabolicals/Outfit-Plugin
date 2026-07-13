@@ -57,6 +57,7 @@ pub(crate) mod items;
 mod icons;
 mod keyhelp;
 mod control;
+mod proc;
 
 pub use menuitem::*;
 pub use items::*;
@@ -64,6 +65,7 @@ pub use equipment_box::*;
 pub use keyhelp::*;
 pub use control::*;
 use crate::data::room::hub_room_set_by_result;
+use crate::menu::proc::OutfitSequence;
 use crate::room::ReloadType;
 
 #[unity::inject(namespace = "App", name = "CustomAssetMenu", parent = AccessoryShopChangeMenu)]
@@ -134,7 +136,7 @@ impl CustomAssetMenu {
 			menu.create_bind(proc, descs, "OutfitMenu");
 			menu_data.control.initialize(MenuMode::UnitInfo);
 			UnitInfo::chara_only_on(false);
-			if engage::app::GameUserData::get_instance().get_sequence().value != 3 { engage::app::UnitStatus::close(); }
+			if GameUserData::get_instance().get_sequence().value != 3 { engage::app::UnitStatus::close(); }
 			let sortie: engage::app::SortieSequenceUnitSelect = engage::app::SortieSequenceUnitSelect::get_instance();
 			if !sortie.is_null() { sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(false); }
 			let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
@@ -153,7 +155,7 @@ impl CustomAssetMenu {
 			if !info.is_null() { info.hide_all(); }
 		}
 	}
-	pub fn create_photo_graph_bind(proc: impl Into<engage::app::ProcInst>) {
+	pub fn create_photo_graph_bind(proc: impl Into<ProcInst>) {
 		let menu_data = UnitAssetMenuData::get();
 		UnitAssetMenuData::init_photo_profiles();
 		if let Some(root) = Self::get_root() {
@@ -280,33 +282,7 @@ impl CustomAssetMenu {
 		if !self.unit_name().is_null() { self.unit_name().set_text(next.get_name()); }
 		engage::app::GameSound::post_event("Chara_Change", engage::combat::Character::null());
 	}
-	pub fn try_create_unit_info_bind(proc: impl Into<ProcInst>) -> Option<ProcInst> {
-		if UnitAssetMenuData::get_unit().is_some() {
-			let proc_inst = ProcInst::new();
-			let descs =
-				[
-					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::load_resources).unwrap()),
-					Proc::wait_while_true_2(ProcBoolMethod::from_fn(proc_inst, Self::is_loading).unwrap()),
-					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::unit_info_bind).unwrap()),
-					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::unload_accessory).unwrap()),
-					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::restore_previous).unwrap()),
-					Proc::end()
-				];
-			let descs_array: Array<ProcDesc> = Array::from_slice(&descs).unwrap();
-			proc_inst.create_bind(proc, descs_array, "OutfitSequence");
-			Some(proc_inst)
-		}
-		else { None }
-	}
-	extern "C" fn unit_info_bind(proc: ProcInst, _optional_method: OptionalMethod) {
-		let unit = UnitAssetMenuData::get_unit().unwrap();
-		Self::create_bind_unit_info(proc, unit);
-	}
-	extern "C" fn unload_accessory(_proc: ProcInst, _optional_method: OptionalMethod) { AccessoryShopChangeRoot::unload_prefab(); }
-	extern "C" fn load_resources(_proc: ProcInst, _optional_method: OptionalMethod) { AccessoryShopChangeRoot::load_prefab_async(); }
-	extern "C" fn is_loading(_proc: ProcInst, _optional_method: OptionalMethod) -> bool { AccessoryShopChangeRoot::is_loading_prefab() }
-	extern "C" fn restore_previous(proc: ProcInst, _optional_method: OptionalMethod){
-		AccessoryShopChangeRoot::unload_prefab();
+	pub fn open_sortie_unit_select() {
 		UnitInfo::chara_only_off();
 		let sortie = engage::app::SortieSequenceUnitSelect::get_instance();
 		if !sortie.is_null() {
@@ -328,14 +304,25 @@ impl CustomAssetMenu {
 					let new_item = sortie_unit_select_menu.get_menu_item(new_select);
 					if !new_item.is_null() { new_item.on_select(); }
 				}
+				IBasicMenu::set_m_suspend(sortie_unit_select_menu, 0); // sortie_unit_select_menu.set_m_suspend(0);
 				sortie_unit_select_menu.adjust_scroll_index();
 				sortie_unit_select_menu.scroll_instant();
 				sortie_unit_select_menu.open_anime_all();
 				UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
 			}
 		}
-		else { TitleBar::get_instance().close_header(); }
-		if let Some(menu) = proc.get_super().try_cast::<BasicMenu>() { BasicMenuExt::open_anime_all(menu); }
+		else {
+			let map_mind = engage::app::MapMind::get_instance();
+			if !map_mind.is_null() {
+				let unit = map_mind.get_unit();
+				if !unit.is_null() {
+					UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
+					UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
+				}
+			}
+			TitleBar::get_instance().close_header();
+		}
+
 	}
 }
 #[unity::injected_methods]
@@ -391,12 +378,13 @@ impl CustomAssetMenu{
 				}
 				let name = engage::unity_engine::GameObject::find("CharacterName");
 				if !name.is_null() { engage::unity_engine::Object_2::destroy_2(name); }
-
+				Self::open_sortie_unit_select();
 				BackgroundManager::unbind();
 			}
             MenuMode::PhotoGraph => { TitleBar::get_instance().close_header(); }
 			_ => {}
 		}
+		menu.menu_adj = 0.0;
 	}
 	#[override_virtual(name = "OnBuild")]
 	pub fn on_build(self) {
@@ -531,31 +519,8 @@ fn model_camera_control(rgb: bool) -> bool {
 	rl_stick
 }
 pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
-	if GameUserData::get_instance().get_sequence().value == 3 {
-		let map_mind = engage::app::MapMind::get_instance();
-		if !map_mind.is_null() {
-			let unit = map_mind.get_unit();
-			if !unit.is_null() {
-				UnitAssetMenuData::set_unit(map_mind.get_unit());
-				if CustomAssetMenu::try_create_unit_info_bind(this.m_menu()).is_some() {
-					return BasicMenu_Result::close_decide();
-				}
-			}
-		}
-	}
-	else {
-		let sortie = SortieSelectionUnitManager::get_instance();
-		if !sortie.is_null() {
-			let unit = sortie.m_unit();
-			if !unit.is_null() {
-				UnitAssetMenuData::set_unit(unit);
-				if CustomAssetMenu::try_create_unit_info_bind(this.m_menu()).is_some() {
-					return BasicMenu_Result::close_decide();
-				}
-			}
-		}
-	}
-	BasicMenu_Result::se_miss()
+	if OutfitSequence::create_bind(this.m_menu()).is_some() { BasicMenu_Result::close_decide() }
+	else { BasicMenu_Result::se_miss() }
 }
 
 pub fn add_sub_unit_menu_item(proc: engage::app::ProcInst) {

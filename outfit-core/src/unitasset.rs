@@ -10,7 +10,6 @@ use engage::{
     system::collections::generic::IList_1,
     app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager}
 };
-use engage::app::GameUserData;
 use unity::Cast;
 pub use crate::playerdata::*;
 use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
@@ -364,7 +363,6 @@ impl UnitAssetMenuData {
     pub fn set_unit(unit: engage::app::Unit) -> bool {
         if unit.is_null() || unit.get_person().is_null() { false }
         else {
-            println!("Setting Unit: {}", unit.get_name());
             Self::set_by_hash(unit.get_person().hash())
         }
     }
@@ -392,7 +390,10 @@ impl UnitAssetMenuData {
                 let mut color: i32 = 0;
                 let k = kind as usize;
                 if k < 8 {
-                    for x in 0..3 { color += data.preview.color_preview[4*kind as usize + x] as i32; }
+                    for x in 0..3 { color |= ( data.preview.color_preview[4*kind as usize + x] as i32) << (8*x) }
+                    println!("Reloading Color {}: {} {} {}", kind, data.preview.color_preview[4*kind as usize],
+                        data.preview.color_preview[4*kind as usize + 1], data.preview.color_preview[4*kind as usize + 2]
+                    );
                     if color > 0 { set_color_by_i32(result, k, color); }
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
@@ -421,12 +422,10 @@ impl UnitAssetMenuData {
                 }
             }
             ReloadPreview::LoadedData => {
-                println!("Loaded Data Reload");
                 if let Some(loaded) = data.loaded_data.selected_index.and_then(|i| data.loaded_data.loaded_data.get_mut(i as usize)) {
                     let flag = loaded.data.flag;
                     loaded.data.flag |= 193;
                     loaded.data.set_result(result, 2, false, false);
-                    println!("Result Set");
                     loaded.data.flag = flag;
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
@@ -661,7 +660,9 @@ impl UnitAssetMenuData {
                 }
                 for x in 0..19 {
                     let v = crate::get_asset_table_scale_u16(e, x);
-                    if v < 10 && v >= 1000 { menu.original_scaling[x] = 100; } else { menu.original_scaling[x] = v; }
+                    if v == 0 { continue; }
+                    if v < 10 && v >= 1000 { menu.original_scaling[x] = 100; }
+                    else { menu.original_scaling[x] = v; }
                 }
                 for x in 0..8 {
                     let color = crate::get_asset_table_color_u8_slice(e, x);

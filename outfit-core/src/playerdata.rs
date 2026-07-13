@@ -200,6 +200,7 @@ impl PlayerOutfitData {
         !not_empty
     }
     pub fn deserialize(stream: Stream_2, version: i32) -> Self {
+        let start = stream.get_position();
         let mut flag = stream.read_int();
         let ubody = stream.read_int();
         let uhead = stream.read_int();
@@ -240,6 +241,7 @@ impl PlayerOutfitData {
                 }
             }
         }
+        // 165663
         if version < 10 {
             if flag & 1 != 0 {
                 for x in 0..8 { if colors[x].has_color() { colors[x].values[3] = 1; } }
@@ -253,23 +255,29 @@ impl PlayerOutfitData {
             }
             flag &= !513;
         }
+        let end = stream.get_position();
+        println!("Start at: {} -> {} [{}]", start, end, end-start);
         Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt, expression }
     }
     pub fn serialize(&self, stream: Stream_2) {
-        stream.write_int(self.flag);
-        stream.write_int(self.ubody);
-        stream.write_int(self.uhead);
-        stream.write_int(self.uhair);
-        stream.write_int(self.rig);
-        self.aoc.iter().for_each(|a|{ stream.write_int(*a); });
-        self.colors.iter().for_each(|c|{ c.serialize(stream); });
-        self.scale.iter().for_each(|s|{ stream.write_ushort(*s); });
-        self.expression.iter().for_each(|c|{ stream.write8(*c); });
-        stream.write_int(self.break_body);
-        self.acc.iter().for_each(|a| { stream.write_int(*a); });
-        self.mount.iter().for_each(|m|{ stream.write_int(*m); });
-        stream.write_int(self.voice);
-        self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); });
+        println!("Start at: {}", stream.get_position());
+        let start =  stream.get_position();
+        stream.write_int(self.flag);    // 4
+        stream.write_int(self.ubody);   // 8
+        stream.write_int(self.uhead);   // 12
+        stream.write_int(self.uhair);   // 16
+        stream.write_int(self.rig); // 20
+        self.aoc.iter().for_each(|a|{ stream.write_int(*a); }); // 36
+        self.colors.iter().for_each(|c|{ c.serialize(stream); });   // 132
+        self.scale.iter().for_each(|s|{ stream.write_ushort(*s); });    // 164
+        self.expression.iter().for_each(|c|{ stream.write8(*c); }); // 168
+        stream.write_int(self.break_body);  // 172
+        self.acc.iter().for_each(|a| { stream.write_int(*a); });    // 192
+        self.mount.iter().for_each(|m|{ stream.write_int(*m); });   // 212
+        stream.write_int(self.voice);   //  218
+        self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); }); // 218+16 => 232
+        let end = stream.get_position();
+        println!("Start at: {} -> {} [{}]", start, end, end-start);
     }
     pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
@@ -279,11 +287,12 @@ impl PlayerOutfitData {
     pub fn set_result(&self, result: AssetTable_Result, mode: i32, engaged: bool, stun: bool) {
         let sequence = GameUserData::get_instance().get_sequence().value;
         let db = get_outfit_data();
-        self.set_color(result);
+
         if sequence != 4 {
             if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.as_str().into(); }
         }
         if mode == 2 {
+            self.set_color(result);
             let original_dress_gender = db.get_dress_gender(result.get_dress_model());
             if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.set_body_model(rig.as_str()); }
             if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.set_head_model(head.as_str()); }
@@ -558,6 +567,7 @@ pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, versi
             let data = UnitAssetData::deserialize(stream, version);
             menu_data.add_data(data);
         }
+        println!("Length: {}", menu_data.data.len());
         stream.read_end(true);
         PLAYABLE_HASH.iter().for_each(|p|{
             if menu_data.data.iter().find(|v| v.person == *p).is_none() {

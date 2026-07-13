@@ -38,7 +38,7 @@ impl AssetColor{
         Self { values }
     }
     pub fn serialize(&self, stream: Stream_2) {
-        self.values.iter().for_each(|v|{ stream.write_ushort(*v); });
+        self.values.iter().for_each(|v|{ stream.write8(*v); });
     }
 }
 

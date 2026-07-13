@@ -21,7 +21,7 @@ engage-il2cpp = { path = "/Users/trile/Project/lib/engage-il2cpp", features = [
     "app-structdata_1", "app-structbase", "app-gamevariable", "app-gameicon", "app-unitpool",
     "app-unit", "app-unit-types", "app-random_2", "app-basicmenu", "app-basicmenucontent", "app-basicmenuselect", "app-accessoryshopchangerootproc",
     "app-persondata", "app-jobdata", "app-itemdata", "app-goddata", "app-godunit",
-    "app-gameuserdata", "app-singletonclass_1", "app-stream_2",
+    "app-gameuserdata", "app-singletonclass_1", "app-stream_2", "app-hubaccess", "app-force", "app-sortieselectionunitmanager",
     "app-resourcemanager_2", "app-skillarray", "app-skillarray-types",
     "system-collections-generic-dictionary_2", "system-collections-generic-list_1",
     "combat-character", "combat-characterappearance", "combat-characterbuilder",

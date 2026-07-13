@@ -4,8 +4,8 @@ use engage::{
         titlebar::*, proc::*, procinst::*, IProcSceneSequence_1Methods, fade::{Fade, Fade_Layer as FadeLayer},
         IUnitInfoWindowCharaUpdater, ISingletonProcInst_1Methods, IHubAccessoryShopSequenceMethods,
         hubaccessoryroom::*, HubAccessoryShopSequence, HubAccessoryRoomCamera, IHubAccessoryShopSequence,
-        photographsequence::*,  IPhotographDisposInfo, IPhotographDisposManager,
-        gmapsequence::{GmapSequence, IGmapSequence}, hubsequence::*, IHubMiniMapMethods,IGmapMapInfoContentMethods,
+        photographsequence::*, IPhotographDisposInfo, IPhotographDisposManager,
+        gmapsequence::{GmapSequence, IGmapSequence}, hubsequence::*, IHubMiniMapMethods, IGmapMapInfoContentMethods,
         accessoryshopchangeroot::*, accessoryequipmentinfo::*, accessoryshopchangemenu::*,
         ProcVoidMethod, ProcBoolMethod, ProcDesc,
         ISingletonClass_1Methods, IChapterDataMethods, IGameUserDataMethods,
@@ -19,7 +19,10 @@ use engage::{
         RenderManager, ResourceManager_2,
     },
     system::object::*,
-    List_1Ext, ProcBoolMethodExt, ProcExt, ProcVoidMethodExt,
+    List_1Ext,
+    ProcBoolMethodExt,
+    ProcExt,
+    ProcVoidMethodExt,
     system::collections::generic::IList_1Methods,
     unity_engine::{
         IComponentMethods, IGameObjectMethods,
@@ -27,6 +30,7 @@ use engage::{
         IObject_2Methods, IRendererMethods, ITransformMethods
     },
     combat::{
+        IKaneko,
         characterappearance::*,
         ICharacterAssetForm, ICharacterAssetT_1Methods,
         ICharacterMethods,
@@ -35,8 +39,11 @@ use engage::{
     },
     tm_pro::{ITMP_Text, ITMP_TextMethods},
     prelude::{Cast, Object},
+    app::{ItemData, JobData, Unit},
+    combat::{Kaneko, PlayFlags},
+    unity_engine::IAnimatorMethods
 };
-use engage::app::{ItemData, JobData, Unit};
+use engage::unity_engine::Animator;
 use unity::{field_set_value_at_offset, ClassIdentity, FromIlInstance, Il2CppString, IlNull, IntPtr, SystemObject};
 use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
 use crate::data::change_root::create_accessory_shop_change_root_proc;
@@ -528,15 +535,16 @@ pub fn hub_room_set_by_result(result: Option<AssetTable_Result>, reload_type: Re
     else { force_load(result, reload_type); }
 }
 pub fn update_class_change_person(unit: Unit, job: JobData) {
-    if !unit.is_null() || job.is_null() { return; }
+    if unit.is_null() || job.is_null() { return; }
     let info = engage::app::UnitInfo::get_instance();
     let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
-    unit.class_change(job, ItemData::null());
+    unit.set_job(job);
     let result = AssetTable_Result::get_for_unit_info(unit);
     let character = CharacterFactoryAsync_2::create_common(result, "PID_不明", char_model_window.m_game_object(), false, false, false);
     let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
     create_character_object.set_character(character);
     create_character_object.set_unit_info_window(char_model_window);
+    create_character_object.set_is_job(true);
     let action = engage::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
     character.call_on_setup_done(action);
 }
@@ -544,6 +552,7 @@ pub fn update_class_change_person(unit: Unit, job: JobData) {
 pub struct CreateUnitInfoModel {
     pub unit_info_window: UnitInfoWindowCharaModel,
     pub character: engage::combat::Character,
+    pub is_job: bool,
 }
 #[unity::callback]
 pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
@@ -551,19 +560,42 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
     let unit_info_window = this.unit_info_window();
     if !character.is_null() && !unit_info_window.is_null() {
         let old_char = unit_info_window.m_chara();
+        let body_states = AnimatorStates::new(old_char.get_body_animator());
+        let face_states = AnimatorStates::new(old_char.get_face_animator());
         unit_info_window.delete_chara_model_2(old_char);
         unit_info_window.set_m_chara(character);
         let char = unit_info_window.create_chara_model_2(character);
         let update = unit_info_window.m_chara_updater();
         update.set_m_is_request_to_offset(true);
-        update.late_update();
         update.try_update_offset(char);
-        let trans = char.get_transform();
-        let menu_data = UnitAssetMenuData::get();
-        trans.set_position(menu_data.control.current_character.pos);
-        trans.set_local_rotation(menu_data.control.current_character.rotation);
+        if !this.is_job() {
+            update.late_update();
+            let trans = char.get_transform();
+            let menu_data = UnitAssetMenuData::get();
+            trans.set_position(menu_data.control.current_character.pos);
+            trans.set_local_rotation(menu_data.control.current_character.rotation);
+        }
+        body_states.set_animator(char.get_body_animator());
+        face_states.set_animator(char.get_face_animator());
     }
 }
+pub struct AnimatorStates { pub states: Vec<(i32, i32, f32)>}
+impl AnimatorStates {
+    pub fn new(animator: Animator) -> AnimatorStates {
+        let n_layers = animator.get_layer_count();
+        let mut states = vec![];
+        for i in 0..n_layers {
+            let state = animator.get_current_animator_state_info(i);
+            states.push((i, state.m_full_path, Kaneko::fixed_time(state)));
+        }
+        Self { states }
+    }
+    pub fn set_animator(&self, animator: Animator) {
+        if animator.is_null() { return; }
+        self.states.iter().for_each(|&(index, hash, fixed_time)|{ animator.play_in_fixed_time_4(hash, index, fixed_time) });
+    }
+}
+
 pub extern "C" fn destroy(this: HubAccessoryShopSequence, _: unity::OptionalMethod) {
     this.destroy_accessory_shop_change_menu();
 }

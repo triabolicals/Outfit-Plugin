@@ -79,6 +79,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     if cobapi::injection::register::<CustomAssetMenu>().is_ok() {}
     if cobapi::injection::register::<CustomAssetMenuItem3>().is_ok() {}
     if cobapi::injection::register::<CreatePhotographCharacter>().is_ok() {}
+    override_vtable2("App", "AssetTable.Result", "GetHashCode", get_result_hash as _);
     let klass = Class::lookup("App", "GameUserData");
     let vtable = klass.raw_mut().get_vtable_mut();
     vtable[4].method_ptr = game_user_data_version as _;
@@ -99,10 +100,10 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     if let Some(y_call) =  PhotographEditDisposMenu::class().raw_mut().get_virtual_method_mut("YCall") {
         y_call.method_ptr = photo::photograph_edit_dispos_menu_minus as _;
     }
-    get_virtual_methods_mut("App", "ShopUnitSelectMenuItemContent", "Build").map(|k| k.method_ptr = unitselect::shop_unit_select_menu_item_content_build as _);
-    get_virtual_methods_mut("App", "AccessoryMenuItemContent", "BuildText").map(|k| k.method_ptr = accessory_menu_item_content_build_text as _);
-    get_virtual_methods_mut("App", "SortieUnitSelect.UnitMenuItem", "YCall").map(|k| k.method_ptr = unit_item_y_call as _);
-    get_virtual_methods_mut("App", "MapUnitCommandMenu.ItemMenuItem", "XCall").map(|k| k.method_ptr = unit_item_y_call as _);
+    override_vtable2("App", "ShopUnitSelectMenuItemContent", "Build", unitselect::shop_unit_select_menu_item_content_build as _);
+    override_vtable2("App", "AccessoryMenuItemContent", "BuildText", accessory_menu_item_content_build_text as _);
+    override_vtable2("App", "SortieUnitSelect.UnitMenuItem", "YCall", unit_item_y_call as _);
+    override_vtable2("App", "MapUnitCommandMenu.ItemMenuItem", "XCall", unit_item_y_call as _);
     
     skyline::patching::Patch::in_text(0x2173ba4).bytes(&[0x40, 0x01, 0x80, 0x52]).unwrap();
     // skyline::patching::Patch::in_text(0x27b665c).bytes(&[0x01, 0x01, 0x80, 0x52]).unwrap();   // AccessoryEquipment Kind to 8
@@ -149,27 +150,33 @@ pub fn get_head_hair_colors(go: engage::unity_engine::GameObject) {
                         data.preview.has_hair_acc =
                             get_skin_mesh_renderers(go).is_some_and(|arr|{
                                 arr.iter().map(|r| unsafe { r.cast::<SkinnedMeshRenderer>() })
-                                    . any(|r|{
+                                    .any(|r|{
                                         let name = r.get_name().to_rust_string();
                                         (name.contains("_Acc") && name.starts_with("h")) || name.starts_with("acc")
                                     })
                             });
                         if let Some(mt_hair) = get_material_from_go(go, "MtHair") {
                             let color = mt_hair.get_color_2(colors[0]);
-                            data.preview.original_color[0] = (color.r * 255.0) as u8;
-                            data.preview.original_color[1] = (color.g * 255.0) as u8;
-                            data.preview.original_color[2] = (color.b * 255.0) as u8;
-                            data.preview.original_color[3] = 1;
-                            break;
+                            let r = (color.r * 255.0) as u8;
+                            let g = (color.g * 255.0) as u8;
+                            let b = (color.b * 255.0) as u8;
+                            if (r != 255 && g != 255 && b != 255) && (r != 0 && g != 0 && b != 0) {
+                                data.preview.original_color[0] = r;
+                                data.preview.original_color[1] = g;
+                                data.preview.original_color[2] = b;
+                                data.preview.original_color[3] = 1;
+                                println!("Hair Color: {} {} {}", color.r, color.g, color.b);
+                                break;
+                            }
                         }
                     }
                 }
                 if let Some(m) = get_material_from_go(go, "MtHair2").or_else(|| get_material_from_go(go, "MtOdd")) {
                     let color = m.get_color_2(colors[0]);
                     data.preview.original_color[56] = (color.r * 255.0) as u8;
-                    data.preview.original_color[56+1] = (color.g * 255.0) as u8;
-                    data.preview.original_color[56+2] = (color.b * 255.0) as u8;
-                    data.preview.original_color[56+3] = 1;
+                    data.preview.original_color[57] = (color.g * 255.0) as u8;
+                    data.preview.original_color[58] = (color.b * 255.0) as u8;
+                    data.preview.original_color[59] = 1;
                 }
                 else { for x in 0..4 { data.preview.original_color[56+x] =0; } }
             }

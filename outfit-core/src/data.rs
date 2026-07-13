@@ -610,7 +610,6 @@ pub fn get_asset_name(condition: &String, gender: engage::app::Gender) -> Option
                 if !god_data.is_null() { Some(god_data.get_mid().to_string()) } else { None }
             }
         }
-
     }
 }
 fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, map: &HashMap<i32, String>) -> Option<(String, engage::app::Gender)> {

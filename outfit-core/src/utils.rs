@@ -75,7 +75,14 @@ pub fn print_asset_table_result(result: &AssetTableResult, mode: i32) {
 pub fn clamp_value<T: PartialEq + PartialOrd>(value: T, min: T, max: T) -> T {
     if value < min { min } else if value > max { max } else { value }
 }
-
+pub fn override_vtable2(namespace: &str, name: &str, method_name: &str, method: *mut u8) {
+    if let Some(virtual_method) = unity::Class::try_lookup(namespace, name).ok()
+        .map(|v| v.raw_mut())
+        .and_then(|v| v.get_virtual_method_mut(method_name))
+    {
+        virtual_method.method_ptr = method;
+    }
+}
 pub fn get_virtual_methods_mut(namespace: &str, class_name: &str, method_name: &str) -> Option<&'static mut VirtualInvoke> {
     let klass = unity::Class::lookup(namespace, class_name);
     klass.raw_mut().get_virtual_method_mut(method_name)
