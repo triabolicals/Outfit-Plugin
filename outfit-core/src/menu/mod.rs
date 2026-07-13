@@ -1,63 +1,54 @@
-use engage::{
-	tm_pro::{ITMP_Text, TextMeshProUGUI},
-	app::{
-		basicmenu::*,
-		titlebar::*,
-		BasicMenuItem_Attribute,
-		IUnitMethods,
-		IPersonDataMethods,
-		ISingletonProcInst_1Methods,
-		ISingletonMonoBehaviourList_1Methods,
-		accessoryshopchangemenu::*,
-		AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, AccessoryShopChangeRoot,
-		BasicMenuContent,
-		IAccessoryShopChangeRoot,
-		IBasicMenuMethods,
-		IBasicMenuSelectMethods,
-		IGameUserDataMethods,
-		IProcInstMethods,
-		ISingletonClass_1Methods,
-		ISortieSequenceUnitSelect,
-		ResourceManager_2,
-		IUnitInfo,
-		IUnitInfo_Window,
-		IUnitInfoWindowCharaModel,
-		UnitInfoCharaImageMaskOffset,
-		IUnitInfoCharaImageMaskOffset,
-		IUnitInfoCharaImageMaskOffsetMethods,
-		UnitInfo_Side,
-		BackgroundManager,
-		UnitInfo,
-		ISortieSequenceUnitSelectMethods,
-		ISortieSelectionUnitManager,
-		UnitSelectMenu,
-		IUnitSelectMenuMethods,
-		IBasicMenuItemMethods,
-		IBasicMenuItem,
-		SortieSelectionUnitManager,
-		IMapMindMethods,
-		IBasicMenu,
-		AssetTable_Result,
-		IAssetTable_ResultMethods,
-		IStructData_1Methods,
-		IStructBase,
-		SortieUtil,
-		IAssetTable_Result,
-		IPad,
-		BasicMenu
-	},
-	List_1Ext,
-	nn::hid::NpadButton,
-	prelude::List_1,
-	system::{collections::generic::IList_1Methods, IObjectMethods},
-	tm_pro::ITMP_TextMethods,
-	unity_engine::{
-		IAnimatorMethods, IComponentMethods, IGameObjectMethods, IMaterialMethods,
-		IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
-	},
-};
-use engage::app::IMapTerrainInfoMethods;
-use unity::{Cast, ClassIdentity, FromIlInstance, IlNull, SystemType};
+use engage::{tm_pro::{ITMP_Text, TextMeshProUGUI}, app::{
+	basicmenu::*,
+	titlebar::*,
+	BasicMenuItem_Attribute,
+	IUnitMethods,
+	IPersonDataMethods,
+	ISingletonProcInst_1Methods,
+	ISingletonMonoBehaviourList_1Methods,
+	accessoryshopchangemenu::*,
+	AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, AccessoryShopChangeRoot,
+	BasicMenuContent,
+	IAccessoryShopChangeRoot,
+	IBasicMenuMethods,
+	IBasicMenuSelectMethods,
+	IGameUserDataMethods,
+	IProcInstMethods,
+	ISingletonClass_1Methods,
+	ISortieSequenceUnitSelect,
+	ResourceManager_2,
+	IUnitInfo,
+	IUnitInfo_Window,
+	IUnitInfoWindowCharaModel,
+	UnitInfoCharaImageMaskOffset,
+	IUnitInfoCharaImageMaskOffset,
+	IUnitInfoCharaImageMaskOffsetMethods,
+	UnitInfo_Side,
+	BackgroundManager,
+	UnitInfo,
+	ISortieSequenceUnitSelectMethods,
+	ISortieSelectionUnitManager,
+	UnitSelectMenu,
+	IUnitSelectMenuMethods,
+	IBasicMenuItemMethods,
+	IBasicMenuItem,
+	SortieSelectionUnitManager,
+	IMapMindMethods,
+	IBasicMenu,
+	AssetTable_Result,
+	IAssetTable_ResultMethods,
+	IStructData_1Methods,
+	IStructBase,
+	SortieUtil,
+	IAssetTable_Result,
+	IPad,
+	BasicMenu
+}, List_1Ext, nn::hid::NpadButton, prelude::List_1, system::{collections::generic::IList_1Methods, IObjectMethods}, tm_pro::ITMP_TextMethods, unity_engine::{
+	IAnimatorMethods, IComponentMethods, IGameObjectMethods, IMaterialMethods,
+	IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
+}, BasicMenuExt, ProcVoidMethodExt, ProcBoolMethodExt};
+use engage::app::{GameUserData, IMapTerrainInfoMethods, Proc, ProcBoolMethod, ProcDesc, ProcInst, ProcVoidMethod};
+use unity::{Array, Cast, ClassIdentity, FromIlInstance, IlNull, OptionalMethod, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
 mod menuitem;
@@ -85,7 +76,6 @@ pub struct CustomAssetMenu {
 	pub pause: bool,
 }
 impl CustomAssetMenu {
-	pub fn set_vtable(self) {}
 	pub fn get_menu_item_kind(self) -> CustomAssetMenuItemKind {
 		let item = self.get_menu_item(self.m_select_index());
 		if !item.is_null() { unsafe { item.cast::<CustomAssetMenuItem3>().menu_item_kind()} }
@@ -197,7 +187,6 @@ impl CustomAssetMenu {
 	}
 	pub fn new(menu_content: AccessoryShopChangeMenuContent) -> Self {
 		let menu = Self::instantiate().unwrap();
-		menu.set_vtable();
 		let items = List_1::<engage::app::BasicMenuItem>::new();
 		MainShop.add_menu_items(items);
 		IBasicMenuMethods::ctor(menu, items, menu_content);
@@ -291,6 +280,63 @@ impl CustomAssetMenu {
 		if !self.unit_name().is_null() { self.unit_name().set_text(next.get_name()); }
 		engage::app::GameSound::post_event("Chara_Change", engage::combat::Character::null());
 	}
+	pub fn try_create_unit_info_bind(proc: impl Into<ProcInst>) -> Option<ProcInst> {
+		if UnitAssetMenuData::get_unit().is_some() {
+			let proc_inst = ProcInst::new();
+			let descs =
+				[
+					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::load_resources).unwrap()),
+					Proc::wait_while_true_2(ProcBoolMethod::from_fn(proc_inst, Self::is_loading).unwrap()),
+					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::unit_info_bind).unwrap()),
+					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::unload_accessory).unwrap()),
+					Proc::call_2(ProcVoidMethod::from_fn(proc_inst, Self::restore_previous).unwrap()),
+					Proc::end()
+				];
+			let descs_array: Array<ProcDesc> = Array::from_slice(&descs).unwrap();
+			proc_inst.create_bind(proc, descs_array, "OutfitSequence");
+			Some(proc_inst)
+		}
+		else { None }
+	}
+	extern "C" fn unit_info_bind(proc: ProcInst, _optional_method: OptionalMethod) {
+		let unit = UnitAssetMenuData::get_unit().unwrap();
+		Self::create_bind_unit_info(proc, unit);
+	}
+	extern "C" fn unload_accessory(_proc: ProcInst, _optional_method: OptionalMethod) { AccessoryShopChangeRoot::unload_prefab(); }
+	extern "C" fn load_resources(_proc: ProcInst, _optional_method: OptionalMethod) { AccessoryShopChangeRoot::load_prefab_async(); }
+	extern "C" fn is_loading(_proc: ProcInst, _optional_method: OptionalMethod) -> bool { AccessoryShopChangeRoot::is_loading_prefab() }
+	extern "C" fn restore_previous(proc: ProcInst, _optional_method: OptionalMethod){
+		AccessoryShopChangeRoot::unload_prefab();
+		UnitInfo::chara_only_off();
+		let sortie = engage::app::SortieSequenceUnitSelect::get_instance();
+		if !sortie.is_null() {
+			UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
+			sortie.m_window().get_game_object().set_active(true);
+			sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(true);
+			sortie.disp_all();
+			sortie.setting_title();
+			let unit_manager = SortieSelectionUnitManager::get_instance();
+			if !unit_manager.is_null() {
+				let unit = unit_manager.m_unit();
+				let sortie_unit_select_menu: UnitSelectMenu = unsafe { sortie.m_unit_select_menu().cast() };
+				let current_select = sortie_unit_select_menu.get_select_index();
+				sortie_unit_select_menu.set_select_index_from_unit(unit);
+				let new_select = sortie_unit_select_menu.get_select_index();
+				if current_select != new_select {
+					let old_item = sortie_unit_select_menu.get_menu_item(current_select);
+					if !old_item.is_null() { old_item.on_deselect(); }
+					let new_item = sortie_unit_select_menu.get_menu_item(new_select);
+					if !new_item.is_null() { new_item.on_select(); }
+				}
+				sortie_unit_select_menu.adjust_scroll_index();
+				sortie_unit_select_menu.scroll_instant();
+				sortie_unit_select_menu.open_anime_all();
+				UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
+			}
+		}
+		else { TitleBar::get_instance().close_header(); }
+		if let Some(menu) = proc.get_super().try_cast::<BasicMenu>() { BasicMenuExt::open_anime_all(menu); }
+	}
 }
 #[unity::injected_methods]
 impl CustomAssetMenu{
@@ -345,44 +391,10 @@ impl CustomAssetMenu{
 				}
 				let name = engage::unity_engine::GameObject::find("CharacterName");
 				if !name.is_null() { engage::unity_engine::Object_2::destroy_2(name); }
-				AccessoryShopChangeRoot::unload_prefab();
-				UnitInfo::chara_only_off();
-				UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
-				let sortie = engage::app::SortieSequenceUnitSelect::get_instance();
-				if !sortie.is_null() {
-					sortie.m_window().get_game_object().set_active(true);
-					sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(true);
-					sortie.disp_all();
-					sortie.setting_title();
-					let unit_manager = SortieSelectionUnitManager::get_instance();
-					if !unit_manager.is_null() {
-						let unit = unit_manager.m_unit();
-						let sortie_unit_select_menu: UnitSelectMenu = unsafe { sortie.m_unit_select_menu().cast() };
-						let current_select = sortie_unit_select_menu.get_select_index();
-						sortie_unit_select_menu.set_select_index_from_unit(unit);
-						let new_select = sortie_unit_select_menu.get_select_index();
-						if current_select != new_select {
-							let old_item = sortie_unit_select_menu.get_menu_item(current_select);
-							if !old_item.is_null() { old_item.on_deselect(); }
-							let new_item = sortie_unit_select_menu.get_menu_item(new_select);
-							if !new_item.is_null() { new_item.on_select(); }
-						}
-						sortie_unit_select_menu.adjust_scroll_index();
-						sortie_unit_select_menu.scroll_instant();
-						sortie_unit_select_menu.open_anime_all();
-						UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
-					}
-				}
-				else {
-					let tilebar = TitleBar::get_instance();
-					tilebar.close_header();
-				}
+
 				BackgroundManager::unbind();
 			}
-            MenuMode::PhotoGraph => {
-				let tilebar = TitleBar::get_instance();
-				tilebar.close_header();
-			}
+            MenuMode::PhotoGraph => { TitleBar::get_instance().close_header(); }
 			_ => {}
 		}
 	}
@@ -519,22 +531,27 @@ fn model_camera_control(rgb: bool) -> bool {
 	rl_stick
 }
 pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
-	let sortie = SortieSelectionUnitManager::get_instance();
-	if !sortie.is_null() {
-		println!("Sortie");
-		if !sortie.m_unit().is_null() {
-			println!("Unit Found: {}", sortie.m_unit().get_name());
-			CustomAssetMenu::create_bind_unit_info(this.m_menu(), sortie.m_unit());
-			return BasicMenu_Result::close_decide();
+	if GameUserData::get_instance().get_sequence().value == 3 {
+		let map_mind = engage::app::MapMind::get_instance();
+		if !map_mind.is_null() {
+			let unit = map_mind.get_unit();
+			if !unit.is_null() {
+				UnitAssetMenuData::set_unit(map_mind.get_unit());
+				if CustomAssetMenu::try_create_unit_info_bind(this.m_menu()).is_some() {
+					return BasicMenu_Result::close_decide();
+				}
+			}
 		}
 	}
-	let map_mind = engage::app::MapMind::get_instance();
-	if !map_mind.is_null() {
-		println!("MapMind");
-		if !map_mind.get_unit().is_null() {
-			if !map_mind.get_unit().get_person().is_null() {
-				CustomAssetMenu::create_bind_unit_info(this.m_menu(), map_mind.get_unit());
-				return BasicMenu_Result::close_decide();
+	else {
+		let sortie = SortieSelectionUnitManager::get_instance();
+		if !sortie.is_null() {
+			let unit = sortie.m_unit();
+			if !unit.is_null() {
+				UnitAssetMenuData::set_unit(unit);
+				if CustomAssetMenu::try_create_unit_info_bind(this.m_menu()).is_some() {
+					return BasicMenu_Result::close_decide();
+				}
 			}
 		}
 	}
@@ -584,6 +601,10 @@ pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32,
 			let person = engage::app::PersonData::get(this.get_pid());
 			if !person.is_null() {
 				unity::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash());
+			}
+			else {
+				let god = engage::app::GodData::get(this.get_pid());
+				if !god.is_null() { unity::field_set_value_at_offset::<i32>(appearance, 0xd4, god.hash()); }
 			}
 		}
 	}

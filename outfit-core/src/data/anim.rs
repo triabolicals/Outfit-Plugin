@@ -415,7 +415,11 @@ impl AnimData {
             Self::remove(result, true, false);
             let set = if unit.get_job().is_low() && unit.get_level() <= 20 { INF_KIND[kind as usize] } else { INF_KIND2[kind as usize] };
             self.add_anim_to_result(result, dress_gender, set, 0, is_morph);
-            if kind > 0 { self.add_anim_to_result(result, dress_gender, set, kind, is_morph); }
+            if kind == 9 {
+                if dress_gender.value == 1 { result.get_body_anims().add("Sds0AM-No2_c049_N".into()); }
+                else { result.get_body_anims().add("Sds0AF-No2_c099_N".into()); }
+            }
+            else if kind > 0 { self.add_anim_to_result(result, dress_gender, set, kind, is_morph); }
         }
         else {
             let set = mount.get_default_asset(false);

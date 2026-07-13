@@ -1,8 +1,9 @@
 use bitflags::{bitflags, Flags};
 use engage::{
-    app::{IAccessoryDataMethods, IAssetTable_ConditionFlags, IBitField32, IGameUserDataMethods, IGodDataMethods, IGodUnit, IItemDataMethods, IPersonDataMethods, ISingletonClass_1Methods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnit, IUnitAccessory, IUnitAccessoryList, IUnitEdit, IUnitMethods},
+    app::{IUnitEditMethods, IAccessoryDataMethods, IAssetTable_ConditionFlags, IBitField32, IGameUserDataMethods, IGodDataMethods, IGodUnit, IItemDataMethods, IPersonDataMethods, ISingletonClass_1Methods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnit, IUnitAccessory, IUnitAccessoryList, IUnitEdit, IUnitMethods},
     List_1Ext
 };
+use engage::app::{AssetTable, IAssetTable_ConditionFlagsMethods};
 use unity::Cast;
 use crate::{get_condition_index, get_outfit_data, UnitAssetMenuData};
 
@@ -92,6 +93,9 @@ impl AssetConditions {
             character_mode: CharacterAssetMode::get(),
             flags: AssetFlags::new(unit),
         }
+    }
+    pub fn clear_flags() {
+        AssetTable::s_condition_flags().clear();
     }
     pub fn remove_god_eid_conditions(&mut self) {
         if !self.flags.contains(AssetFlags::EngageTiki){
@@ -229,7 +233,7 @@ impl AssetFlags {
             else { flags.set_gender(unit.get_person().get_gender()); }
             if person.index() == 1 || person.get_flag().m_value() & 128 != 0 {
                 let edit_gender = condition_unit.m_edit().m_gender();
-                if edit_gender.value & 3 != 0 { flags.set_gender(edit_gender); }
+                if condition_unit.m_edit().is_enable() { flags.set_gender(edit_gender); }
             }
             if person.get_name().to_rust_string().contains("Boss") { flags.set(AssetFlags::NPC, true); }
             if flags.contains(AssetFlags::EngageTiki) {
@@ -244,7 +248,7 @@ impl AssetFlags {
     }
     pub fn set_gender(&mut self, gender: engage::app::Gender) {
         self.set_condition_flag(AssetFlags::Male, gender == engage::app::Gender::male());
-        self.set_condition_flag(AssetFlags::Female, gender == engage::app::Gender::none());
+        self.set_condition_flag(AssetFlags::Female, gender == engage::app::Gender::female());
     }
     pub fn set_condition_flag(&mut self, rhs: Self, value: bool){
         if let Some(condition) = Self::FLAGS.iter()
@@ -259,7 +263,7 @@ impl AssetFlags {
     pub fn get_condition_index(key: impl Into<unity::Il2CppString>) -> Option<i32> { get_condition_index(key) }
     pub fn set_condition_key(key: impl Into<unity::Il2CppString>, value: bool){
         if let Some(index) = get_condition_index(key) {
-            engage::app::AssetTable::s_condition_flags().m_bits().set(index, value);
+            AssetTable::s_condition_flags().m_bits().set(index, value);
         }
     }
     pub fn remove_accessory_conditions(acc: engage::app::UnitAccessory) {

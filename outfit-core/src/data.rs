@@ -30,7 +30,7 @@ pub use list::*;
 use anim::AnimData;
 pub use crate::data::dress::{PersonalDressDataFlags, DressData, JobDressData};
 use crate::enums::Mount;
-
+use engage::app::IBitField32;
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
 pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
 const ASSET_FILENAME: [&str; 5] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig"];
@@ -170,7 +170,6 @@ impl OutfitData {
                 .iter()
                 .filter(|(x, _)| !x.is_null())
                 .map(|(x, i)| (i, x.to_rust_string())).collect();
-        println!("Sorting Added Assets");
         assets.iter().enumerate()
             .filter(|(_, (_, s))|{
                 let lower = s.to_lowercase();
@@ -178,7 +177,6 @@ impl OutfitData {
             })
             .for_each(|(_, (hash, asset))| {
                 if let Some(item) = AssetItem::new(asset.as_str(), 0) {
-                    println!("Asset: {}", asset);
                     match item.kind {
                         AssetType::Body => {
                             let mut o_hash = None;
@@ -249,9 +247,7 @@ impl OutfitData {
                 }
             });
         let dress = DressData::init(&mut hashes);
-        println!("Finished with DressData");
         let anims = AnimData::init(&mut assets);
-        println!("Finished with Anims");
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
@@ -307,6 +303,10 @@ impl OutfitData {
             self.random_body(result, conditions.mode, rng, dress_gender == engage::app::Gender::female());
             if transforming { return; }
         }
+        if conditions.mode == 2 && result.get_body_model().is_null() {
+            if dress_gender == engage::app::Gender::female() { result.set_body_model("uRig_HumnM1"); }
+            else { result.set_body_model("uRig_HumnF1"); }
+        }
         if engaged {
             AnimData::remove(result, true, true);
             let god_unit = unit.get_god_unit();
@@ -347,7 +347,7 @@ impl OutfitData {
                 d.apply(result, conditions.mode, true, engaged);
             }
         }
-        else {
+        else if unit.get_person().get_flag().m_value() & 512 == 0 {
             let force = unit.get_force_type();
             if transforming || ((force.value == 1 || force.value == 2) && !conditions.flags.is_generic() && !engaged){
                 if let Some(person_data) = self.dress.get_personal_dress(unit) {
@@ -374,7 +374,6 @@ impl OutfitData {
                 person_data.apply(result, conditions.mode, is_promoted , mount, &self.hashes);
             }
         }
-
         // Check for Missing
         if conditions.mode == 2 {
             let dress_model = result.get_dress_model();
@@ -448,7 +447,7 @@ impl OutfitData {
         let engaged = unit.is_engaging_2();
         let job = unit.get_job();
         if engaged && profile_flags & 256 == 0 {
-            if conditions.mode == 2 { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, conditions.kind); }
+            if conditions.mode == 2 { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_); }
             else { result.set_body_anim(AnimData::add_uas_gen_str("UAS_Enb0A", dress_gender)); }
         }
         let no_engaged_anim = profile_flags & 256 != 0;
@@ -470,8 +469,14 @@ impl OutfitData {
                 let god_unit = unit.get_god_unit();
                 if !god_unit.is_null() {
                     if unit.get_person().hash() == 258677212 {
-                        let asset_id = god_unit.m_data().get_asset_id();
-                        if let Some(god) = self.dress.get_engaged_dress(asset_id) { god.apply(result, 2, dress_gender); }
+                        if conditions.engaged.is_some() {
+                            let asset_id = god_unit.m_data().get_asset_id();
+                            if let Some(god) = conditions.engaged.as_ref().and_then(|v| self.dress.get_engaged_dress(v.as_str().into()))
+                                .or_else(||self.dress.get_engaged_dress(asset_id))
+                            {
+                                god.apply(result, 2, dress_gender);
+                            }
+                        }
                     }
                     if no_engaged_anim {
                         if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || ((unit.get_job().hash() == 499211320) && conditions.kind > 0){

@@ -50,7 +50,7 @@ impl OutfitHashes {
             AssetType::AOC(_) => {
                 self.aoc.insert(hash, asset.clone());
                 if female { self.aoc_f.insert(hash); }
-                else { self.aoc_m.remove(&hash); }
+                else { self.aoc_m.insert(hash); }
             }
             AssetType::Acc(_) => {
                 self.acc.insert(hash, asset.clone());

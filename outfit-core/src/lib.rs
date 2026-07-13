@@ -255,7 +255,7 @@ fn get_mt_eye(go: engage::unity_engine::GameObject) -> Option<engage::unity_engi
 fn get_material_from_go(go: engage::unity_engine::GameObject, name: &str) -> Option<engage::unity_engine::Material> {
     if let Some(arr) = get_skin_mesh_renderers(go) {
         arr.iter()
-            .map(|r| unsafe { r.cast::<engage::unity_engine::SkinnedMeshRenderer>() })
+            .map(|r| unsafe { r.cast::<SkinnedMeshRenderer>() })
             .flat_map(|r| engage::app::Ut::get_instance_materials(r).iter())
             .find(|m| m.get_name().to_rust_string().contains(name))
     }

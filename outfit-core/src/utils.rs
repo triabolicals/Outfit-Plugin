@@ -19,6 +19,7 @@ impl<T> Randomizer<T> for Vec<T> {
     fn get_random_element(&self, rng: Random_2) -> Option<&T> {
         let len = self.len();
         if len > 1 { self.get(rng.get_value_2( len as i32) as usize) }
+        else if len == 1 { self.get(0) }
         else { None }
     }
     fn get_remove(&mut self, rng:  Random_2) -> Option<T> {

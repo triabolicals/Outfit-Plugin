@@ -9,10 +9,10 @@ use engage::{
     prelude::Il2CppString,
     unity_engine::Sprite
 };
-use engage::app::Mess;
+use engage::app::{IUnit, IUnitEdit, IUnitEditMethods, Mess};
 use unity::{Cast};
 use unity::system::string::IIl2CppStringMethods;
-use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32, get_outfit_data};
+use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::{parse_arg_from_name, AssetTableIndexes}, set_result_dress_body_model, set_color_by_i32, get_result_dress_body_model, apply_result_hair, get_condition_index, il2str, has_condition_index, try_find_accessory_model, try_get_model_at_locator, get_result_color_i32, get_outfit_data, get_result_scale_u16};
 
 pub struct DressData {
     pub job: Vec<JobDressData>,
@@ -67,6 +67,7 @@ impl DressData {
                 result.clear();
                 conditions.add_2(*lueur);
                 conditions.add_2("MPID_Lueur");
+                if i < 2 { conditions.add_2(PersonData::get((*lueur).into()).get_jid()); }
                 conditions.add_2(*gender);
                 result.commit(AssetTable_Modes::combat());
                 result.replace(AssetTable_Modes::combat());
@@ -135,7 +136,10 @@ impl DressData {
 
         PersonData::get_list()
             .iter()
-            .filter(|p| p.get_gender().value != 0 && il2str(p.get_name()).is_some_and(|v| !v.contains("Lueur")))
+            .filter(|p|{
+                (p.get_belong().is_null() || p.get_pid().to_rust_string().contains("Boss")) &&
+                    p.get_gender().value != 0 && il2str(p.get_name()).is_some_and(|v| !v.contains("Lueur"))
+            })
             .for_each(|p|{
                 let result = AssetTable_Result::get_from_pid(AssetTable_Modes::combat(), p.get_pid(), CharacterAppearance::conditions());
                 let belong = p.get_belong();
@@ -171,68 +175,62 @@ impl DressData {
             if let Some(data) = transform.iter_mut().find(|x| x.hash == *hash) { data.item = Some(*item); }
         });
         let search_lists = engage::app::AssetTable::s_search_lists();
-        let hashes_left = engage::app::JobData::get_list().iter().filter(|j| !job.iter().any(|x| x.hash == j.hash())).map(|j| j.hash()).collect::<Vec<i32>>();
-        hashes_left.iter().for_each(|&hash|{
-            let job_data = engage::app::JobData::try_get_from_hash(hash);
-            if let Some(condition) = get_condition_index(job_data.get_jid()){
-                let mut mode_1m = None;
-                let mut mode_1f = None;
-                let mut mode_2m = None;
-                let mut mode_2f = None;
-                let mut mode_1r = None;
-                let mut mode_2r = None;
-                search_lists.get(2).iter()
-                    .filter(|e|
-                        has_condition_index(*e, condition) &&
-                        (!e.get_ride_dress_model().is_null() || il2str(e.get_dress_model()).is_some_and(|v|{
-                            let l = v.to_lowercase();  l.contains("m_c") || v.contains("f_c") }))
-                    )
-                    .for_each(|e|{
-                        if let Some(ride_dress) = il2str(e.get_ride_dress_model()) { if mode_2r.is_none() { mode_2r = Some(ride_dress); } }
-                        if let Some(dress) = il2str(e.get_dress_model()) {
-                            let lower = dress.to_lowercase();
-                            if lower.contains("m_c") && mode_2m.is_none() { mode_2m = Some(dress); }
-                            else if lower.contains("f_c") && mode_2f.is_none()  { mode_2f = Some(dress); }
-                        }
-                    });
-                search_lists.get(1).iter()
-                    .filter(|e|
-                        has_condition_index(*e, condition) &&
-                        (!e.get_ride_model().is_null() || il2str(e.get_body_model()).is_some_and(|v|{ let l = v.to_lowercase();  l.contains("m_c") || v.contains("f_c") }))
-                    )
-                    .for_each(|e| {
-                        if let Some(ride) = il2str(e.get_ride_model()) { if mode_1r.is_none() { mode_1r = Some(ride); } }
-                        if let Some(body) = il2str(e.get_body_model()) {
-                            let lower = body.to_lowercase();
-                            if lower.contains("m_c") && mode_1m.is_none() { mode_1m = Some(body); }
-                            else if lower.contains("f_c") && mode_1f.is_none() { mode_1f = Some(body); }
-                        }
-                    });
-                    let mount = mode_2r.as_ref().map(|s| Mount::determine_mount(s.as_str())).unwrap_or(Mount::None);
-                    if let Some((_, gender)) = mode_2m.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
-                        job.push(
-                            JobDressData {
-                                hash, mount, gender, hair_color: 0,
-                                dress_model: mode_2m.unwrap(),
-                                ride_dress: mode_1r.clone(),
-                                ride_body: mode_2r.clone(),
-                                body_model: mode_1m,
-                            }
-                        );
+        let job_conditions = engage::app::JobData::get_list().iter().filter(|j| !job.iter().any(|x| x.hash == j.hash()))
+            .flat_map(|j| get_condition_index(j.get_jid()).zip(Some(j.hash())))
+            .collect::<Vec<(i32, i32)>>();
+        let mode_2: Vec<_> =
+        search_lists.get(2).iter()
+            .filter(|x| !x.get_ride_dress_model().is_null() && !x.get_dress_model().is_null())
+            .map(|x| {
+                (
+                    il2str(x.get_dress_model()).filter(|c| c.contains("M_c") || c.contains("F_c") || c.contains("m_c") || c.contains("f_c")),
+                    il2str(x.get_ride_dress_model()),
+                    job_conditions.iter().filter(|(_, c)| has_condition_index(x, *c)).map(|v| v.0).collect::<Vec<i32>>()
+                )
+            }).collect();
+        let mode_1: Vec<_> =
+        search_lists.get(1).iter()
+            .filter(|x| !x.get_ride_model().is_null() && !x.get_body_model().is_null())
+            .map(|x| {
+                (
+                    il2str(x.get_body_model()).filter(|c| c.contains("M_c") || c.contains("F_c") || c.contains("m_c") || c.contains("f_c")),
+                    il2str(x.get_ride_model()),
+                    job_conditions.iter().filter(|(_, c)| has_condition_index(x, *c)).map(|v| v.0).collect::<Vec<i32>>()
+                )
+            }).collect();
+
+        job_conditions.iter().for_each(|&(hash, condition)|{
+            let mode_1m = mode_1.iter()
+                .find(|x| x.2.contains(&hash) && (x.0.as_ref().is_some_and(|c| c.contains("M_c") || c.contains("m_c")))).and_then(|v| v.0.clone());
+
+            let mode_1f = mode_1.iter()
+                .find(|x| x.2.contains(&hash) && (x.0.as_ref().is_some_and(|c| c.contains("F_c") || c.contains("f_c")))).and_then(|v| v.0.clone());
+
+            let mode_2m = mode_2.iter()
+                .find(|x| x.2.contains(&hash) && (x.0.as_ref().is_some_and(|c| c.contains("M_c") || c.contains("m_c")))).and_then(|v| v.0.clone());
+
+            let mode_2f = mode_2.iter()
+                .find(|x| x.2.contains(&hash) && (x.0.as_ref().is_some_and(|c| c.contains("F_c") || c.contains("f_c")))).and_then(|v| v.0.clone());
+
+            let mode_1r = mode_1.iter().find(|x| x.2.contains(&hash) && x.1.is_some()).and_then(|v| v.1.clone());
+            let mode_2r = mode_2.iter().find(|x| x.2.contains(&hash) && x.1.is_some()).and_then(|v| v.1.clone());
+            let mount = mode_2r.as_ref().map(|s| Mount::determine_mount(s.as_str())).unwrap_or(Mount::None);
+            if let Some((_, gender)) = mode_2m.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
+                job.push(
+                    JobDressData {
+                        hash, mount, gender, hair_color: 0,
+                        dress_model: mode_2m.unwrap(), ride_dress: mode_2r.clone(),
+                        ride_body: mode_1r.clone(), body_model: mode_1m,
                     }
-                    if let Some((_, gender)) = mode_2f.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
-                        job.push(
-                            JobDressData {
-                                hash, mount, gender, hair_color: 0,
-                                dress_model: mode_2f.unwrap(),
-                                ride_dress: mode_1r,
-                                ride_body: mode_2r,
-                                body_model: mode_1f,
-                            });
-                    }
+                );
             }
-            else {
-                println!("JID is not contained in the AssetTable");
+            if let Some((_, gender)) = mode_2f.as_ref().and_then(|s| Mount::determine_gender(s.as_str())) {
+                job.push(
+                    JobDressData {
+                        hash, mount, gender, hair_color: 0,
+                        dress_model: mode_2f.unwrap(), body_model: mode_1f,
+                        ride_dress: mode_2r, ride_body: mode_1r,
+                    });
             }
         });
         Self { job, engaged, personal, transform}
@@ -250,11 +248,14 @@ impl DressData {
     }
     pub fn get_personal_dress(&self, unit: engage::app::Unit) -> Option<&PersonalDressData> {
         if unit.is_null() || unit.get_person().is_null() { None }
+        else if unit.m_edit().is_enable() {
+            self.get_personal_dress_by_person(unit.get_person(), unit.m_edit().m_gender().value ==2)
+        }
         else {
             let person = unit.get_person();
             let is_female = unit.get_dress_gender() == engage::app::Gender::female();
-            if person.get_flag().m_value() & 512 != 0 { self.get_personal_dress_by_name(person.get_name().to_string().as_str(), is_female) }
-            else { self.get_personal_dress_by_person(person, is_female) }
+            if person.get_flag().m_value() & 512 == 0 { self.get_personal_dress_by_person(person, is_female) }
+            else { None }
         }
     }
     pub fn get_personal_dress_by_person(&self, person: PersonData, female: bool) -> Option<&PersonalDressData> {
@@ -277,10 +278,10 @@ pub struct PersonalDressData {
     pub data_hash: i32,
     pub flags: PersonalDressDataFlags,
     pub ubody: i32,
-    pub ubody2: i32,
     pub uhair: i32,
     pub uhead: i32,
-    pub color: [i32; 8],
+    pub ohair: i32,
+    pub color: [i32; 16],
     pub scale: [u16; 19],
     pub mount: Option<(Mount, i32)>,
     pub acc: [i32; 5],
@@ -290,7 +291,6 @@ pub struct PersonalDressData {
     pub count: i32,
     pub voice: i32,
     pub engage_hair: i32,
-    pub other_hashes: Vec<i32>,
 }
 bitflags! {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -321,6 +321,15 @@ impl PersonalDressData {
         let mut hash = (self.uhead as i64) + ((self.uhair as i64) << 2) + ((self.uhead as i64) << 4);
         for x in 4..8 { hash += (self.color[x] << x) as i64; }
         hash
+    }
+    pub fn process_map_result(&mut self, result: AssetTable_Result, hash_list: &OutfitHashes) {
+        let head_model = result.get_head_model();
+        if !head_model.is_null() {
+            let hash = head_model.get_hash_code();
+            if hash_list.o_hair.contains_key(&hash) { self.ohair = hash; }
+        }
+        for x in 0..8 { self.color[x+8] = get_result_color_i32(result, x); }
+        for x in 16..19 { self.scale[x] = get_result_scale_u16(result, x); }
     }
     pub fn process_from_asset_table(&mut self, result: AssetTable_Result, hash_list: &OutfitHashes) -> bool {
         let (dress, head) = (result.get_dress_model(), result.get_head_model());
@@ -369,6 +378,12 @@ impl PersonalDressData {
         if let Some(v) = crate::try_get_il2cpp_hash(result.m_hub_anim()) { self.aoc[3] = v; }
         if let Some(v) = crate::try_get_il2cpp_hash(result.get_sound().voice_id)
             .filter(|x| hash_list.voice.contains_key(x)) { self.voice = v; }
+        result.set_head_model(Il2CppString::null());
+        for x in 0..8 { set_color_by_i32(result, x, 0); }
+        for x in 0..19 { crate::set_result_scale_u16(result, x, 100); }
+        result.commit(AssetTable_Modes::onmap());
+        result.replace(AssetTable_Modes::onmap());
+        self.process_map_result(result, hash_list);
         true
     }
     pub fn from_asset_table(result: AssetTable_Result, hash_list: &OutfitHashes, hash: i32, emblem: bool) -> Option<PersonalDressData> {
@@ -381,13 +396,14 @@ impl PersonalDressData {
         if !new.process_from_asset_table(result, &hash_list) { None } else { Some(new) }
     }
     pub fn get_menu_name(&self) -> Il2CppString {
-        if self.count == 0 { engage::app::Mess::get(self.mpid.as_str()) }
-        else { format!("{} {}", engage::app::Mess::get(self.mpid.as_str()), self.count + 1).into() }
+        if self.count == 0 { Mess::get(self.mpid.as_str()) }
+        else { format!("{} {}", Mess::get(self.mpid.as_str()), self.count + 1).into() }
     }
     pub fn apply(&self, result: AssetTable_Result, mode: i32, promoted: bool, mount: Option<Mount>, outfit_hashes: &OutfitHashes) {
-        let body_hash = if promoted && self.ubody2 != 0 { self.ubody2 } else { self.ubody };
         if mode == 2 {
-            if let Some(ubody) = outfit_hashes.body.get(&body_hash) { result.set_dress_model(ubody.as_str());}
+            if let Some(ubody) = outfit_hashes.body.get(&self.ubody) {
+                result.set_dress_model(ubody.as_str());
+            }
             if let Some(mount) = self.mount.filter(|x| Some(x.0) == mount).and_then(|m| outfit_hashes.mounts.get(&m.1).zip(mount)) {
                 result.set_ride_dress_model(mount.0.as_str());
                 result.set_ride_model(mount.1.get_default_asset(true));
@@ -397,6 +413,9 @@ impl PersonalDressData {
             if let Some(obody) = outfit_hashes.get_obody(self.ubody) { result.set_body_model(obody); }
             if let Some(mount) = self.mount.filter(|x| Some(x.0) == mount).and_then(|v| outfit_hashes.get_mount_obody(v.1)) {
                 result.set_ride_model(mount);
+            }
+            if il2str(result.get_head_model()).is_none_or(|v| v.contains("null")){
+                if let Some(head) = outfit_hashes.get_ohair(self.uhead) { result.set_head_model(head); }
             }
         }
     }
@@ -420,7 +439,7 @@ impl PersonalDressData {
                 if sprite.is_null() { None } else { Some(sprite) }
             }
             else {
-                let sprite =  FaceThumbnail::s_face_thumb().try_get("Phantom");
+                let sprite = FaceThumbnail::s_face_thumb().try_get("Phantom");
                 if sprite.is_null() { None } else { Some(sprite) }
             }
         }
@@ -479,7 +498,7 @@ impl PersonalDressData {
         }
         else { None }
     }
-    pub fn get_name(&self) -> Il2CppString { engage::app::Mess::get(self.mpid.as_str()) }
+    pub fn get_name(&self) -> Il2CppString { Mess::get(self.mpid.as_str()) }
     pub fn apply_appearance(&self, result: AssetTable_Result, mode: i32, promoted: bool, mount: Option<Mount>, outfit_hashes: &OutfitHashes, remove_empty_acc: bool) {
         self.apply(result, mode, promoted, mount, outfit_hashes);
         if mode == 2 {
@@ -496,20 +515,30 @@ impl PersonalDressData {
                 let v = self.scale[x];
                 if v > 0 { crate::set_result_scale_u16(result, x, v); }
             }
+            for x in 0..8 {
+                let color = self.color[x];
+                if color > 0 { set_color_by_i32(result, x, self.color[x]); }
+            }
         }
         else {
-            if let Some(ohair) = outfit_hashes.get_ohair(self.uhair).or_else(|| outfit_hashes.get_ohair(self.uhead)){ result.set_head_model(ohair); }
+            if let Some(ohair) = outfit_hashes.o_hair.get(&self.ohair) { result.set_head_model(ohair.as_str()); }
+            else if let Some(ohair) = outfit_hashes.get_ohair(self.uhair).or_else(|| outfit_hashes.get_ohair(self.uhead)){ result.set_head_model(ohair); }
             else if self.uhair != 0 { result.set_head_model( if self.flags.contains(PersonalDressDataFlags::Female) { "oHair_h850" } else { "oHair_h800" }); }
             for x in 0..4 {
                 if let Some(acc) = outfit_hashes.get_oacc(self.acc[x]){
                     result.commit_8(new_asset_table_accessory(acc.to_rust_string().as_str(), ACC_LOC[x]));
                 }
             }
+            for x in 0..8 {
+                let color = self.color[x+8];
+                if color > 0 { set_color_by_i32(result, x, self.color[x+8]); }
+            }
+            for x in 16..19 {
+                let v = self.scale[x];
+                if v > 0 { crate::set_result_scale_u16(result, x, v); }
+            }
         }
-        for x in 0..8 {
-            let color = self.color[x];
-            if color > 0 { set_color_by_i32(result, x, self.color[x]); }
-        }
+
         let shop = il2str(result.m_hub_anim()).is_some_and(|v| v.contains("Shop"));
         let end = if shop { 3 } else { 4 };
         for x in 0..end {
@@ -530,19 +559,19 @@ impl PersonalDressData {
         let person = unit.get_person();
         if person.is_null() { return false; }
         let person_hash = person.hash();
-        self.other_hashes.contains(&person_hash) || self.hash == person_hash || il2str(person.get_name()).is_some_and(|name| name.to_string() == self.mpid)
+        self.hash == person_hash || il2str(person.get_name()).is_some_and(|name| name.to_string() == self.mpid)
     }
-    pub fn get_male_indexes(for_playable: bool) -> Vec<usize> {
+    pub fn get_male_indexes(for_playable: bool, filter: impl Fn(&PersonalDressData) -> bool) -> Vec<usize> {
         let db = &get_outfit_data().dress.personal;
         db.iter().enumerate()
-            .filter(|v| !v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
+            .filter(|v| filter(v.1) && !v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
             .map(|v| v.0)
             .collect()
     }
-    pub fn get_female_indexes(for_playable: bool) -> Vec<usize> {
+    pub fn get_female_indexes(for_playable: bool, filter: impl Fn(&PersonalDressData) -> bool ) -> Vec<usize> {
         let db = &get_outfit_data().dress.personal;
         db.iter().enumerate()
-            .filter(|v| v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
+            .filter(|v| filter(v.1) && v.1.flags.contains(PersonalDressDataFlags::Female) && ((for_playable && v.1.flags.valid_for_playable()) || !for_playable))
             .map(|v| v.0)
             .collect()
     }
@@ -631,7 +660,7 @@ impl JobTransformData {
             );
         }
         if !asset_table.is_empty() {
-            println!("Adding trans for Class: {} [transformation: {}]", engage::app::Mess::get_game_data_name(job_data.get_jid()), is_transform);
+            println!("Adding trans for Class: {} [transformation: {}]", Mess::get_game_data_name(job_data.get_jid()), is_transform);
             Some(Self{ is_transform, hash, asset_table, item: None})
         }
         else { None }

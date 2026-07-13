@@ -273,7 +273,7 @@ impl PlayerOutfitData {
     }
     pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
-            if self.colors[i].values[3] != 0 { set_color_by_u8_slice(result, i, self.colors[i].values); }
+            if self.colors[i].values[3] != 0 && !self.colors[i].is_zero() { set_color_by_u8_slice(result, i, self.colors[i].values); }
         }
     }
     pub fn set_result(&self, result: AssetTable_Result, mode: i32, engaged: bool, stun: bool) {

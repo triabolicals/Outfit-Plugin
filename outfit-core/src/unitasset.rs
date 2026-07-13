@@ -10,6 +10,7 @@ use engage::{
     system::collections::generic::IList_1,
     app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager}
 };
+use engage::app::GameUserData;
 use unity::Cast;
 pub use crate::playerdata::*;
 use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
@@ -181,27 +182,12 @@ impl UnitAssetMenuData {
     }
     pub fn get() -> &'static mut UnitAssetMenuData { unsafe { &mut UNIT_ASSET } }
     pub fn get_unit() -> Option<engage::app::Unit>{
-        if Self::is_shop() {
-            let person = engage::app::PersonData::try_get_from_hash(Self::get().preview.person);
-            if !person.is_null() {
-                let unit = engage::app::UnitPool::get_from_person(person, false);
-                if !unit.is_null() { Some(unit) } else { None }
-            }
-            else { None }
+        let person = engage::app::PersonData::try_get_from_hash(Self::get().preview.person);
+        if !person.is_null() {
+            let unit = engage::app::UnitPool::get_from_person(person, false);
+            if !unit.is_null() { Some(unit) } else { None }
         }
-        else {
-            let map_mind = engage::app::MapMind::get_instance();
-            if !map_mind.is_null() { if map_mind.get_unit().is_null() { None } else { Some(map_mind.get_unit()) } }
-            else{
-                let sortie = engage::app::SortieSelectionUnitManager::get_instance();
-                if !sortie.is_null() {
-                    let unit = sortie.m_unit();
-                    if !unit.is_null() { Some(unit) }
-                    else { None }
-                }
-                else { None }
-            }
-        }
+        else { None }
     }
     pub fn get_current_profile(hash: i32) -> Option<&'static PlayerOutfitData> {
         Self::get_by_person_data(hash, false)

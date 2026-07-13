@@ -361,8 +361,10 @@ impl CustomAssetMenuKind {
                     });
             }
             ProfileSettings => {
-                [   FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing),
-                    FlagMenuItem(AssetFlag::EngagedAnimation), FlagMenuItem(AssetFlag::UseFaceThumbnail),
+                [  
+                    FlagMenuItem(AssetFlag::RandomAppearance), FlagMenuItem(AssetFlag::EngageOutfit), FlagMenuItem(AssetFlag::EnableCrossDressing),
+                    FlagMenuItem(AssetFlag::EngagedAnimation), 
+                    FlagMenuItem(AssetFlag::UseFaceThumbnail),
                     Data(AssetDataMode::Export), Data(AssetDataMode::ExportPreview), Data(AssetDataMode::Import), FlagMenuItem(AssetFlag::ViewMode)
                 ].into_iter().for_each(|v|{ list.add(CustomAssetMenuItem3::new(v).as_basic_menu_item()); });
             }
