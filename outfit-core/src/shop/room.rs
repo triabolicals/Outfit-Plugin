@@ -575,20 +575,21 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
             trans.set_position(menu_data.control.current_character.pos);
             trans.set_local_rotation(menu_data.control.current_character.rotation);
         }
-        body_states.set_animator(char.get_body_animator());
-        face_states.set_animator(char.get_face_animator());
+        if let Some(body) = body_states{ body.set_animator(char.get_body_animator()); }
+        if let Some(face) = face_states { face.set_animator(char.get_face_animator()); }
     }
 }
 pub struct AnimatorStates { pub states: Vec<(i32, i32, f32)>}
 impl AnimatorStates {
-    pub fn new(animator: Animator) -> AnimatorStates {
+    pub fn new(animator: Animator) -> Option<AnimatorStates> {
+        if animator.is_null() { return None;}
         let n_layers = animator.get_layer_count();
         let mut states = vec![];
         for i in 0..n_layers {
             let state = animator.get_current_animator_state_info(i);
             states.push((i, state.m_full_path, Kaneko::fixed_time(state)));
         }
-        Self { states }
+        Some(Self { states })
     }
     pub fn set_animator(&self, animator: Animator) {
         if animator.is_null() { return; }
