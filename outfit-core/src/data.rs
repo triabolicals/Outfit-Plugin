@@ -282,10 +282,7 @@ impl OutfitData {
         else {
             let hash = job.hash();
             if let Some(transform) = self.dress.transform.iter().find(|x| x.hash == hash) {
-                transform.get_result(mode, unit);
-                if let Some(item) = transform.item.and_then(|item| self.item.iter().find(|x| x.hash == item)) {
-                    item.apply(result);
-                }
+                transform.set_result(mode, unit, result);
                 true
             }
             else { false }
@@ -307,6 +304,7 @@ impl OutfitData {
             if dress_gender == engage::app::Gender::female() { result.set_body_model("uRig_HumnM1"); }
             else { result.set_body_model("uRig_HumnF1"); }
         }
+        let is_promoted = unit.get_level() > 20 || job_data.get_rank() > 0;
         if engaged {
             AnimData::remove(result, true, true);
             let god_unit = unit.get_god_unit();
@@ -341,37 +339,32 @@ impl OutfitData {
                 return;
             }
         }
-        let is_promoted = unit.get_level() > 20 || job_data.get_rank() > 0;
-        if job == 185671037 {   // Alear Fell Child
-            if let Some(d) = self.dress.get_job_dress(job_data, dress_gender) {
-                d.apply(result, conditions.mode, true, engaged);
+        else {
+            if job == 185671037 {   // Alear Fell Child
+                if let Some(d) = self.dress.get_job_dress(job_data, dress_gender) { d.apply(result, conditions.mode, true, engaged); }
             }
-        }
-        else if unit.get_person().get_flag().m_value() & 512 == 0 {
-            let force = unit.get_force_type();
-            if transforming || ((force.value == 1 || force.value == 2) && !conditions.flags.is_generic() && !engaged){
-                if let Some(person_data) = self.dress.get_personal_dress(unit) {
-                    person_data.apply(result, conditions.mode, is_promoted, None, &self.hashes);
-                    return;
-                }
-                else if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)){
-                    dress_data.apply(result, conditions.mode, false, false);
-                    return;
+            else if unit.get_person().get_flag().m_value() & 512 == 0 {
+                let force = unit.get_force_type();
+                if transforming || ((force.value == 1 || force.value == 2) && !conditions.flags.is_generic() && !engaged) {
+                    if let Some(person_data) = self.dress.get_personal_dress(unit) {
+                        person_data.apply(result, conditions.mode, is_promoted, None, &self.hashes);
+                        return;
+                    } else if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)) {
+                        dress_data.apply(result, conditions.mode, false, false);
+                        return;
+                    }
                 }
             }
-        }
-        if transforming  { return; }
-        if !engaged {
+            if transforming { return; }
             if let Some(dress_data) = self.dress.job.iter().find(|x| x.hash == job) {
                 dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
             }
-        }
-        if job != 1443627162 && JobDressData::is_sword_fighter(result, conditions.mode) {
-            if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)) {
-                dress_data.apply(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted), !engaged);
-            }
-            else if let Some(person_data) = self.dress.get_personal_dress(unit) {
-                person_data.apply(result, conditions.mode, is_promoted , mount, &self.hashes);
+            if job != 1443627162 && JobDressData::is_sword_fighter(result, conditions.mode) {
+                if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)) {
+                    dress_data.apply(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted), !engaged);
+                } else if let Some(person_data) = self.dress.get_personal_dress(unit) {
+                    person_data.apply(result, conditions.mode, is_promoted, mount, &self.hashes);
+                }
             }
         }
         // Check for Missing

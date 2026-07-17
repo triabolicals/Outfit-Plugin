@@ -144,12 +144,14 @@ impl PlayerOutfitData {
             voice: 0, rig: 0, aoc_alt: [0; 4],
         }
     }
-    pub fn get_asset_hash(&self, kind: AssetType) -> i32 {
+    pub fn get_asset_hash(&self, kind: AssetType, female: bool) -> i32 {
         match kind {
             AssetType::Body => { self.ubody }
             AssetType::Head => { self.uhead }
             AssetType::Hair => { self.uhair }
-            AssetType::AOC(slot) => { self.aoc[slot as usize] }
+            AssetType::AOC(slot) => {
+                if female { self.aoc_alt[slot as usize] } else { self.aoc[slot as usize] }
+            }
             Acc(slot) => { self.acc[slot as usize] }
             AssetType::Mount(slot) => { self.mount[slot as usize] }
             AssetType::Voice => { self.voice }
@@ -200,7 +202,6 @@ impl PlayerOutfitData {
         !not_empty
     }
     pub fn deserialize(stream: Stream_2, version: i32) -> Self {
-        let start = stream.get_position();
         let mut flag = stream.read_int();
         let ubody = stream.read_int();
         let uhead = stream.read_int();
@@ -256,11 +257,9 @@ impl PlayerOutfitData {
             flag &= !513;
         }
         let end = stream.get_position();
-        println!("Start at: {} -> {} [{}]", start, end, end-start);
         Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt, expression }
     }
     pub fn serialize(&self, stream: Stream_2) {
-        println!("Start at: {}", stream.get_position());
         let start =  stream.get_position();
         stream.write_int(self.flag);    // 4
         stream.write_int(self.ubody);   // 8
@@ -277,7 +276,6 @@ impl PlayerOutfitData {
         stream.write_int(self.voice);   //  218
         self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); }); // 218+16 => 232
         let end = stream.get_position();
-        println!("Start at: {} -> {} [{}]", start, end, end-start);
     }
     pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
@@ -567,14 +565,12 @@ pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, versi
             let data = UnitAssetData::deserialize(stream, version);
             menu_data.add_data(data);
         }
-        println!("Length: {}", menu_data.data.len());
         stream.read_end(true);
         PLAYABLE_HASH.iter().for_each(|p|{
             if menu_data.data.iter().find(|v| v.person == *p).is_none() {
                 menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
         });
         crate::capture::reset_faces(false);
-        println!("Deserialized: {} Faces", menu_data.data.len());
         menu_data.is_loaded = true;
     }
 }

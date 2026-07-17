@@ -136,13 +136,13 @@ impl OutfitLists {
             AssetType::Mount(_) => {
                 self.job_m.iter().for_each(|s| {
                     s.list.iter().filter(|x| x.kind == kind)
-                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, s.label).as_basic_menu_item()); });
+                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, s.label, female).as_basic_menu_item()); });
                 });
             }
             _ => {}
         };
         self.null.list.iter().filter(|v| v.kind == kind2 ).for_each(|v|{
-            let item = CustomAssetMenuItem3::new_asset2(&v, self.null.label);
+            let item = CustomAssetMenuItem3::new_asset2(&v, self.null.label, female);
             engage::app::IBasicMenuItemMethods::set_name(item, engage::app::Mess::get("MID_SYS_None"));
             menu_item_list.add(item.as_basic_menu_item());
         });
@@ -153,7 +153,7 @@ impl OutfitLists {
                     .for_each(|char| {
                         char.list.iter()
                             .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                            .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
+                            .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label, female).as_basic_menu_item()); });
                     });
             }
             else {
@@ -162,14 +162,14 @@ impl OutfitLists {
                         .for_each(|char| {
                             char.list.iter()
                                 .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
+                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label, female).as_basic_menu_item()); });
                         });
                 } else {
                     self.char_m.iter().chain(self.char_f.iter())
                         .for_each(|char| {
                             char.list.iter()
                                 .filter(|a| a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph))))
-                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
+                                .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label, female).as_basic_menu_item()); });
                         });
                 }
             }
@@ -183,7 +183,7 @@ impl OutfitLists {
                             a.kind == kind2 && (!check_photo_flag || (check_photo_flag != a.flags.contains(AssetItemFlags::NoPhotograph)))
                             && (gender_restrict && a.flags.contains(gender) || !gender_restrict)
                         )
-                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label).as_basic_menu_item()); });
+                        .for_each(|h| { menu_item_list.add(CustomAssetMenuItem3::new_asset2(&h, char.label, female).as_basic_menu_item()); });
                 });
 
             self.other.iter()
@@ -191,7 +191,7 @@ impl OutfitLists {
                     ((gender_restrict && (x.female == female)) || !gender_restrict) &&
                     x.asset.kind == kind2 && (!check_photo_flag || (check_photo_flag != x.asset.flags.contains(AssetItemFlags::NoPhotograph)))
                 })
-                .for_each(|a|{ menu_item_list.add(CustomAssetMenuItem3::new_asset3(&a, labels, false).as_basic_menu_item()); });
+                .for_each(|a|{ menu_item_list.add(CustomAssetMenuItem3::new_asset3(&a, labels, false, female).as_basic_menu_item()); });
         }
         if let Some(acc) = acc_kind {
             let menu_kind = AssetType::Acc(acc);

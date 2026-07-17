@@ -529,7 +529,7 @@ impl UnitAssetMenuData {
             data.set_result(result, mode, darkness, false)
         }
     }
-    pub fn get_current_unit_hash(kind: AssetType) -> i32 {
+    pub fn get_current_unit_hash(kind: AssetType, female: bool) -> i32 {
         let preview = Self::get_preview();
         match kind {
             AssetType::Body => {
@@ -549,7 +549,7 @@ impl UnitAssetMenuData {
                 if acc == 0 { preview.original_assets[5+slot as usize] } else { acc }
             }
             AssetType::AOC(slot) => {
-                let aoc = preview.preview_data.aoc[slot as usize];
+                let aoc = if female { preview.preview_data.aoc_alt[slot as usize] } else { preview.preview_data.aoc[slot as usize] };
                 if aoc == 0 { preview.original_assets[10 + slot as usize] } else { aoc }
             }
             AssetType::Mount(slot)=> { preview.preview_data.mount[slot as usize] }

@@ -12,6 +12,7 @@ use engage::{
     app::IStructData_1Methods,
     unity_engine::Sprite
 };
+use engage::unity_engine::Color;
 use unity::Cast;
 use crate::{clamp_value, UnitAssetMenuData, CAPTURE_DIR, THUMB_DIR};
 const PNG: [u8; 8] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];  // PNG File Sig
@@ -146,7 +147,7 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
                     let x_width = x_max - x_min;
                     let trans_factor = 1.0 / (x_trans_width as f32);
                     let x_trans_right = x_size - x_trans_width;
-                    let mut raw_face = vec![engage::unity_engine::Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0}; x_size * y_size];
+                    let mut raw_face = vec![Color{r: 1.0, g: 1.0, b: 1.0, a: 1.0}; x_size * y_size];
                     for y in 0..y_size {
                         for x in 0..x_width {
                             let trans_alpha =
@@ -166,7 +167,10 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
                     }
                     let scaled = resize(&raw_face, x_size as i32, y_size as i32, 188, 74);
                     texture_cropped.resize_impl(188, 74);
-                    for y in 0..74 { for x in 0..188 { texture_cropped.set_pixel(x as i32, y as i32, scaled[x + y * 188]); } }
+                    for y in 0..74 {
+                        for x in 0..188 { texture_cropped.set_pixel(x as i32, y as i32, scaled[x + y * 188]); }
+                        texture_cropped.set_pixel(187, y as i32, Color{r: 0.0, g: 0.0, b: 0.0, a: 0.0});
+                    }
                     texture_cropped.apply_3();
                     if let Some(file_path) = save_texture_png(texture_cropped, true) {
                         if assign_face {
@@ -253,7 +257,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
             let ratio = old_h as f32 / new_h as f32;
             let s_ratio = if ratio < 1.0 { 1.0 } else { ratio };
             let src_support = filter_value  * s_ratio;
-            let mut v_sample: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 1.0}; width * new_height];
+            let mut v_sample: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; width * new_height];
             for out_y in 0..new_height {
                 let input_y = (out_y as f32 + 0.5) * ratio;
                 let left = (input_y - src_support).floor() as i32;
@@ -270,7 +274,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
                 }
                 ws.iter_mut().for_each(|w| *w /= sum);
                 for x in 0..width {
-                    let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 1.0};
+                    let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
                     ws.iter().enumerate().for_each(|(i, w)| {
                         let c_idx = x + (left + i) * width;
                         let color = data[c_idx];
@@ -287,7 +291,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
     let ratio = (old_w as f32) / (new_w as f32);
     let s_ratio = if ratio < 1.0 { 1.0 } else { ratio };
     let src_support = filter_value  * s_ratio;
-    let mut out: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 1.0}; new_height * new_width];
+    let mut out: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; new_height * new_width];
     for out_x in 0..new_width {
         let input_x = (out_x as f32 + 0.5) * ratio;
         let left = (input_x - src_support).floor() as i32;
@@ -304,7 +308,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
         }
         ws.iter_mut().for_each(|w| *w /= sum);
         for y in 0..new_height {
-            let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 1.0};
+            let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
             ws.iter().enumerate().for_each(|(i, w)| {
                 let c_idx = (left + i) + y * width;
                 let color = v_sample[c_idx];

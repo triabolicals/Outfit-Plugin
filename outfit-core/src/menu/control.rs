@@ -5,6 +5,7 @@ use engage::{
     combat::ICharacterJointMethods,
     unity_engine::{ICameraMethods, IGameObjectMethods, IRendererMethods, Renderer}
 };
+use engage::unity_engine::Transform;
 use unity::Cast;
 use crate::{clamp_value, MenuMode};
 
@@ -30,6 +31,7 @@ impl PositionRotation {
 }
 pub struct PhotoCameraControl {
     pub current_character: PositionRotation,
+    pub character_mount: engage::unity_engine::Vector3,
     pub current_camera: PositionRotation,
     pub init_camera: PositionRotation,
     reset_camera: PositionRotation,
@@ -41,11 +43,16 @@ pub struct PhotoCameraControl {
     cam_bounds: [i32; 3],
     y_min: f32,
     z_init: i32,
+    y_mount_offset: f32,
+    pub mount: bool,
+    init_mount: engage::unity_engine::Vector3,
     mode: MenuMode,
 }
 impl PhotoCameraControl {
     pub const fn default() -> Self {
         Self {
+            character_mount: engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
+            init_mount: engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
             current_character: PositionRotation::default(),
             current_camera: PositionRotation::default(),
             init_camera: PositionRotation::default(),
@@ -57,11 +64,13 @@ impl PhotoCameraControl {
                 engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
                 engage::unity_engine::Vector3{x: 0.0, y: 0.0, z: 0.0},
             ],
+            y_mount_offset: 0.0,
             camera_fov: 60.0,
             cam_translation: [0; 3],
             cam_bounds: [0; 3],
             y_min: 0.0,
             z_init: 0,
+            mount: false,
             mode: MenuMode::Inactive,
         }
     }
@@ -218,6 +227,12 @@ impl PhotoCameraControl {
         self.rotation_change.y = 0.0;
         self.rotation_change.z = 0.0;
     }
+    pub fn set_mounted(&mut self, character_transform: Transform, ride_trans: Transform){
+        self.character_mount = character_transform.get_position();
+        self.init_mount = character_transform.get_position();
+        self.y_mount_offset = ride_trans.get_position().y;
+        self.mount = true;
+    }
     /// Rotates Character with angles in degrees
     pub fn character_rotation(&mut self, x: f32, y: f32, z: f32) {
         if let Some(transform) = self.get_character_transform() {
@@ -238,7 +253,14 @@ impl PhotoCameraControl {
     pub fn reset_character_position(&mut self) {
         if let Some(transform) = self.get_character_transform() {
             transform.set_position(self.reset_character.pos);
-            self.current_character.pos = self.reset_character.pos;
+            if self.mount {
+                self.character_mount = self.init_mount;
+                transform.set_position(self.init_mount);
+            }
+            else {
+                self.current_character.pos = self.reset_character.pos;
+                transform.set_position(self.reset_character.pos);
+            }
         }
     }
     pub fn reset_camera_position(&mut self) {
@@ -276,7 +298,7 @@ impl PhotoCameraControl {
         let camera = engage::unity_engine::Camera::get_main();
         if !camera.is_null() { Some(camera) } else { None }
     }
-    pub fn get_camera_parameter_transform(&self) -> Option<engage::unity_engine::Transform> {
+    pub fn get_camera_parameter_transform(&self) -> Option<Transform> {
         crate::photo::get_photosequence().map(|p| p.m_camera_controller().m_current_parameter().get_transform())
     }
     pub fn translate_camera(&mut self, r: [i32; 3]) {
@@ -304,15 +326,18 @@ impl PhotoCameraControl {
         if self.mode == MenuMode::UnitInfo {
             if let Some(transform) = self.get_character_transform() {
                 let rxyz = [r[0] as f32 * 0.015, r[1] as f32 * 0.015, r[2] as f32 * 0.015];
-                self.current_character.pos.x = clamp_value(self.current_character.pos.x + rxyz[0], -1.25, 1.0);
-                self.current_character.pos.y = clamp_value(self.current_character.pos.y + rxyz[1], -1.50, 1.75);
-                self.current_character.pos.z = clamp_value(self.current_character.pos.z + rxyz[2], -2.75, 2.25);
-                let pos = engage::unity_engine::Vector3{
-                    x: self.current_character.pos.x,
-                    y: self.current_character.pos.y,
-                    z: self.current_character.pos.z,
-                };
-                transform.set_position(pos);
+                if self.mount {
+                    self.character_mount.x = clamp_value(self.character_mount.x + rxyz[0], -2.25, 1.50);
+                    self.character_mount.y = clamp_value(self.character_mount.y + rxyz[1], self.y_mount_offset -2.00, self.y_mount_offset + 2.50);
+                    self.character_mount.z = clamp_value(self.character_mount.z + rxyz[2], -3.00, 1.00);
+                    transform.set_position(self.character_mount);
+                }
+                else {
+                    self.current_character.pos.x = clamp_value(self.current_character.pos.x + rxyz[0], -2.25, 1.50);
+                    self.current_character.pos.y = clamp_value(self.current_character.pos.y + rxyz[1], -2.00, 2.50);
+                    self.current_character.pos.z = clamp_value(self.current_character.pos.z + rxyz[2], -3.00, 3.00);
+                    transform.set_position(self.current_character.pos);
+                }
             }
         }
     }

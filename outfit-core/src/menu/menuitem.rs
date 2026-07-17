@@ -28,6 +28,7 @@ pub struct CustomAssetMenuItem3 {
 	pub value: i32,
 	pub value2: i32,
 	pub is_original: bool,
+	pub female: bool,
 }
 impl CustomAssetMenuItem3 {
 	pub fn set_vtable(self) {
@@ -73,10 +74,10 @@ impl CustomAssetMenuItem3 {
 		item.set_value(hash);
 		item
 	}
-	pub fn new_asset2(asset: &AssetItem, label: &str) -> Self {
+	pub fn new_asset2(asset: &AssetItem, label: &str, female: bool) -> Self {
 		let item = Self::new_internal();
 		let kind = asset.kind;
-		item.set_m_decided(UnitAssetMenuData::get_current_unit_hash(asset.kind) == asset.hash);
+		item.set_m_decided(UnitAssetMenuData::get_current_unit_hash(asset.kind, female) == asset.hash);
 		item.set_value(asset.hash);
 		item.set_m_name(asset.get_name(label));
 		item.set_menu_item_kind(Asset(asset.kind));
@@ -99,6 +100,7 @@ impl CustomAssetMenuItem3 {
 			};
 		let is_original = original == asset.hash;
 		item.set_is_original(is_original);
+		item.set_female(female);
 		if is_original {
 			let yellow = engage::unity_engine::Color{ r: 1.0, g: 1.0, b: 0.0, a: 1.0};
 			item.set_cursor_color(yellow);
@@ -107,8 +109,8 @@ impl CustomAssetMenuItem3 {
 		}
 		item
 	}
-	pub fn new_asset3(other: &OtherAssetItem, labels: &AssetLabelTable, is_body: bool) -> Self {
-		let item = Self::new_asset2(&other.asset, other.label.as_str());
+	pub fn new_asset3(other: &OtherAssetItem, labels: &AssetLabelTable, is_body: bool, female: bool) -> Self {
+		let item = Self::new_asset2(&other.asset, other.label.as_str(), female);
 		if !other.is_mess { item.set_m_name(other.get_name(labels, is_body)); }
 		item
 	}

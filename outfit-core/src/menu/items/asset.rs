@@ -128,6 +128,11 @@ impl AssetType {
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 return;
             }
+            AssetType::AOC(_) => {
+                UnitAssetMenuData::get_preview().preview_asset = Some((self.clone(), menu_item.value()));
+                hub_room_set_by_result(Some(result), ReloadType::AOC);
+                return;
+            }
             _ => { UnitAssetMenuData::get_preview().preview_asset = Some((self.clone(), menu_item.value())); }
         }
         if UnitAssetMenuData::is_unit_info() && *self != AssetType::Body { result.set_body_anim(result.m_hub_anim()); }
@@ -187,7 +192,7 @@ impl CustomMenuItem for AssetType {
             Self::Head => EquipmentBoxMode::Head,
             Self::Hair => EquipmentBoxMode::Hair,
             Self::Acc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
-            Self::Voice|Self::AOC(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
+            Self::Voice|Self::AOC(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations(item.female())),
             Self::ColorPreset(kind) => {
                 let v2 = item.value2();
                 if v2 == 14 { EquipmentBoxMode::Hair }

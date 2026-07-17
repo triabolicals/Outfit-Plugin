@@ -36,7 +36,7 @@ pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
 pub use crate::assets::{AssetConditions, AssetFlags};
 
-pub const VERSION: &'static str = "2.7.4";
+pub const VERSION: &'static str = "2.8.0";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";

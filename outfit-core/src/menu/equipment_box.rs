@@ -68,7 +68,7 @@ pub enum EquipmentBoxPage {
     Flags,
     Assets,
     AccessoryAssets,
-    AOCAnimations,
+    AOCAnimations(bool),
     RideMounts,
     Color(u8),
     Scaling(u8),
@@ -78,8 +78,9 @@ impl EquipmentBoxPage {
         match self {
             EquipmentBoxPage::Flags => { EquipmentBoxPage::Assets }
             EquipmentBoxPage::Assets => { EquipmentBoxPage::AccessoryAssets  }
-            EquipmentBoxPage::AccessoryAssets => { EquipmentBoxPage::AOCAnimations }
-            EquipmentBoxPage::AOCAnimations => { EquipmentBoxPage::RideMounts  }
+            EquipmentBoxPage::AccessoryAssets => { EquipmentBoxPage::AOCAnimations(true) }
+            EquipmentBoxPage::AOCAnimations(true) => { EquipmentBoxPage::AOCAnimations(false) }
+            EquipmentBoxPage::AOCAnimations(false) =>  { EquipmentBoxPage::RideMounts  }
             EquipmentBoxPage::RideMounts => { EquipmentBoxPage::Color(0) }
             EquipmentBoxPage::Color(kind) => { if kind < 8 { EquipmentBoxPage::Color(8) } else { EquipmentBoxPage::Scaling(0) } }
             EquipmentBoxPage::Scaling(set) => {
@@ -93,8 +94,9 @@ impl EquipmentBoxPage {
             EquipmentBoxPage::Flags => { EquipmentBoxPage::Scaling(1) }
             EquipmentBoxPage::Assets => { EquipmentBoxPage::Flags }
             EquipmentBoxPage::AccessoryAssets => { EquipmentBoxPage::Assets }
-            EquipmentBoxPage::AOCAnimations => { EquipmentBoxPage::AccessoryAssets }
-            EquipmentBoxPage::RideMounts => { EquipmentBoxPage::AOCAnimations }
+            EquipmentBoxPage::AOCAnimations(true) => { EquipmentBoxPage::AccessoryAssets }
+            EquipmentBoxPage::AOCAnimations(false) => { EquipmentBoxPage::AOCAnimations(true) }
+            EquipmentBoxPage::RideMounts => { EquipmentBoxPage::AOCAnimations(false) }
             EquipmentBoxPage::Color(kind) => { if kind < 8 { EquipmentBoxPage::RideMounts } else { EquipmentBoxPage::Color(0) } }
             EquipmentBoxPage::Scaling(set) => { if set == 0 { EquipmentBoxPage::Color(8) } else { EquipmentBoxPage::Scaling(0) } }
         }
@@ -115,7 +117,7 @@ impl EquipmentBoxMode {
             if let Some(equip) = get_equipment_box(){ if open { equip.open() } else { equip.close() } }
         }
     }
-    pub fn set_rows(equipment: engage::app::AccessoryEquipmentInfo, row: i32) {
+    pub fn set_rows(equipment: AccessoryEquipmentInfo, row: i32) {
         let content_transform = equipment.m_content_object().get_transform();
         let child_count = content_transform.get_child_count();
         for i in 0..child_count {
@@ -123,14 +125,14 @@ impl EquipmentBoxMode {
             child.get_game_object().set_active(i < row);
         }
     }
-    pub fn set_profile(equipment: engage::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
+    pub fn set_profile(equipment: AccessoryEquipmentInfo, profile: Option<Profile>) {
         let (name, flag) =
             profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| { (v.get_name(), d.profile[v.to_index()].flag) }))
                 .unwrap_or_else(|| (get_current_profile_name(), UnitAssetMenuData::get_preview().preview_data.flag));
         if let Some(con) = get_content(equipment, 0) { set_icon_text_to_content(con, CustomMenuIcon::KeyItem.get_icon(), Some(name)); }
         Self::set_profile_flags(equipment, flag);
     }
-    pub fn set_profile_flags(equipment: engage::app::AccessoryEquipmentInfo, flag: i32) {
+    pub fn set_profile_flags(equipment: AccessoryEquipmentInfo, flag: i32) {
         Self::set_rows(equipment, 5);
         let engage =
             if flag & 6 == 2 { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::on_off(false)) }
@@ -142,28 +144,31 @@ impl EquipmentBoxMode {
         set_content_data_slot(equipment, 3,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
         set_content_data_slot(equipment, 4, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
     }
-    pub fn set_viewing_mode(equipment: engage::app::AccessoryEquipmentInfo, slot: usize) {
+    pub fn set_viewing_mode(equipment: AccessoryEquipmentInfo, slot: usize) {
         let (kind, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
         set_content_data_slot(equipment, slot, icon.get_icon(), Some(format!("Viewing: {}", engage::app::Mess::get(kind)).into()));
     }
-    pub fn set_expression(equipment: engage::app::AccessoryEquipmentInfo, slot: usize) {
+    pub fn set_expression(equipment: AccessoryEquipmentInfo, slot: usize) {
         set_content_data_slot(equipment, slot, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
     }
-    pub fn set_profile_name(equipment: engage::app::AccessoryEquipmentInfo, profile: Option<Profile>) {
+    pub fn set_profile_name(equipment: AccessoryEquipmentInfo, profile: Option<Profile>) {
         let name = profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| v.get_name()))
             .unwrap_or_else(|| get_current_profile_name());
 
         let name = format!("{} [Preview: {}]", name, engage::app::Mess::get(if UnitAssetMenuData::get().is_shop_combat { "MID_TUT_CATEGORY_TITLE_Battle" } else { "MID_SAVEDATA_SEQ_HUB" }));
         set_content_data_slot(equipment, 0, CustomMenuIcon::KeyItem.get_icon(), Some(name.as_str().into()))
     }
-    pub fn set_asset(equipment: engage::app::AccessoryEquipmentInfo, slot: usize, kind: AssetType, data: Option<&PlayerOutfitData>) {
+    pub fn set_asset(equipment: AccessoryEquipmentInfo, slot: usize, kind: AssetType, data: Option<&PlayerOutfitData>) {
+        Self::set_asset_gender(equipment, slot, kind, data, UnitAssetMenuData::get_preview().gender == 2);
+    }
+    pub fn set_asset_gender(equipment: AccessoryEquipmentInfo, slot: usize, kind: AssetType, data: Option<&PlayerOutfitData>, female: bool) {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
         match kind {
             AssetType::ColorPreset(k) => {
                 let k = k % 16;
-                let color = data.as_ref().map(|d| d.get_asset_hash(kind))
-                    .or_else(|| Some(preview.preview_data.get_asset_hash(kind)))
+                let color = data.as_ref().map(|d| d.get_asset_hash(kind, female))
+                    .or_else(|| Some(preview.preview_data.get_asset_hash(kind, female)))
                     .unwrap_or(0);
                 let color_str =
                     if color == 0 { "--/--/--".to_string() }
@@ -175,14 +180,14 @@ impl EquipmentBoxMode {
             }
             _ => {
                 let h =
-                data.as_ref().and_then(|d|
-                    db.try_get_asset(kind, d.get_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str()))
-                        .or_else(|| Some(BLANK.into()))
-                ).or_else(||
-                    db.try_get_asset(kind, preview.preview_data.get_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str()))
-                        .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str())))
-                        .or_else(|| Some(BLANK.into()))
-                );
+                    data.as_ref().and_then(|d|
+                        db.try_get_asset(kind, d.get_asset_hash(kind, female)).map(|v| unity::Il2CppString::from(v.as_str()))
+                            .or_else(|| Some(BLANK.into()))
+                    ).or_else(||
+                        db.try_get_asset(kind, preview.preview_data.get_asset_hash(kind, female)).map(|v| unity::Il2CppString::from(v.as_str()))
+                            .or_else(|| db.try_get_asset(kind, preview.get_original_asset_hash(kind)).map(|v| unity::Il2CppString::from(v.as_str())))
+                            .or_else(|| Some(BLANK.into()))
+                    );
                 set_content_data_slot(equipment, slot, kind.default_icon().get_icon(), h);
             }
         }
@@ -222,9 +227,10 @@ impl EquipmentBoxMode {
                 Self::set_rows(equipment, 6);
                 for x in 0..5 { Self::set_asset(equipment, x+1, AssetType::Mount(x as u8), data); }
             }
-            EquipmentBoxPage::AOCAnimations => {
+            EquipmentBoxPage::AOCAnimations(female) => {
                 Self::set_rows(equipment, 5);
-                for x in 0..4 { Self::set_asset(equipment, x+1, AssetType::AOC(x as u8), data); }
+                println!("AOC Female: {}", female);
+                for x in 0..4 { Self::set_asset_gender(equipment, x+1, AssetType::AOC(x as u8), data, female); }
                 /*
                 let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(
                     if UnitAssetMenuData::get_current_dress_gender() == 2 {

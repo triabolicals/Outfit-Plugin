@@ -402,8 +402,8 @@ impl CustomAssetMenuKind {
             }
             ClassBodySelection((class, alt)) => {
                 let index = *class as usize;
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body);
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
+                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body, female);
                 let set = if female { &db.list.job_f } else { &db.list.job_m };
                 if let Some(class) = set.get(index) {
                     class.list.iter().filter(|x| x.kind == AssetType::Body)
@@ -422,7 +422,7 @@ impl CustomAssetMenuKind {
                 db.list.engaged.iter()
                     .filter(|x| x.female == female)
                     .for_each(|a|{
-                        let item = CustomAssetMenuItem3::new_asset3(&a, &db.labels, true);
+                        let item = CustomAssetMenuItem3::new_asset3(&a, &db.labels, true, female);
                         item.set_name(a.get_name(&db.labels, true));
                         list.add(item.as_basic_menu_item());
                     });
@@ -432,7 +432,7 @@ impl CustomAssetMenuKind {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.added.iter()
                     .filter(|x| x.female == female && x.asset.kind == AssetType::Body)
-                    .for_each(|a| { list.add(CustomAssetMenuItem3::new_asset3(&a, &db.labels, false).as_basic_menu_item()); });
+                    .for_each(|a| { list.add(CustomAssetMenuItem3::new_asset3(&a, &db.labels, false, female).as_basic_menu_item()); });
             }
             Head => { db.list.add_menu_items(AssetType::Head, female, true, true, &db.labels, list); }
             Hair => { db.list.add_menu_items(AssetType::Hair, female,true, true, &db.labels, list); }
@@ -440,7 +440,7 @@ impl CustomAssetMenuKind {
             VoiceSelection => { db.list.add_menu_items(AssetType::Voice, false, true, true, &db.labels, list); }
             ColorKindSelection => { for x in 0..8 { list.add(CustomAssetMenuItem3::new_menu(ColorSelection(x), unity::Il2CppString::null()).as_basic_menu_item()); } }
             Rig => {
-                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Rig);
+                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Rig, false);
                 let original = preview.original_assets[15];
                 db.hashes.rigs.iter().for_each(|(h, n)|{
                     let name = n.trim_start_matches("uRig_").into();
@@ -606,7 +606,10 @@ impl CustomAssetMenuKind {
                     UnitAssetMenuData::get().loaded_data.release_faces();
                     return;
                 }
-                ShopMount(_) => { ReloadType::ForcedUpdate }
+                ShopMount(_) => {
+                    UnitAssetMenuData::get().control.mount = false;
+                    ReloadType::ForcedUpdate 
+                }
                 ColorSelection(kind) => {
                     let kind = (*kind % 16) as usize;
                     UnitAssetMenuData::get_preview().color_preview[4 * kind + 3] = 0;
@@ -674,11 +677,11 @@ impl CustomMenuItem for CustomAssetMenuKind {
             EngagedBody(_) => { CustomMenuIcon::EngageCommon }
         }
     }
-    fn get_equipment_box_type(&self, _menu_item: CustomAssetMenuItem3) -> EquipmentBoxMode {
+    fn get_equipment_box_type(&self, menu_item: CustomAssetMenuItem3) -> EquipmentBoxMode {
         match self{
             Rig|ShopBody(_)|ClassBodySelection(_)|Hair|Head|VoiceSelection  => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets),
             ShopAcc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
-            ShopAoc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations),
+            ShopAoc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations(menu_item.female())),
             ShopMount(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
             ScaleMenu => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Scaling(0)),
             ColorSelection(kind)| ColorPresets(_, kind)  => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)),

@@ -43,9 +43,10 @@ use engage::{
     combat::{Kaneko, PlayFlags},
     unity_engine::IAnimatorMethods
 };
-use engage::unity_engine::Animator;
+use engage::app::UnitInfo_Side;
+use engage::unity_engine::{Animator, ICameraMethods, Screen, Transform, Vector3};
 use unity::{field_set_value_at_offset, ClassIdentity, FromIlInstance, Il2CppString, IlNull, IntPtr, SystemObject};
-use crate::{get_outfit_data, get_result_color, get_result_scale_f32, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
+use crate::{get_outfit_data, get_result_color, get_result_scale_f32, il2str, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
 use crate::data::change_root::create_accessory_shop_change_root_proc;
 use crate::data::unitselect::create_accessory_unit_select;
 
@@ -66,6 +67,7 @@ pub enum ReloadType {
     Mount,
     HairAcc,
     HeadAcc,
+    AOC,
 }
 pub struct CustomHubAccessoryRoom;
 impl CustomHubAccessoryRoom {
@@ -438,15 +440,16 @@ fn force_load(result: Option<AssetTable_Result>, reload_type: ReloadType) {
         }
         else {
             let info = engage::app::UnitInfo::get_instance();
-            // if let Some(unit) = UnitAssetMenuData::get_unit().filter(|u| !u.is_null() ) {
-                let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
-                let character = CharacterFactoryAsync_2::create_common(result, "PID_不明", char_model_window.m_game_object(), false, false, false);
-                let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
-                create_character_object.set_character(character);
-                create_character_object.set_unit_info_window(char_model_window);
-                let action = engage::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
-                character.call_on_setup_done(action);
-          //  }
+            let char_model_window = info.m_windows().get(0).m_unit_info_window_chara_model();
+            let character = CharacterFactoryAsync_2::create_common(result, "PID_不明", char_model_window.m_game_object(), false, false, false);
+            let create_character_object = CreateUnitInfoModel::instantiate().unwrap();
+            create_character_object.set_character(character);
+            let mount = il2str(result.get_ride_dress_model()).is_some_and(|v| Mount::determine_mount(v) != Mount::None);
+            create_character_object.set_reset_animation(reload_type == ReloadType::AOC);
+            create_character_object.set_mount(mount);
+            create_character_object.set_unit_info_window(char_model_window);
+            let action = engage::system::Action::new(create_character_object.into(), create_char_model_method_info().into());
+            character.call_on_setup_done(action);
         }
     }
 }
@@ -553,6 +556,8 @@ pub struct CreateUnitInfoModel {
     pub unit_info_window: UnitInfoWindowCharaModel,
     pub character: engage::combat::Character,
     pub is_job: bool,
+    pub mount: bool,
+    pub reset_animation: bool,
 }
 #[unity::callback]
 pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
@@ -572,11 +577,37 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
             update.late_update();
             let trans = char.get_transform();
             let menu_data = UnitAssetMenuData::get();
-            trans.set_position(menu_data.control.current_character.pos);
-            trans.set_local_rotation(menu_data.control.current_character.rotation);
+            let ride = Kaneko::find_in_children(char.get_transform(), "lookAt_ride_loc");
+            if !ride.is_null() && this.mount() {
+                trans.set_local_scale(Vector3{x: 0.60, y: 0.60, z: 0.60});
+                let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
+                let h = Screen::get_height() as f32;
+                let w = Screen::get_width() as f32;
+                let head_world_1 = ride.get_position();
+                let mut head_cam_pos = camera.world_to_screen_point_2(head_world_1);
+                head_cam_pos.x = 0.60 * w;
+                head_cam_pos.y = 0.70 * h;
+                let head_world_2 = camera.screen_to_world_point_2(head_cam_pos);
+                let x_adjust = head_world_2.x - head_world_2.x;
+                let y_adjust = head_world_2.y - head_world_1.y;
+                let mut character_trans = trans.get_position();
+                character_trans.x += x_adjust;
+                character_trans.y += y_adjust;
+                character_trans.z = -1.9;
+                trans.set_position(character_trans);
+                menu_data.control.set_mounted(trans, ride);
+                trans.set_local_rotation(menu_data.control.current_character.rotation);
+            }
+            else {
+                menu_data.control.mount = false;
+                trans.set_position(menu_data.control.current_character.pos);
+                trans.set_local_rotation(menu_data.control.current_character.rotation);
+            }
         }
-        if let Some(body) = body_states{ body.set_animator(char.get_body_animator()); }
-        if let Some(face) = face_states { face.set_animator(char.get_face_animator()); }
+        if !this.reset_animation() {
+            if let Some(body) = body_states{ body.set_animator(char.get_body_animator()); }
+            if let Some(face) = face_states { face.set_animator(char.get_face_animator()); }
+        }
     }
 }
 pub struct AnimatorStates { pub states: Vec<(i32, i32, f32)>}
@@ -682,7 +713,7 @@ fn accessory_shop_change_create_bind(proc: impl Into<ProcInst> + Copy, return_ha
 pub fn hair_acc(go: engage::unity_engine::GameObject, enable: bool){
     if go.is_null() { return; }
     for name in ["meshHairGP", "c_spine1_jnt"]{
-        let t = engage::combat::Kaneko::find_in_children(go.get_transform(), name);
+        let t = Kaneko::find_in_children(go.get_transform(), name);
         if !t.is_null() {
             let go = t.get_game_object();
             if let Some(arr) = crate::get_skin_mesh_renderers(go) {
@@ -744,7 +775,8 @@ fn update_result_for_preview(result: AssetTable_Result) {
                     }
                 }
                 AssetType::Mount(k) => {
-                    result.get_body_anims().clear();
+                    let body_anims = result.get_body_anims();
+                    body_anims.clear();
                     let dress = db.get_dress_gender(result.get_dress_model());
                     let gender = if db.get_dress_gender(result.get_dress_model()) == engage::app::Gender::female() { "F" } else { "M" };
                     result.set_ride_dress_model(asset.as_str());
@@ -753,22 +785,28 @@ fn update_result_for_preview(result: AssetTable_Result) {
                         0 => {
                             let anim = format!("Cav0B{}-No1_c000_N", gender);
                             result.set_body_anim(anim.as_str());
+                            body_anims.add(format!("Com0B{}-No1_c000_N", gender).into());
+                            body_anims.add(anim.as_str().into());
                         }
                         1 => {
                             let anim = format!("Cav2C{}-No1_c000_N", gender);
                             result.set_body_anim(anim.as_str());
+                            body_anims.add(anim.as_str().into());
                         }
                         2 => {
                             let anim = format!("Wng2D{}-No1_c000_N", gender);
                             result.set_body_anim(anim.as_str());
+                            body_anims.add(anim.as_str().into());
                         }
                         3 => {
                             if dress == engage::app::Gender::male() { result.set_dress_model("uBody_Wng0EF_c000"); }
                             result.set_body_anim("Wng0EF-No1_c000_N");
+                            body_anims.add("Wng0EF-No1_c000_N".into());
                         }
                         4 => {
                             let anim = format!("Wng1F{}-No1_c000_N", gender);
                             result.set_body_anim(anim.as_str());
+                            body_anims.add(anim.as_str().into());
                         }
                         _ => {} // result.body_anims.add(format!("Com0A{}-No1_c000_N", gender).into()); }
                     }

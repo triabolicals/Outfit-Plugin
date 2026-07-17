@@ -146,7 +146,7 @@ impl CustomAssetMenu {
 					let mut pos = mask.m_rect_transform().get_position();
 					if menu_data.menu_adj == 0.0 { menu_data.menu_adj = pos.x; }
 					unit_info_char_mask_setup(mask, false);
-					pos.x = (x_max + x_min) * 0.5;
+					pos.x = engage::unity_engine::Screen::get_width() as f32 * 0.5;
 					mask.m_rect_transform().set_position(pos);
 				}
 			});
