@@ -1,3 +1,4 @@
+use std::cmp::max;
 use engage::{tm_pro::{ITMP_Text, TextMeshProUGUI}, app::{
 	basicmenu::*,
 	titlebar::*,
@@ -48,6 +49,8 @@ use engage::{tm_pro::{ITMP_Text, TextMeshProUGUI}, app::{
 	IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
 }, BasicMenuExt, ProcVoidMethodExt, ProcBoolMethodExt};
 use engage::app::{GameUserData, IMapTerrainInfoMethods, Proc, ProcBoolMethod, ProcDesc, ProcInst, ProcVoidMethod};
+use engage::combat::Kaneko;
+use engage::unity_engine::{RectTransform, Screen};
 use unity::{Array, Cast, ClassIdentity, FromIlInstance, IlNull, OptionalMethod, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
@@ -119,8 +122,6 @@ impl CustomAssetMenu {
 			menu_data.mode = MenuMode::UnitInfo;
 			UnitAssetMenuData::set_unit(unit);
 			let menu = Self::new(content);
-			let x_max = 1390.0;
-			let x_min = 450.0;
 			if !equipment.is_null() {
 				menu.set_equipment(equipment);
 				build_equipment_window(equipment, false);
@@ -131,6 +132,8 @@ impl CustomAssetMenu {
 				name.set_text_2(unit.get_name(), true);
 				menu.set_unit_name(name);
 			}
+			let centered_position = 0.49 * Screen::get_width() as f32;
+			println!("Centered Position: {}", centered_position);
 			BackgroundManager::bind_2();
 			let descs = menu.create_default_desc();
 			menu.create_bind(proc, descs, "OutfitMenu");
@@ -146,7 +149,7 @@ impl CustomAssetMenu {
 					let mut pos = mask.m_rect_transform().get_position();
 					if menu_data.menu_adj == 0.0 { menu_data.menu_adj = pos.x; }
 					unit_info_char_mask_setup(mask, false);
-					pos.x = engage::unity_engine::Screen::get_width() as f32 * 0.5;
+					pos.x = centered_position;
 					mask.m_rect_transform().set_position(pos);
 				}
 			});
@@ -215,7 +218,7 @@ impl CustomAssetMenu {
 		let items = self.m_full_menu_item_list();
 		items.clear();
 		menu.add_menu_items(items);
-
+		menu.key_help_update(false);
 		if save_select { self.save_select(); }
 		else {
 			self.m_selects().iter()

@@ -94,7 +94,7 @@ impl CustomAssetMenuKind {
             14 => ItemList,
             15 => FaceSelection,
             16|17 => EngagedBody(value == 17),
-            18 => HeadEdit,
+            18 => HairEdit,
             100..110 => ShopBody(((value as u8 - 100) % 5, value >= 105)),
             110..115 => ShopAcc(value as u8 - 110),
             120..125 => ShopMount(value as u8 - 120),
@@ -635,11 +635,13 @@ impl CustomAssetMenuKind {
         else { disable_key_help(engage::app::KeyHelpController_Type::left_right()); }
         if !ui_hide { add_key_help(engage::app::KeyHelpController_Type::plus(), engage::app::Mess::get("MID_ProfileCard_ShowStamp_Hide").to_string().as_str()); }
         else { add_key_help(engage::app::KeyHelpController_Type::plus(), engage::app::Mess::get("MID_KEYHELP_MENU_UI_HIDE").to_string().as_str()); }
-
+        
         if UnitAssetMenuData::is_unit_info() {
             if ui_hide {
-                add_key_help(engage::app::KeyHelpController_Type::minus(), engage::app::Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str());
-                if idx == 15 { disable_key_help(engage::app::KeyHelpController_Type::minus()); }
+                if idx == 15 || idx == 11 { disable_key_help(engage::app::KeyHelpController_Type::minus()); }
+                else {
+                    add_key_help(engage::app::KeyHelpController_Type::minus(), engage::app::Mess::get("MID_PS_KEYHELP_PHOTO").to_string().as_str());
+                }
             }
             else {
                 if idx >= 130 && idx <= 134 && UnitAssetMenuData::get_unit().is_some() {

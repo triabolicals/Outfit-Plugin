@@ -516,9 +516,9 @@ impl PersonalDressData {
                 if let Some(acc) = outfit_hashes.acc.get(&self.acc[x]){
                     result.commit_8(new_asset_table_accessory(acc.as_str(), ACC_LOC[x]));
                 }
-                else if remove_empty_acc { result.commit_8(new_asset_table_accessory("null", ACC_LOC[x])); }
+                else if remove_empty_acc && x != 4 { result.commit_8(new_asset_table_accessory("null", ACC_LOC[x])); }
             }
-            result.commit_8(new_asset_table_accessory("null", ACC_LOC[4]));
+            if try_get_model_at_locator(result, ACC_LOC[4]).is_none() { result.commit_8(new_asset_table_accessory("null", ACC_LOC[4])); }
             for x in 0..16 {
                 let v = self.scale[x];
                 if v > 0 { crate::set_result_scale_u16(result, x, v); }
@@ -588,7 +588,6 @@ pub struct JobTransformData {
     pub hash: i32,
     pub is_transform: bool,
     pub mode_2_conditions: Vec<String>,
-    // pub mode_1_conditions: Vec<String>,
     pub magic: Option<String>,
 
 }

@@ -30,10 +30,10 @@ pub use list::*;
 use anim::AnimData;
 pub use crate::data::dress::{PersonalDressDataFlags, DressData, JobDressData};
 use crate::enums::Mount;
-use engage::app::IBitField32;
+use engage::app::{IBitField32, Random_2};
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
 pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
-const ASSET_FILENAME: [&str; 5] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig"];
+const ASSET_FILENAME: [&str; 6] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig", "uWep"];
 pub struct OutfitData {
     pub hashes: OutfitHashes,
     pub dress: DressData,
@@ -41,8 +41,50 @@ pub struct OutfitData {
     pub anims: AnimData,
     pub list: OutfitLists,
     pub labels: AssetLabelTable,
+    pub weapons: WeaponAssets,
 }
 
+pub struct WeaponAssets {
+    pub weapons: Vec<String>,
+    pub bow: Vec<String>,
+    pub bow_arrow: Vec<String>,
+    pub tome: Vec<String>,
+    pub rod: Vec<String>,
+}
+impl WeaponAssets {
+    pub fn init(list: Vec<String>) -> Self {
+        let mut weapons = vec![];
+        let mut bow = vec![];
+        let mut bow_arrow = vec![];
+        let mut tome = vec![];
+        let mut rod = vec![];
+        list.into_iter().for_each(|item| {
+            if item.contains("_Mg") { tome.push(item); }
+            else if item.contains("_Bw") {
+                if item.contains("-Ar") { bow_arrow.push(item); }
+                else if item.ends_with("-Bw") { bow.push(item); }
+            }
+            else if item.contains("Rd") { rod.push(item); }
+            else if !item.contains("_Ft") && !item.contains("-Sb") && !item.contains("-Gr") { weapons.push(item); }
+        });
+        println!("Weapon Assets: {}", weapons.len());
+        println!("Bow Assets: {}", bow.len());
+        println!("Tome Assets: {}", tome.len());
+        println!("Rod Assets: {}", rod.len());
+        println!("Bow Arrow: {}", bow_arrow.len());
+        Self { weapons, bow, bow_arrow, tome, rod }
+    }
+    pub fn get_random(&self, kind: i32) -> Option<&String> {
+        match kind {
+            1|2|3|5 => { self.weapons.get_random_element(Random_2::get_system()) }
+            4 => { self.bow.get_random_element(Random_2::get_system()) }
+            6 => { self.tome.get_random_element(Random_2::get_system()) }
+            7 => { self.tome.get_random_element(Random_2::get_system()) }
+            8 => { self.bow_arrow.get_random_element(Random_2::get_system()) }
+            _ => None
+        }
+    }
+}
 impl OutfitData {
     pub fn init() -> Self {
         let new_labels = AssetLabelTable::new();
@@ -66,7 +108,9 @@ impl OutfitData {
         hashes.rigs = assets.extract_if(.., |(_, s)|
             !s.contains("Wolf") && !s.contains("Drag") && s.contains("uRig_") && (s.contains("Humn") || rig_ends.iter().any(|x| s.ends_with(*x))))
             .collect();
-
+        let weapons: Vec<String> =
+            assets.extract_if(.., |(_, s)| s.contains("uWep") && !s.ends_with("-Gr") && !s.ends_with("-Sb") && !s.ends_with("-Qv")).map(|(_, s)| s).collect();
+        let weapons = WeaponAssets::init(weapons);
         hashes.o_hair = assets.extract_if(.., |(_, s)| s.contains("oHair_h") || s.contains("oHair_dummy")).collect();
         hashes.o_body = assets.extract_if(.., |(_, s)| s.contains("oBody_")).collect();
         hashes.o_acc = assets.extract_if(.., |(_, s)| s.contains("oAcc_")).collect();
@@ -253,7 +297,7 @@ impl OutfitData {
         new_list.add_eye_presets(&new_labels);
         println!("Finished with Outfit Plugin Data");
         Self {
-            dress, anims, hashes,
+            dress, anims, hashes, weapons,
             list: new_list,
             labels: new_labels,
             item: ItemAsset::init(),

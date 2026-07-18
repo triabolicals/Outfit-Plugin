@@ -40,11 +40,13 @@ pub fn build_equipment_window(this: engage::app::AccessoryEquipmentInfo, is_room
         item.set_m_accessory_kind(AccessoryData_Kinds{value: i});
         let child_transform = transform.get_child(i);
         let item_content = child_transform.get_game_object().get_component::<AccessoryMenuItemContent>();
+        /*
         let rect = item_content.get_rect_transform();
         let mut size = rect.get_size_delta();
         size.x += 40.0;
         crate::change_rect_transform_in_children_size(child_transform, "Name", 40.0, 0.0);
         rect.set_size_delta(size);
+         */
         item_content.build(item);
         list.add(BasicMenuItem::from(item));
     }

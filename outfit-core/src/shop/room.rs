@@ -44,6 +44,7 @@ use engage::{
     unity_engine::IAnimatorMethods
 };
 use engage::app::UnitInfo_Side;
+use engage::combat::{CharacterJoint, ICharacterJointMethods};
 use engage::unity_engine::{Animator, ICameraMethods, Screen, Transform, Vector3};
 use unity::{field_set_value_at_offset, ClassIdentity, FromIlInstance, Il2CppString, IlNull, IntPtr, SystemObject};
 use crate::{get_outfit_data, get_result_color, get_result_scale_f32, il2str, AssetType, CustomAssetMenu, EquipmentBoxMode, MenuMode, Mount, OutfitMenuKind, UnitAssetMenuData, FACIAL_STATES};
@@ -573,22 +574,23 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
         let update = unit_info_window.m_chara_updater();
         update.set_m_is_request_to_offset(true);
         update.try_update_offset(char);
+        let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
         if !this.is_job() {
             update.late_update();
             let trans = char.get_transform();
             let menu_data = UnitAssetMenuData::get();
             let ride = Kaneko::find_in_children(char.get_transform(), "lookAt_ride_loc");
-            if !ride.is_null() && this.mount() {
+            if !ride.is_null(){
                 trans.set_local_scale(Vector3{x: 0.60, y: 0.60, z: 0.60});
                 let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
                 let h = Screen::get_height() as f32;
                 let w = Screen::get_width() as f32;
                 let head_world_1 = ride.get_position();
                 let mut head_cam_pos = camera.world_to_screen_point_2(head_world_1);
-                head_cam_pos.x = 0.60 * w;
+                head_cam_pos.x = 0.45 * w;
                 head_cam_pos.y = 0.70 * h;
                 let head_world_2 = camera.screen_to_world_point_2(head_cam_pos);
-                let x_adjust = head_world_2.x - head_world_2.x;
+                let x_adjust = head_world_2.x - head_world_1.x;
                 let y_adjust = head_world_2.y - head_world_1.y;
                 let mut character_trans = trans.get_position();
                 character_trans.x += x_adjust;
@@ -599,6 +601,17 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: unity::OptionalMethod) {
                 trans.set_local_rotation(menu_data.control.current_character.rotation);
             }
             else {
+                let joint = char.get_component_2::<CharacterJoint>();
+                if !joint.is_null() {
+                    let look_at_loc = joint.get_look_at_loc();
+                    if !look_at_loc.is_null() {
+                        let look_at_loc = look_at_loc.get_position();
+                        let camera_trans = camera.get_transform();
+                        let mut camera_pos = camera_trans.get_position();
+                        camera_pos.y = look_at_loc.y + 0.4;
+                        camera_trans.set_position(camera_pos);
+                    }
+                }
                 menu_data.control.mount = false;
                 trans.set_position(menu_data.control.current_character.pos);
                 trans.set_local_rotation(menu_data.control.current_character.rotation);
