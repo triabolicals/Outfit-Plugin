@@ -1,55 +1,33 @@
-use std::cmp::max;
 use engage::{tm_pro::{ITMP_Text, TextMeshProUGUI}, app::{
 	basicmenu::*,
 	titlebar::*,
 	BasicMenuItem_Attribute,
-	IUnitMethods,
-	IPersonDataMethods,
-	ISingletonProcInst_1Methods,
-	ISingletonMonoBehaviourList_1Methods,
+	IUnitMethods, IPersonDataMethods, ISingletonProcInst_1Methods, ISingletonMonoBehaviourList_1Methods,
 	accessoryshopchangemenu::*,
 	AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, AccessoryShopChangeRoot,
 	BasicMenuContent,
-	IAccessoryShopChangeRoot,
-	IBasicMenuMethods,
-	IBasicMenuSelectMethods,
-	IGameUserDataMethods,
-	IProcInstMethods,
-	ISingletonClass_1Methods,
-	ISortieSequenceUnitSelect,
-	ResourceManager_2,
-	IUnitInfo,
-	IUnitInfo_Window,
-	IUnitInfoWindowCharaModel,
+	IAccessoryShopChangeRoot, IBasicMenuMethods, IBasicMenuSelectMethods,
+	IGameUserDataMethods, IProcInstMethods, ISingletonClass_1Methods,
+	ISortieSequenceUnitSelect, ResourceManager_2,
+	IUnitInfo, IUnitInfo_Window, IUnitInfoWindowCharaModel,
 	UnitInfoCharaImageMaskOffset,
-	IUnitInfoCharaImageMaskOffset,
-	IUnitInfoCharaImageMaskOffsetMethods,
-	UnitInfo_Side,
-	BackgroundManager,
-	UnitInfo,
-	ISortieSequenceUnitSelectMethods,
-	ISortieSelectionUnitManager,
+	IUnitInfoCharaImageMaskOffset, IUnitInfoCharaImageMaskOffsetMethods,
+	UnitInfo_Side, BackgroundManager, UnitInfo,
+	ISortieSequenceUnitSelectMethods, ISortieSelectionUnitManager,
 	UnitSelectMenu,
-	IUnitSelectMenuMethods,
-	IBasicMenuItemMethods,
-	IBasicMenuItem,
+	IUnitSelectMenuMethods, IBasicMenuItemMethods, IBasicMenuItem,
 	SortieSelectionUnitManager,
-	IMapMindMethods,
-	IBasicMenu,
+	IMapMindMethods, IBasicMenu,
 	AssetTable_Result,
-	IAssetTable_ResultMethods,
-	IStructData_1Methods,
-	IStructBase,
+	IAssetTable_ResultMethods, IStructData_1Methods, IStructBase,
 	SortieUtil,
-	IAssetTable_Result,
-	IPad,
+	IAssetTable_Result, IPad,
 	BasicMenu
 }, List_1Ext, nn::hid::NpadButton, prelude::List_1, system::{collections::generic::IList_1Methods, IObjectMethods}, tm_pro::ITMP_TextMethods, unity_engine::{
 	IAnimatorMethods, IComponentMethods, IGameObjectMethods, IMaterialMethods,
 	IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
 }, BasicMenuExt, ProcVoidMethodExt, ProcBoolMethodExt};
-use engage::app::{GameUserData, IMapTerrainInfoMethods, Proc, ProcBoolMethod, ProcDesc, ProcInst, ProcVoidMethod};
-use engage::combat::Kaneko;
+use engage::app::{GameUserData, IMapTerrainInfoMethods, ProcInst};
 use engage::unity_engine::{RectTransform, Screen};
 use unity::{Array, Cast, ClassIdentity, FromIlInstance, IlNull, OptionalMethod, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
@@ -60,7 +38,7 @@ pub(crate) mod items;
 mod icons;
 mod keyhelp;
 mod control;
-mod proc;
+pub(crate) mod proc;
 
 pub use menuitem::*;
 pub use items::*;
@@ -69,6 +47,7 @@ pub use keyhelp::*;
 pub use control::*;
 use crate::data::room::hub_room_set_by_result;
 use crate::menu::proc::OutfitSequence;
+use crate::result_to_string;
 use crate::room::ReloadType;
 
 #[unity::inject(namespace = "App", name = "CustomAssetMenu", parent = AccessoryShopChangeMenu)]
@@ -521,12 +500,12 @@ fn model_camera_control(rgb: bool) -> bool {
 	}
 	rl_stick
 }
-pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
+pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: OptionalMethod) -> BasicMenu_Result {
 	if OutfitSequence::create_bind(this.m_menu()).is_some() { BasicMenu_Result::close_decide() }
 	else { BasicMenu_Result::se_miss() }
 }
 
-pub fn add_sub_unit_menu_item(proc: engage::app::ProcInst) {
+pub fn add_sub_unit_menu_item(proc: ProcInst) {
 	if let Some(menu) = proc.try_cast::<BasicMenu>() {
 		let item = CustomAssetMenuItem3::new(UnitInventorySubMenuItem);
 		menu.m_full_menu_item_list().add(item.as_basic_menu_item());
@@ -561,23 +540,7 @@ pub fn change_selected_profile() -> bool {
 	}
 	else { false }
 }
-#[skyline::hook(offset= 0x2b0ed80)]
-pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32, o: unity::OptionalMethod) -> engage::combat::CharacterAppearance {
-	let appearance:  engage::combat::CharacterAppearance = call_original!(this, map_distance, o);
-	if !appearance.is_null() {
-		if !this.get_pid().is_null() {
-			let person = engage::app::PersonData::get(this.get_pid());
-			if !person.is_null() {
-				unity::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash());
-			}
-			else {
-				let god = engage::app::GodData::get(this.get_pid());
-				if !god.is_null() { unity::field_set_value_at_offset::<i32>(appearance, 0xd4, god.hash()); }
-			}
-		}
-	}
-	appearance
-}
+
 fn unit_info_char_mask_setup(mask: UnitInfoCharaImageMaskOffset, revert: bool) {
 	let texture = UnitInfo::get_render_texture(UnitInfo_Side::left());
 	mask.set_m_texture(texture);

@@ -17,8 +17,9 @@ use engage::{
     app::BasicMenuItem_Attribute,
     tm_pro::ITMP_TextMethods
 };
+use engage::app::BasicMenu;
 use unity::{Cast, Class, FromIlInstance};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, get_default_asset_conditions, build_equipment_window, new_asset_table_accessory, ACC_LOC};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, get_default_asset_conditions, build_equipment_window, new_asset_table_accessory, ACC_LOC, UnitAssetData};
 
 #[derive(Default)]
 pub struct UnitSelectList {
@@ -38,7 +39,8 @@ impl UnitSelectList {
             loop {
                 let u = engage::app::UnitFor::get_next_2(start, 9u32);
                 if !u.is_null() {
-                    if !self.list.iter().any(|v| v.hash == u.get_person().hash()) {
+                    let hash = u.get_person().hash();
+                    if !self.list.iter().any(|v| v.hash == hash) {
                         self.list.push(UnitSelect::from_unit(u));
                     }
                     start = u;
@@ -57,6 +59,8 @@ impl UnitSelectList {
                 .filter(|g_unit| !g_unit.m_is_escaping() && g_unit.get_force_type().value == 0)
                 .for_each(|g_unit| {
                     g_unit.m_data().get_change_data().iter().for_each(|god|{
+                        let hash = god.hash();
+                        if !data.iter().any(|p| p.person == hash) { UnitAssetMenuData::get().add_data(UnitAssetData::new_hash(hash, false)); }
                         if !self.list.iter().any(|v| v.hash == god.hash()) { self.list.push(UnitSelect::from_god(god)); }
                     });
                 });
@@ -162,7 +166,7 @@ impl ShopUnitSelect {
             let klass_raw = klass.raw_mut();
             let vtable = klass_raw.get_vtable_mut();
             vtable[8].method_ptr = Self::build_attr as _;
-            vtable[10].method_ptr = Self::on_build_menu_item_content as _;
+            vtable[11].method_ptr = Self::on_build_menu_item_content as _;
             vtable[12].method_ptr = Self::on_select as _;
             vtable[18].method_ptr = Self::a_call as _;
             vtable[19].method_ptr = Self::b_call as _;
@@ -192,7 +196,8 @@ impl ShopUnitSelect {
         BasicMenu_Result::close_decide()
     }
     pub fn on_select(this: ShopUnitSelectMenuItem, _: unity::OptionalMethod) {
-        IBasicMenuItemMethods::on_select(this);
+        println!("BUILDING SHOPUNITSELECT_MENUITEM ONSELECT ");
+        unsafe { BasicMenuItem::on_select(this) };
         let select = &mut UnitAssetMenuData::get().unit_select;
         select.selected = Some(this.get_index());
         let default_conditions = engage::combat::CharacterAppearance::conditions();
@@ -245,6 +250,7 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     let mut sprite: Option<engage::unity_engine::Sprite> = None;
     let god = engage::app::GodData::try_get_from_hash(hash);
     if !god.is_null() {
+        println!("GOD: {}", god.get_mid());
         let s = engage::app::FaceThumbnail::get_3(god);
         if !s.is_null() { sprite = Some(s); }
         name = Some(engage::app::Mess::get(god.get_mid()));
@@ -252,6 +258,7 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     else {
         let person = engage::app::PersonData::try_get_from_hash(hash);
         if !person.is_null() {
+            println!("PERSON: {}", person.get_name());
             let unit = engage::app::UnitPool::get_from_person(person, false);
             if !unit.is_null() {
                 let s = engage::app::FaceThumbnail::get(unit);
@@ -273,8 +280,10 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     }
 }
 pub fn shop_unit_select_menu_item_content_build(this: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem, _: unity::OptionalMethod) {
+    println!("BUILDING SHOPUNITSELECT_MENUITEM 1 ");
     unsafe { shop_select_build(this, item, None) };
     if UnitAssetMenuData::get().is_preview { set_name_sprite(this, item); }
+    println!("BUILDING SHOPUNITSELECT_MENUITEM 2 ");
 }
 
 pub extern "C" fn create_accessory_unit_select(this: engage::app::HubAccessoryShopSequence, _: unity::OptionalMethod) {

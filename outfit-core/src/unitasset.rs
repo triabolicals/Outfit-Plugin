@@ -10,6 +10,7 @@ use engage::{
     system::collections::generic::IList_1,
     app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager}
 };
+use engage::unity_engine::Color;
 use unity::Cast;
 pub use crate::playerdata::*;
 use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
@@ -45,7 +46,8 @@ pub struct UnitAssetPreview {
     pub update: u8,
     pub has_head_acc: bool,
     pub has_hair_acc: bool,
-    pub preview_asset: Option<(AssetType, i32)>
+    pub preview_asset: Option<(AssetType, i32)>,
+
 }
 impl UnitAssetPreview {
     pub const fn new() -> Self {
@@ -80,8 +82,6 @@ impl UnitAssetPreview {
         }
     }
 }
-
-
 pub struct UnitAssetMenuData {
     pub data: Vec<UnitAssetData>,
     pub preview: UnitAssetPreview,
@@ -107,6 +107,9 @@ pub struct UnitAssetMenuData {
     pub photo_profiles: Vec<PlayerOutfitData>,
     pub unit_select: UnitSelectList,
     pub unit_select_index: i32,
+    pub hair_colors: Vec<(f32, f32, f32, f32, f32 ,f32, f32, f32)>,
+    pub hairs: Vec<String>,
+    pub asset: Vec<String>,
 }
 pub enum LoadResult {
     Success,
@@ -194,6 +197,9 @@ impl UnitAssetMenuData {
     }
     const fn default() -> Self {
         Self {
+            asset: Vec::new(),
+            hair_colors: Vec::new(),
+            hairs: Vec::new(),
             unit_select_index: 0,
             mode: MenuMode::Inactive,
             data: Vec::new(),
@@ -327,7 +333,7 @@ impl UnitAssetMenuData {
         else {
             let p1 = engage::app::PersonData::try_get_from_hash(person);
             let p2 = engage::app::GodData::try_get_from_hash(person);
-            if !p1.is_null() || p2.is_null() {
+            if !p1.is_null() || !p2.is_null() {
                 if let Some(data) = Self::get_by_person_data(person, true) {
                     let index = if s != 4 { if engaged && !menu.god_mode { 1 } else { 0 } } else { 2 };
                     menu.preview.selected_profile = index;

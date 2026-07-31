@@ -8,6 +8,7 @@ use engage::app::{HubAccessoryRoom, IGameUserDataMethods, IHubAccessoryRoom, IPr
 use unity::Cast;
 use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, UnitAssetMenuData, V_EVENTS, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, set_color_by_i32};
 use super::*;
+use std::io::Write;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum AssetType {
@@ -26,7 +27,6 @@ impl AssetType {
         match self {
             AssetType::Body => CustomMenuIcon::Clothes,
             AssetType::Head => CustomMenuIcon::Head,
-
             AssetType::Hair => CustomMenuIcon::Hair,
             AssetType::AOC(_) => CustomMenuIcon::SolaTail,
             AssetType::Acc(x) => {

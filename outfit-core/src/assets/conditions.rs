@@ -150,7 +150,7 @@ bitflags! {
         const Vision = 1 << 4;
         const Engaging = 1 << 5;
         const Engaged = 1 << 6;
-        const EngAtkHUP = 1 << 7;
+        const SSupport = 1 << 7;
         const EngAtkCoop = 1 << 8;
         const EngAtkCoopMain = 1 << 9;
         const EngAtkCoopSub = 1 << 10;
@@ -187,7 +187,7 @@ impl AssetFlags {
     pub const UNIT_STATUS_SUMMON: u64 = 35184372088832;
     pub const ASSET_TABLE_CONDITIONS: [&'static str; 26] = [
         "私服", "AID_異形兵", "AID_一般兵", "AID_幻影兵", "残像",
-        "エンゲージ開始", "エンゲージ中", "協力エンゲージ技", "エンゲージ合体技",
+        "エンゲージ開始", "エンゲージ中", "後日談支援Ｓ", "エンゲージ合体技",
         "メイン", "サブ", "EID_チキ",
         "竜石", "竜化", "踊り", "砲台", "弾丸",
         "男装", "女装", "神将", "闇化", "クラスチェンジ中", "☆3", "☆5", "エンゲージ技",
@@ -202,6 +202,7 @@ impl AssetFlags {
             .filter_map(|(i, con)| Some(i).zip(get_condition_index(*con)))
             .filter(|(i, idx)| flags.m_bits().get(*idx))
             .fold(0, |x, (i, idx)| x | (1 << i));
+
         let mut flags = Self::from_bits(bits).unwrap();
         if !unit.is_null() {
             // if UnitAssetMenuData::is_photo_graph() { unit.accessory_list.clear(); }
@@ -212,7 +213,7 @@ impl AssetFlags {
                 flags.set(AssetFlags::Monster, true);
                 return flags;
             }
-            let mut transform_tiki = condition_unit.get_pid().to_rust_string().contains("G001_チキ_");
+            let mut transform_tiki = condition_unit.get_pid().to_rust_string().contains("チキ");
             let person = condition_unit.get_person();
             let aid = person.get_aid();
             if !aid.is_null() { transform_tiki |= aid.to_rust_string().contains("竜化"); }

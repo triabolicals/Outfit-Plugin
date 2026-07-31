@@ -2,6 +2,7 @@ use engage::{
     prelude::*,
     app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase}
 };
+use engage::app::IStructData_1Methods;
 use unity::Cast;
 pub mod transform;
 pub mod dress;
@@ -30,8 +31,8 @@ pub fn asset_table_result_setup_hook_outfit(
     mode: i32,
     unit: engage::app::Unit,
     equipped: engage::app::ItemData,
-    conds: unity::Array<unity::Il2CppString>,
-    method_info: unity::OptionalMethod
+    conds: Array<Il2CppString>,
+    method_info: OptionalMethod
 ) -> AssetTable_Result
 {
     let result = call_original!(this, mode, unit, equipped, conds, method_info);
@@ -40,14 +41,32 @@ pub fn asset_table_result_setup_hook_outfit(
     result
 }
 
+#[skyline::hook(offset= 0x2b0ed80)]
+pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32, o: unity::OptionalMethod) -> engage::combat::CharacterAppearance {
+    let appearance:  engage::combat::CharacterAppearance = call_original!(this, map_distance, o);
+    if !appearance.is_null() {
+        if !this.get_pid().is_null() {
+            let person = engage::app::PersonData::get(this.get_pid());
+            if !person.is_null() {
+                unity::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash());
+            }
+            else {
+                let god = engage::app::GodData::get(this.get_pid());
+                if !god.is_null() { unity::field_set_value_at_offset::<i32>(appearance, 0xd4, god.hash()); }
+            }
+        }
+    }
+    appearance
+}
+
 #[skyline::hook(offset=0x01bb2d80)]
 pub fn asset_table_result_god_setup_outfit(
     this: AssetTable_Result,
     mode: i32,
     god_data: engage::app::GodData,
     is_darkness: bool,
-    conds: unity::Array<unity::Il2CppString>,
-    method_info: unity::OptionalMethod
+    conds: Array<Il2CppString>,
+    method_info: OptionalMethod
 ) -> AssetTable_Result
 {
     let result = call_original!(this, mode, god_data, is_darkness, conds, method_info);

@@ -35,10 +35,7 @@ extern "C" fn dvc_check_warning(event: &Event<SystemEvent>) {
 }
 extern "C" fn event_install(event: &Event<SystemEvent>) {
     let main = engage::app::MainSequence::get_instance();
-    if main.is_null() {
-        println!("MainSequence Not Found");
-        return;
-    }
+    if main.is_null() { return; }
     let v = unity::field_get_value_at_offset::<i32>(main, 0x74);
     if v != 0 { return; }
     if let Event::Args(ev) = event {
@@ -50,6 +47,7 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                         if !UnitAssetMenuData::get().init {
                             outfit_core::install_outfit_plugin(false);
                             skyline::install_hooks!(
+                                assets::appearance_create_from_result,
                                 assets::dress::modify_colors,
                                 assets::asset_table_setup_person_outfit,
                                 assets::asset_table_result_setup_hook_outfit,

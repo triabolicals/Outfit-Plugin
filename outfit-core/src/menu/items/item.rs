@@ -1,10 +1,8 @@
 use std::fs;
-use engage::{
-    app::{AccessoryData_Kinds, BasicDialog, BasicDialogItemNo, GameUserData, GameVariable, IAccessoryMenuItemMethods, IBasicDialogItem, IBasicDialogMethods, IBitField32, IBitField32Methods, IGameVariableMethods, IPhotographDisposInfo, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographSequence, IRandom_2Methods, ISpriteAtlasManager_2, IUnit, IUnitEdit, Pad, Random_2},
-    GameVariableManager,
-    system::collections::generic::{IDictionary_2Methods, InsertionBehavior},
-    app::IUnitEditMethods
-};
+use engage::{app::{AccessoryData_Kinds, BasicDialog, BasicDialogItemNo, GameUserData, GameVariable, IAccessoryMenuItemMethods, IBasicDialogItem, IBasicDialogMethods, IBitField32, IBitField32Methods, IGameVariableMethods, IPhotographDisposInfo, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographSequence, IRandom_2Methods, ISpriteAtlasManager_2, IUnit, IUnitEdit, Pad, Random_2}, GameVariableManager, system::collections::generic::{IDictionary_2Methods, InsertionBehavior}, app::IUnitEditMethods, Mess};
+use engage::app::{SoftwareKeyboard, SoftwareKeyboard_Preset};
+use engage::system::Action_1;
+use unity::Il2CppString;
 use crate::{
     is_up_down_press, left_right_enclose, AssetType, THUMB_DIR,
     data::{items::Profile, room::hub_room_set_by_result},
@@ -525,18 +523,15 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 BasicMenu_Result::se_cursor()
             }
             UnitName => {
-                /*
                 if let Some(unit) = UnitAssetMenuData::get_shop_unit() {
                     UnitAssetMenuData::get().name_set = false;
-                    let initial = unit.edit.name.or(Some(Mess::get_name(unit.person.pid)));
-                    let header = Some(Mess::get("MID_GAMESTART_PLAYER_NAME_INPUT").to_string().into());
-                    let sub_text = Some( "".into());
-                    let limit = 20;
-                    let action = Action1::new_with_method(Some(unit), set_unit_name);
-                    engage::keyboard::SoftwareKeyboard::create_bind(menuitem.menu, limit, initial, header, sub_text, 0, Some(action));
+                    let name = unit.get_name();
+                    let header = Mess::get("MID_GAMESTART_PLAYER_NAME_INPUT");
+                    let sub_text = "";
+                    let limit = 12;
+                    let action = Action_1::<Il2CppString>::new(menuitem.get_asset_menu().into(), set_unit_name_method_info().into());
+                    SoftwareKeyboard::create_bind(menuitem.get_asset_menu(), limit, name, header, sub_text, SoftwareKeyboard_Preset::default(), action);
                 }
-
-                 */
                 BasicMenu_Result::se_cursor()
             }
             OutfitDataFile => {
@@ -761,8 +756,22 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
                 }
                 BasicMenu_Result::pass()
             }
-
              */
+            Asset(AssetType::AOC(b)) => {
+                if menu.reload_type.is_some() && !is_up_down_press() {
+                    AssetType::AOC(*b).update_model(menuitem);
+                    menu.reload_type = None;
+                }
+                else {
+                    let l = Pad::is_trigger(NpadButton::l());
+                    let r = Pad::is_trigger(NpadButton::r());
+                    if l || r {
+                        hub_room_set_by_result(None, ReloadType::Facial(r));
+                        self.get_equipment_box_type(menuitem).update();
+                    }
+                }
+                BasicMenu_Result::pass()
+            }
             Asset(ty) => {
                 if menu.reload_type.is_some() && !is_up_down_press() {
                     ty.update_model(menuitem);
@@ -984,6 +993,16 @@ pub fn scale_change_value(index: i32, increase: bool, speed_up: bool) -> u16 {
     let new_value = crate::clamp_value(value, 1, 1000) as u16;
     preview.scale_preview[index as usize] = new_value;
     new_value
+}
+#[unity::callback]
+fn set_unit_name(menu: CustomAssetMenu, name: Il2CppString, method_info: OptionalMethod) {
+    if !name.is_null() {
+        if let Some(unit) = UnitAssetMenuData::get_unit() {
+            unit.m_edit().set_m_name(name);
+            if !unit.m_edit().is_enable() { unit.m_edit().set_m_gender(unit.get_gender()); }
+            if !menu.unit_name().is_null() { menu.unit_name().set_text_2(name, true); }
+        }
+    }
 }
 #[unity::callback]
 fn delete_face_item(menu_item: CustomAssetMenuItem3, _: unity::OptionalMethod) {

@@ -155,8 +155,12 @@ impl Mount {
                     .map(|x| (Mount::from_i32(x as i32), engage::app::Gender::female()))
             )
     }
-    pub fn determine_mount(str: impl AsRef<str>) -> Mount {
-        ["BR_c", "CR_c", "DR_c", "ER_c", "FR_c"].iter().position(|x| str.as_ref().contains(x))
-            .map(|x|Mount::from_i32(x as i32 + 1)).unwrap_or(Mount::None)
+    pub fn determine_mount(ride_asset: impl AsRef<str>) -> Mount {
+        if ride_asset.as_ref().contains("DT") { Mount::Wyvern }
+        else if ride_asset.as_ref().contains("CT") { Mount::Wolf }
+        else {
+            ["BR_c", "CR_c", "DR_c", "ER_c", "FR_c"].iter().position(|x| ride_asset.as_ref().contains(x))
+                .map(|x|Mount::from_i32(x as i32 + 1)).unwrap_or(Mount::None)
+        }
     }
 }

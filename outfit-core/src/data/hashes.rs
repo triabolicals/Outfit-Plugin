@@ -1,6 +1,7 @@
 use std::collections::{HashMap, HashSet};
+use engage::app::Random_2;
 use unity::system::string::IIl2CppStringMethods;
-use crate::{hash_string, AssetType};
+use crate::{hash_string, AssetType, Randomizer};
 use engage::system::collections::generic::IList_1Methods;
 #[derive(Default)]
 pub struct OutfitHashes {
@@ -29,6 +30,10 @@ pub struct OutfitHashes {
     pub info_f: Vec<i32>,
 }
 impl OutfitHashes {
+    pub fn random_aoc(&self, female: bool, rng: Random_2) -> Option<&String> {
+        if female { self.info_f.get_random_element(rng).and_then(|v| self.aoc.get(v)) }
+        else { self.info_m.get_random_element(rng).and_then(|v| self.aoc.get(v)) }
+    }
     pub fn new() -> Self {
         let mut new: OutfitHashes = Default::default();
         new.add_acc("uAcc_head_null");

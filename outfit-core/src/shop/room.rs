@@ -75,6 +75,28 @@ impl CustomHubAccessoryRoom {
     pub fn create_bind(proc: impl Into<ProcInst>) {
         let sequence = engage::app::GameUserData::get_instance().get_sequence().value;
         if sequence < 4 { return; }
+        if sequence == 4 {
+            let hub_sequence = HubSequence::get_instance();
+            if !hub_sequence.is_null() {
+                let scene = hub_sequence.m_scene_name().to_rust_string();
+                if scene.contains("GodRoom") { return; }
+                let map = hub_sequence.get_mini_map();
+                map.set_mode(engage::app::HubMiniMap_MapMode::none());
+                map.hide_system_menu();
+                map.update();
+            }
+        }
+        /*
+        if sequence < 6 {
+            HubAccessoryRoom::create_bind(proc, HubAccessoryRoom_Shop::hub());
+            let child = proc.into().get_child();
+            if let Some(room) = child.try_cast::<HubAccessoryRoom>() {
+                let descs = room.m_descs();
+                descs.set(9, Proc::call_method(ProcVoidMethod::from_fn(room, Self::main).unwrap()),)
+            }
+        }
+        else {
+            */
         let asset = UnitAssetMenuData::get();
         asset.is_shop_combat = sequence != 4;
         asset.mode = MenuMode::Shop;
@@ -110,22 +132,13 @@ impl CustomHubAccessoryRoom {
         let arr = unity::Array::<ProcDesc>::new(<ProcDesc as ClassIdentity>::class().raw(), descs.len()).unwrap();
         for (i, d) in descs.iter().enumerate() { arr.set(i, *d); }
         room.create_bind(proc, arr, "CustomHubAccessoryRoom");
-        if sequence != 6 {
-            let hub_sequence = HubSequence::get_instance();
-            if !hub_sequence.is_null() {
-                let map = hub_sequence.get_mini_map();
-                map.set_mode(engage::app::HubMiniMap_MapMode::none());
-                map.hide_system_menu();
-                map.update();
-            }
-        }
     }
     pub extern "C" fn init(proc: HubAccessoryRoom, _: unity::OptionalMethod) {
         let hub = HubSequence::get_instance();
         if !hub.is_null() {
-            let group = hub.m_hub_locator_group();
+            let group = hub.get_locator_group();
             if !group.is_null() { group.save_accessory(); }
-            let controller = hub.m_hub_player_controller();
+            let controller = hub.get_player();
             if !controller.is_null() { controller.save_accessory(); }
         }
         let scene = SceneManager::get_scene_by_name("Hub_AccessoryRoom");
@@ -167,7 +180,10 @@ impl CustomHubAccessoryRoom {
         match sequence {
             4|5 => {
                 let hub = HubSequence::get_instance();
-                if !hub.is_null() { field_set_value_at_offset::<Il2CppString>(proc, 0x90, hub.m_scene_name()); }
+                if !hub.is_null() {
+                    println!("HubSceneName: {}", hub.m_scene_name());
+                    field_set_value_at_offset::<Il2CppString>(proc, 0x90, hub.m_scene_name());
+                }
             }
             6 => {
                 let gmap = GmapSequence::get_instance();
@@ -178,12 +194,14 @@ impl CustomHubAccessoryRoom {
             }
             _ => { return; }
         }
-        let mut scene = SceneManager::get_scene_by_name(proc.get_return_scene_name());
         let disable_list = proc.disable_list();
         disable_list.clear();
+        let mut scene = SceneManager::get_scene_by_name(proc.get_return_scene_name());
         scene.get_root_game_objects().iter().for_each(|o|{
-            o.set_active(false);
-            disable_list.add(o);
+            if o.get_active_self() {
+                o.set_active(false);
+                disable_list.add(o);
+            }
         });
         proc.load_scene_2("Hub_AccessoryRoom".into(), LoadSceneMode::additive());
     }
@@ -196,37 +214,51 @@ impl CustomHubAccessoryRoom {
         if !character.is_null() { engage::unity_engine::Object_2::destroy_2(character); }
         let camera = proc.get_camera_pos();
         if !camera.is_null() { engage::unity_engine::Object_2::destroy_2(camera); }
-
+        println!("Return Scene: {}", proc.get_return_scene_name());
         let scene = SceneManager::get_scene_by_name(proc.get_return_scene_name());
         SceneManager::set_active_scene(scene);
         let disable_list = proc.disable_list();
-        if disable_list.count() > 0 { disable_list.iter().for_each(|g|{ g.set_active(true); }); }
+        disable_list.iter().for_each(|g|{
+            println!("Setting: {} to active", g.get_name());
+            g.set_active(true);
+        });
+        disable_list.clear();
         let hub = HubSequence::get_instance();
         if !hub.is_null() {
-            let player_controller = hub.m_hub_player_controller();
-            if !player_controller.is_null() { player_controller.restore_accessory(); }
+            let player_controller = hub.get_player();
+            if !player_controller.is_null() {
+                println!("Exit PlayerController$$RestoreAccessory");
+                player_controller.restore_accessory();
+            }
         }
     }
     pub extern "C" fn is_character_loading(proc: HubAccessoryRoom, _: unity::OptionalMethod) -> bool {
-        if !HubSequence::get_instance().is_null() { proc.is_character_loading() } else { ResourceManager_2::is_loading() }
+        crate::menu::proc::OutfitSequence::character_loading(proc.into(), None)
     }
     pub extern "C" fn exit_other(_: HubAccessoryRoom, _: unity::OptionalMethod) {
         let hub = HubSequence::get_instance();
         if !hub.is_null() {
-            let group = hub.m_hub_locator_group();
+            let group = hub.get_locator_group();
             if !group.is_null() {
                 group.set_active(true);
+                println!("Exit Other  LocatorGroup$$RestoreAccessory");
                 group.restore_accessory();
             }
         }
     }
     pub extern "C" fn exit_after(_: HubAccessoryRoom, _: unity::OptionalMethod) {
         let hub = HubSequence::get_instance();
-        if !HubSequence::get_instance().is_null() {
-            let group = hub.m_hub_locator_group();
-            if !group.is_null() { group.reset_look_at(); }
-            let controller = hub.m_hub_player_controller();
-            if !controller.is_null() { controller.init_look_at_target(); }
+        if !hub.is_null() {
+            let group = hub.get_locator_group();
+            if !group.is_null() {
+                println!("Exit After LocatorGroup$$ResetLookAt");
+                group.reset_look_at();
+            }
+            let controller = hub.get_player();
+            if !controller.is_null() {
+                println!("Exit After  Controller$$InitLookAtTarget");
+                controller.init_look_at_target();
+            }
         }
     }
 }
@@ -236,140 +268,6 @@ extern "C" fn jump_to_menu_check(proc: HubAccessoryShopSequence, _: unity::Optio
 extern "C" fn jump_to_exit(proc: HubAccessoryShopSequence, _: unity::OptionalMethod) -> bool {
     proc.m_shop_menu_result() == AccessoryShopTopMenu_Result2::end()
 }
-
-/*
-#[repr(C)]
-pub struct MyCharacterBuilderObject {
-    klass: &'static Il2CppClass,
-    monitor: u64,
-    pub builder: &'static mut CharacterBuilder,
-    pub old_objects: &'static mut List<Il2CppString>,
-}
-
-impl MyCharacterBuilderObject {
-    pub fn replace_head(builder: &'static mut CharacterBuilder, asset: &Il2CppString) {
-        if !builder.head.is_null() {
-            builder.head.get_transform().set_parent(None);
-            builder.head.destroy();
-        }
-        let display_class_104_klass = UnitInfoWindowCharaModel::class().get_nested_types()[4];
-        let create_unit_action_object = display_class_104_klass.instantiate_as::<MyCharacterBuilderObject>().unwrap();
-        builder.appearance.assets[2].set_name(asset);
-        create_unit_action_object.builder = builder;
-        let action = Action::instantiate().unwrap();
-        action.ctor(Some(create_unit_action_object), display_class_104_klass.get_methods()[1]);
-        action.method_ptr = MyCharacterBuilderObject::build_non_dress as _;
-        create_unit_action_object.builder.appearance.assets[2].load_async(Some(action));
-    }
-    pub fn replace_hair(builder: &'static mut CharacterBuilder, asset: &Il2CppString) {
-        if !builder.hair.is_null() {
-            builder.hair.get_transform().set_parent(None);
-            builder.hair.destroy();
-        }
-        let display_class_104_klass = UnitInfoWindowCharaModel::class().get_nested_types()[4];
-        let create_unit_action_object = display_class_104_klass.instantiate_as::<MyCharacterBuilderObject>().unwrap();
-        builder.appearance.assets[3].set_name(asset);
-        create_unit_action_object.builder = builder;
-        let action = Action::instantiate().unwrap();
-        action.ctor(Some(create_unit_action_object), display_class_104_klass.get_methods()[1]);
-        action.method_ptr = MyCharacterBuilderObject::build_non_dress as _;
-        create_unit_action_object.builder.appearance.assets[3].load_async(Some(action));
-    }
-    fn set_unit_info_layer(this: &CharacterBuilder) {
-        if let Some(go) = this.get_game_object().filter(|g| !g.is_null())  {
-            let builder_transform = go.get_transform();
-            if let Some(parent) = builder_transform.get_parent() {
-                let parent_name = parent.get_name().to_string();
-                if parent_name.contains("UnitInfoWindowCharaModel") {
-                    if let Some(char) = this.get_component::<Character>() {
-                        let layer = UnitInfo::get_instance().unwrap().windows[0].unit_info_window_chara_model.camera_object.get_layer();
-                        if let Some(go) = char.get_game_object().filter(|g| !g.is_null()) {
-                            Ut::set_layer_recursively2(go, layer);
-                        }
-                    }
-                }
-            }
-            this.appearance.modify_colors(go);
-        }
-    }
-    pub fn build_non_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: unity::OptionalMethod) {
-        this.builder.attach_head_hair_and_weapons();
-        this.builder.attach_dress();
-        if let Some(go) = this.builder.get_game_object() { this.builder.appearance.modify_colors(go); }
-        Self::set_unit_info_layer(this.builder);
-    }
-    pub fn replace_dress(builder: engage::combat::CharacterBuilder, asset: unity::Il2CppString){
-        let go = builder.get_game_object();
-        if go.is_null() { return; }
-        let appearance = builder.appearance();
-        let list = List_1::<unity::Il2CppString>::new();
-        list.add("c_trans".into());
-        list.add("HoldWeapon".into());
-        list.add("LookTarget".into());
-        for xx in [0, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19] {
-            let asset = appearance.assets().get(xx);
-            if asset.is_null() { continue; }
-            if !asset.is_ready() { continue; }
-            let go = builder.get_go(asset);
-            if go.is_null() { continue; }
-            go.get_components_in_children_3::<engage::unity_engine::Transform>(true).iter().for_each(|t|{
-                list.add(t.get_name());
-            });
-        };
-
-        if let Some(go) = builder.get_game_object().filter(|g| !g.is_null()) {
-            let list = List::<Il2CppString>::with_capacity(256).unwrap();
-            list.add("c_trans".into());
-            list.add("HoldWeapon".into());
-            list.add("LookTarget".into());
-            for xx in [0, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17, 18, 19] {
-                if builder.appearance.assets[xx].name.is_none() || !builder.appearance.assets[xx].is_ready() { continue; }
-                if let Some(go) = builder.appearance.assets[xx].get_asset() {
-                    go.get_components_in_children::<Transform>(true).iter().for_each(|x| {
-                        list.add(x.get_name());
-                    })
-                }
-            };
-            let go_transform = go.get_transform();
-            if let Some(c_trans) = Kaneko::find_in_children(go_transform, "c_trans".into()) {
-                let keep_trans = list.iter().map(|v| v.to_string()).collect::<Vec<String>>();
-                c_trans.get_components_in_children_gen::<Transform>(true).iter()
-                    .for_each(|t|{
-                        let xx = t.get_name().to_string();
-                        if !keep_trans.contains(&xx) && !xx.contains("Camera") {
-                            t.set_parent(None);
-                            if let Some(obj) = t.get_game_object(){ obj.destroy(); }
-                        }
-                    });
-            }
-            let display_class_104_klass = UnitInfoWindowCharaModel::class().get_nested_types()[4];
-            let create_unit_action_object = display_class_104_klass.instantiate_as::<MyCharacterBuilderObject>().unwrap();
-            builder.appearance.assets[1].set_name(asset);
-            create_unit_action_object.builder = builder;
-            create_unit_action_object.old_objects = list;
-            let action = Action::instantiate().unwrap();
-            action.ctor(Some(create_unit_action_object), display_class_104_klass.get_methods()[1]);
-            action.method_ptr = MyCharacterBuilderObject::build_dress as _;
-            create_unit_action_object.builder.appearance.assets[1].load_async(Some(action));
-        }
-    }
-    pub fn build_dress(this: &'static mut MyCharacterBuilderObject, _optional_method: unity::OptionalMethod) {
-        if let Some(go) = this.builder.get_game_object().filter(|g| !g.is_null() ){
-            go.get_components_in_children::<SkinnedMeshRenderer>(true).iter().for_each(|tr| {
-                if let Some(parent) = tr.get_transform().get_parent() {
-                    if parent.get_name().to_string() == "meshGP" {
-                        if let Some(go) = tr.get_game_object() { go.destroy(); }
-                    }
-                }
-            });
-            this.builder.dress_ut = Some(DressUtility::new(go.get_transform()));
-            this.builder.attach_dress();
-            Self::set_unit_info_layer(this.builder);
-            this.builder.dress_ut = None;
-        }
-    }
-}
- */
 /*
 pub fn break_effect(this: &mut CharacterEffect){
 
@@ -827,9 +725,7 @@ fn update_result_for_preview(result: AssetTable_Result) {
                 }
                 _ => { return; }
             }
-            if UnitAssetMenuData::is_unit_info() && kind != AssetType::Body {
-                result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
-            }
+            result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
         }
     }
 }

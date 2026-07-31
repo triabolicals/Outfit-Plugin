@@ -44,8 +44,8 @@ impl OutfitSequence {
     pub fn get_player_controller() -> Option<HubPlayerController> {
         let hub_sequence = HubSequence::get_instance();
         if !hub_sequence.is_null() {
-            let locator_group = hub_sequence.get_player();
-            if !locator_group.is_null() { Some(locator_group) } else { None }
+            let player = hub_sequence.get_player();
+            if !player.is_null() { Some(player) } else { None }
         } else { None }
     }
     pub fn get_outfit_descs(proc: ProcInst) -> Array<ProcDesc> {
@@ -95,7 +95,7 @@ impl OutfitSequence {
             group.restore_accessory();
         }
     }
-    extern "C" fn character_loading(_this: ProcInst, _: OptionalMethod) -> bool {
+    pub extern "C" fn character_loading(_this: ProcInst, _: OptionalMethod) -> bool {
         ResourceManager_2::is_loading() ||
             Self::get_hub_locator_group().is_some_and(|v| v.is_character_loading()) ||
             Self::get_player_controller().is_some_and(|v|v.get_is_character_loading())

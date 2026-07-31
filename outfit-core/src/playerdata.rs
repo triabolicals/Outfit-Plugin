@@ -256,11 +256,9 @@ impl PlayerOutfitData {
             }
             flag &= !513;
         }
-        let end = stream.get_position();
         Self { flag, ubody, uhead, uhair, aoc, colors, break_body, scale, acc, voice, mount, rig, aoc_alt, expression }
     }
     pub fn serialize(&self, stream: Stream_2) {
-        let start =  stream.get_position();
         stream.write_int(self.flag);    // 4
         stream.write_int(self.ubody);   // 8
         stream.write_int(self.uhead);   // 12
@@ -275,7 +273,6 @@ impl PlayerOutfitData {
         self.mount.iter().for_each(|m|{ stream.write_int(*m); });   // 212
         stream.write_int(self.voice);   //  218
         self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); }); // 218+16 => 232
-        let end = stream.get_position();
     }
     pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
@@ -285,7 +282,6 @@ impl PlayerOutfitData {
     pub fn set_result(&self, result: AssetTable_Result, mode: i32, engaged: bool, stun: bool) {
         let sequence = GameUserData::get_instance().get_sequence().value;
         let db = get_outfit_data();
-
         if sequence != 4 {
             if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.as_str().into(); }
         }
@@ -328,7 +324,7 @@ impl PlayerOutfitData {
                 let mount_index = i32::from(current_mount) - 1;
                 if mount_index >= 0 && mount_index < 5 {
                     let selection = self.mount[mount_index as usize];
-                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.set_ride_model(ride.as_str()); }
+                    if let Some(ride) = db.hashes.mounts.get(&selection) { result.set_ride_dress_model(ride.as_str()); }
                 }
             }
             let dress_gender = db.get_dress_gender(result.get_dress_model());
@@ -532,6 +528,26 @@ impl PlayerOutfitData {
        //  else { String::new() }
     //}
 }
+pub fn deserialize_outfit_data(stream: Stream_2, version: i32) {
+    let menu_data = UnitAssetMenuData::get();
+    if !menu_data.is_loaded && version >= 21 {
+        let version = stream.read_begin_2();
+        if version < 6 { return; }
+        let count = stream.read_int();
+        menu_data.data.clear();
+        for _ in 0..count {
+            let data = UnitAssetData::deserialize(stream, version);
+            menu_data.add_data(data);
+        }
+        stream.read_end(true);
+        PLAYABLE_HASH.iter().for_each(|p|{
+            if menu_data.data.iter().find(|v| v.person == *p).is_none() {
+                menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
+        });
+        crate::capture::reset_faces(false);
+        menu_data.is_loaded = true;
+    }
+}
 
 pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method_info: unity::OptionalMethod){
     unsafe { game_user_data_serialize(this, stream, _method_info) };
@@ -555,24 +571,7 @@ pub fn game_user_data_on_serialize(this: GameUserData, stream: Stream_2, _method
 pub fn game_user_data_version(_this: GameUserData, _method_info: unity::OptionalMethod) -> i32 { crate::GAME_USER_DATA_VERSION }
 pub fn game_user_data_on_deserialize(this: GameUserData, stream: Stream_2, version: i32, _method_info: unity::OptionalMethod){
     unsafe { game_user_data_deserialize(this, stream, version, _method_info) };
-    let menu_data = UnitAssetMenuData::get();
-    if !menu_data.is_loaded && version >= 21 {
-        let version = stream.read_begin_2();
-        if version < 6 { return; }
-        let count = stream.read_int();
-        menu_data.data.clear();
-        for _ in 0..count {
-            let data = UnitAssetData::deserialize(stream, version);
-            menu_data.add_data(data);
-        }
-        stream.read_end(true);
-        PLAYABLE_HASH.iter().for_each(|p|{
-            if menu_data.data.iter().find(|v| v.person == *p).is_none() {
-                menu_data.data.push(UnitAssetData::new_hash(*p, false)); }
-        });
-        crate::capture::reset_faces(false);
-        menu_data.is_loaded = true;
-    }
+    deserialize_outfit_data(stream, version);
 }
 #[skyline::from_offset(0x2517840)]
 fn game_user_data_serialize(this: GameUserData, stream: Stream_2, _method_info: unity::OptionalMethod);

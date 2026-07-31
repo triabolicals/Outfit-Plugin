@@ -20,6 +20,7 @@ pub fn commit_for_unit_dress(
     let flags = person.get_flag().m_value();
     if conditions.flags.contains(AssetFlags::Monster) || flags & 64 != 0 || mode == 3 || person.get_gender().value & 3 == 0 || person.get_bmap_size() > 1 {
         result.commit_2(mmode, unit.get_person(), unit.get_job(), equipped);
+        result.replace(mmode);
         return;
     }
     let condition_unit =

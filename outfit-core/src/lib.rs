@@ -8,6 +8,8 @@ use engage::{
 };
 use unity::{injection::*, Cast, Class, ClassIdentity};
 pub use engage::prelude::*;
+use engage::unity_engine::ITransformMethods;
+pub use playerdata::deserialize_outfit_data;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
 #[allow(static_mut_refs, non_contiguous_range_endpoints)]mod playerdata;
@@ -36,7 +38,7 @@ pub use data::dress::PersonalDressData;
 pub use capture::reset_faces;
 pub use crate::assets::{AssetConditions, AssetFlags};
 
-pub const VERSION: &'static str = "2.8.0";
+pub const VERSION: &'static str = "2.8.3";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -53,10 +55,10 @@ pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
 pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| OutfitData::init()) }
 
-fn photo_off(_proc: engage::app::ProcInst, _: unity::OptionalMethod) {
+fn photo_off(_proc: engage::app::ProcInst, _: OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::Inactive;
 }
-fn photo_on(_proc: engage::app::ProcInst, _optional_method: unity::OptionalMethod) {
+fn photo_on(_proc: engage::app::ProcInst, _optional_method: OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::PhotoGraph;
     UnitAssetMenuData::init_photo_profiles();
 }
@@ -68,7 +70,6 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
     let _ = std::fs::create_dir_all(INPUT_DIR);
     let _ = std::fs::create_dir_all(CAPTURE_DIR);
     let _ = std::fs::create_dir_all(THUMB_DIR);
-    skyline::install_hooks!(appearance_create_from_result);
     println!("Installing Outfit Plugin v{} ...", VERSION);
     if UnitAssetMenuData::get().init {
         UnitAssetMenuData::get().data.clear();
@@ -132,6 +133,18 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         }
     });
     init
+}
+fn get_renderer_asset_name(r: SkinnedMeshRenderer) -> Option<String> {
+    let mut trans = r.get_transform();
+    let mut string = trans.get_name().to_rust_string();
+    loop {
+        if string.starts_with("uHair") || string.starts_with("Hair") || string.starts_with("h") { return Some(string); }
+        else {
+            trans = trans.get_parent();
+            if trans.is_null() { return None } else { string = trans.get_name().to_rust_string(); }
+        }
+    }
+
 }
 pub fn get_head_hair_colors(go: engage::unity_engine::GameObject) {
     if go.is_null() { return; }

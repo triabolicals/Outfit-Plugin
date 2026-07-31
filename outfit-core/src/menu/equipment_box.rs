@@ -230,9 +230,10 @@ impl EquipmentBoxMode {
                 for x in 0..5 { Self::set_asset(equipment, x+1, AssetType::Mount(x as u8), data); }
             }
             EquipmentBoxPage::AOCAnimations(female) => {
-                Self::set_rows(equipment, 5);
+                Self::set_rows(equipment, 6);
                 println!("AOC Female: {}", female);
                 for x in 0..4 { Self::set_asset_gender(equipment, x+1, AssetType::AOC(x as u8), data, female); }
+                set_content_data_slot(equipment, 5, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
                 /*
                 let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(
                     if UnitAssetMenuData::get_current_dress_gender() == 2 {

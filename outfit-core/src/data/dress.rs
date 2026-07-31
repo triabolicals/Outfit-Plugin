@@ -255,7 +255,7 @@ impl DressData {
         self.job.iter().find(|x| x.is_match(gender, job))
     }
     pub fn get_personal_dress(&self, unit: engage::app::Unit) -> Option<&PersonalDressData> {
-        if unit.is_null() || unit.get_person().is_null() { None }
+        if unit.is_null() || unit.get_person().is_null() || unit.get_person().get_job().is_null() { None }
         else if unit.m_edit().is_enable() {
             self.get_personal_dress_by_person(unit.get_person(), unit.m_edit().m_gender().value ==2)
         }
@@ -337,7 +337,6 @@ impl PersonalDressData {
             if hash_list.o_hair.contains_key(&hash) { self.ohair = hash; }
         }
         for x in 0..8 { self.color[x+8] = get_result_color_i32(result, x); }
-        for x in 16..19 { self.scale[x] = get_result_scale_u16(result, x); }
     }
     pub fn process_from_asset_table(&mut self, result: AssetTable_Result, hash_list: &OutfitHashes) -> bool {
         let (dress, head) = (result.get_dress_model(), result.get_head_model());
@@ -492,13 +491,16 @@ impl PersonalDressData {
             let job = person.get_job();
             let job_icon = job.get_unit_icon_id(gender.value == 2);
             let weapon_icon = job.get_unit_icon_weapon_id();
-            Some(format!("{}_{}_{}", unit_icon, job_icon, weapon_icon))
+            let key = format!("{}_{}_{}", unit_icon, job_icon, weapon_icon);
+            println!("Looking for: {}", key);
+            Some(key)
         }
         else if self.flags.contains(PersonalDressDataFlags::FromGod){
             let god = GodData::try_get_from_hash(self.hash);
             let icon = god.get_unit_icon_id();
             if self.flags.contains(PersonalDressDataFlags::Dark) || dark {
                 let key = format!("997Darkness_{}_NoWeapon", icon);
+                println!("Looking for: {}", key);
                 if engage::app::GameIcon::tyr_get_unit_icon_index(key.as_str()).is_null() { Some("997Darkness_711Shadow_NoWeapon".to_string()) }
                 else { Some(key) }
             }
@@ -540,10 +542,6 @@ impl PersonalDressData {
             for x in 0..8 {
                 let color = self.color[x+8];
                 if color > 0 { set_color_by_i32(result, x, self.color[x+8]); }
-            }
-            for x in 16..19 {
-                let v = self.scale[x];
-                if v > 0 { crate::set_result_scale_u16(result, x, v); }
             }
         }
 
