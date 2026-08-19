@@ -1,54 +1,54 @@
-JID_神竜ノ子,JID_M000_神竜ノ子 Drg0AM_c001 Drg0AF_c051
-JID_邪竜ノ子    Drg0AM_c002 Drg0AF_c052 hair=161,42,48
-JID_神竜ノ王    Drg1AM_c001 Drg1AF_c051
-JID_M002_神竜ノ王   Drg1AF_c555
-JID_邪竜ノ娘    Sdp0AF_c551
-JID_邪竜ノ娘_敵  Sdp0AF_c556
-JID_邪竜ノ王,JID_M000_邪竜ノ王  Sdk0AM_c504
-JID_アヴニール   Avn#BM_c100  ride=Avn0BR_c100
-JID_フロラージュ  Flr#AF_c150
-JID_スュクセサール Scs#AM_c200
-JID_ティラユール Trl#AM_c201
-JID_リンドブルム  Lnd#DF_c350  ride=Lnd0DR_c350
-JID_スレイプニル  Slp#EF_c351  ride=Slp0ER_c351
-JID_クピードー   Cpd#BM_c400  ride=Cpd0BR_c400
-JID_ピッチフォーク Pcf#AF_c450
-JID_裏邪竜ノ娘   Sds0AF_c099
-JID_裏邪竜ノ子,JID_裏邪竜ノ子_E1-4,JID_裏邪竜ノ子_E5   Sds0AM_c049
-JID_ソードファイター    Swd0A*
-JID_ソードマスター Swd1A*
-JID_ブレイブヒーロー    Swd2A*
-JID_ランスファイター    Lnc0A*
-JID_ハルバーディア Lnc1A*
-JID_ロイヤルナイト Lnc2B*  ride=Lnc2BR
-JID_アクスファイター    Axe0A*
-JID_ベルセルク   Axe1A*
-JID_ウォーリアー  Axe2A*
-JID_アーチャー   Bow0A*
-JID_スナイパー   Bow1A*
-JID_ボウナイト   Bow2B*  ride=Bow2BR
-JID_ソードアーマー,JID_ランスアーマー,JID_アクスアーマー Amr0A*
-JID_ジェネラル   Amr1A*
-JID_グレートナイト Amr2B*  ride=Amr2BR
-JID_ソードナイト,JID_ランスナイト,JID_アクスナイト    Cav0B*  ride=Cav0BR
-JID_パラディン   Cav1B*  ride=Cav1BR
-JID_ウルフナイト  Cav2C*  ride=Cav2CR
-JID_マージ Mag0A*
-JID_セイジ Mag1A*
-JID_マージナイト  Mag2B*  ride=Mag2BR
-JID_モンク Rod0A*
-JID_マスターモンク Rod1A*
-JID_ハイプリースト Rod2A*
-JID_ソードペガサス,JID_ランスペガサス,JID_アクスペガサス Wng0EF  ride=Wng0ER
-JID_グリフォンナイト    Wng1F*  ride=Wng1FR
-JID_ドラゴンナイト Wng2D*  ride=Wng2DR
-JID_シーフ Dge0A*
-JID_ダンサー    Dnc0AM_c403
-JID_蛮族  Bbr0A*
-JID_メリュジーヌ_味方   Msn0DF_c553b    ride=Msn0DR_c553b    oride=Msn0DR_c553
-JID_メリュジーヌ  Msn0DF_c553    ride=Msn0DR_c553 oride=Msn0DR_c553
-JID_エンチャント  Ect3A*
-JID_マージカノン  Mcn3A*
+神竜ノ子,M000_神竜ノ子 Drg0AM_c001 Drg0AF_c051
+邪竜ノ子    Drg0AM_c002 Drg0AF_c052 hair=161,42,48
+神竜ノ王    Drg1AM_c001 Drg1AF_c051
+M002_神竜ノ王   Drg1AF_c555
+邪竜ノ娘    Sdp0AF_c551
+邪竜ノ娘_敵  Sdp0AF_c556
+邪竜ノ王,M000_邪竜ノ王  Sdk0AM_c504
+r アヴニール   Avn#BM_c100  ride=Avn0BR_c100
+r フロラージュ  Flr#AF_c150
+r スュクセサール Scs#AM_c200
+r ティラユール Trl#AM_c201
+r リンドブルム  Lnd#DF_c350  ride=Lnd0DR_c350
+r スレイプニル  Slp#EF_c351  ride=Slp0ER_c351
+r クピードー   Cpd#BM_c400  ride=Cpd0BR_c400
+ピッチフォーク Pcf#AF_c450
+裏邪竜ノ娘   Sds0AF_c099
+裏邪竜ノ子,裏邪竜ノ子_E1-4,裏邪竜ノ子_E5   Sds0AM_c049
+ソードファイター    Swd0A*
+ソードマスター Swd1A*
+ブレイブヒーロー    Swd2A*
+ランスファイター    Lnc0A*
+ハルバーディア Lnc1A*
+ロイヤルナイト Lnc2B*  ride=Lnc2BR
+アクスファイター    Axe0A*
+ベルセルク   Axe1A*
+ウォーリアー  Axe2A*
+アーチャー   Bow0A*
+スナイパー   Bow1A*
+ボウナイト   Bow2B*  ride=Bow2BR
+ソードアーマー,ランスアーマー,アクスアーマー Amr0A*
+ジェネラル   Amr1A*
+グレートナイト Amr2B*  ride=Amr2BR
+ソードナイト,ランスナイト,アクスナイト    Cav0B*  ride=Cav0BR
+パラディン   Cav1B*  ride=Cav1BR
+ウルフナイト  Cav2C*  ride=Cav2CR
+マージ Mag0A*
+セイジ Mag1A*
+マージナイト  Mag2B*  ride=Mag2BR
+モンク Rod0A*
+マスターモンク Rod1A*
+ハイプリースト Rod2A*
+ソードペガサス,ランスペガサス,アクスペガサス Wng0EF  ride=Wng0ER
+グリフォンナイト    Wng1F*  ride=Wng1FR
+ドラゴンナイト Wng2D*  ride=Wng2DR
+シーフ Dge0A*
+ダンサー    Dnc0AM_c403
+蛮族  Bbr0A*
+メリュジーヌ_味方   Msn0DF_c553b    ride=Msn0DR_c553b    oride=Msn0DR_c553 uas=Msn1DF
+メリュジーヌ  Msn0DF_c553    ride=Msn0DR_c553 oride=Msn0DR_c553
+エンチャント  Ect3A*
+マージカノン  Mcn3A*
 END
 マルス Mar1A  129,198,255	123,162,255
 シグルド    Sig1A  237,208,255	201,216,255
@@ -74,7 +74,7 @@ END
 ルフレ Chr1A  48,92,129	68,154,229
 リュール    Ler1A  97,184,231	255,51,107
 END
-JID_異形飛竜    IID_氷のブレス   Fyd2DM-Mg1_c707_M
-JID_幻影飛竜    IID_瘴気のブレス  Fyd2DM-Mg1_c715_M
-JID_異形竜 IID_火のブレス
-JID_幻影竜 IID_炎塊
+異形飛竜    IID_氷のブレス   Fyd2DM-Mg1_c707_M
+幻影飛竜    IID_瘴気のブレス  Fyd2DM-Mg1_c715_M
+異形竜 IID_火のブレス
+幻影竜 IID_炎塊

@@ -9,7 +9,7 @@
 6 Select an outfit parameter file from 'sd:/engage/outfits/input/'\nto load data into an asset profile.
 7 The current asset profile data.
 8 $(L)$(R)Change data page.\n$(Minus)Remove all current asset parameters.
-9 Export the current preview as outfit parameters to\n'sd:/engage/outfits/input'
+9 Export the preview character to parameters.\nSave to 'sd:/engage/outfits/input'.
 10 Asset profile to use in battle/map.\n$(Left)$(Right) Change profile.
 11 Asset profile to when engaged.\n$(Left)$(Right) Change profile.
 12 Asset profile to use in the Somniel.\n$(Left)$(Right) Change profile.

@@ -1,8 +1,12 @@
 use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
-use engage::app::{AssetTable_Modes, AssetTable_Result, GameUserData, IAssetTable_ResultMethods, IGameUserDataMethods, ISingletonClass_1Methods, IStream_2Methods, IStructData_1Methods, Stream_2};
+use engage::{
+    app::{assettable::*, gameuserdata::*, ISingletonClass_1Methods, IStream_2Methods, IStructData_1Methods, Stream_2},
+    combat::{Character, ICharacterAppearance, ICharacterAssetForm, ICharacterAssetT_1Methods, ICharacterMethods},
+    unity_engine::{IComponentMethods, IMaterialMethods}
+};
 use unity::Cast;
 use unity::system::string::IIl2CppStringMethods;
-use crate::{assets::new_asset_table_accessory, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim, apply_result_hair};
+use crate::{assets::new_asset_table_accessory, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim, apply_result_hair, try_get_material_from_go};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,
@@ -15,9 +19,9 @@ const SCALE_NAME: [&str; 16] = [
     "All", "Head", "Neck", "Torso", "Shoulder", "Arms", "Hands", "Legs", "Feet", "V_Bust", "V_Abdomen", "V_Torso",
     "V_BaseArms", "V_BaseLegs", "V_Arms", "V_Legs"
 ];
-const COLORS: [&str; 14] = [
+const COLORS: [&str; 15] = [
     "HairColor", "HairGrad", "Skin", "Toon", "Mask100", "Mask75", "Mask50", "Mask25",
-    "BaseEye", "BlackEye", "Decal1", "Decal2", "Decal3", "Decal4"
+    "BaseEye", "BlackEye", "Decal1", "Decal2", "Decal3", "Decal4", "Hair2",
 ];
 
 const VAR_NAMES: [&str; 27] = [
@@ -42,6 +46,7 @@ pub struct UnitAssetData {
 }
 
 impl UnitAssetData {
+    pub const EYE_COLOR: [&'static str; 6] = ["_BaseColor", "_BlackColor", "_DecalColor1", "_DecalColor2", "_DecalColor3", "_DecalColor4"];
     pub fn version() -> i32 { 10 }
     pub fn new_hash(hash: i32, random_app: bool) -> Self {
         let (profile, flag) =
@@ -190,7 +195,7 @@ impl PlayerOutfitData {
         let db = get_outfit_data();
         let not_empty =
         self.colors.iter().any(|v| v.has_color()) ||
-            self.scale.iter().any(|v| *v > 0 && * v < 1000 ) ||
+            self.scale.iter().any(|v| (v & 1023) > 0 ) ||
             db.try_get_asset(AssetType::Head, self.uhead).is_some() ||
             db.try_get_asset(AssetType::Hair, self.uhair).is_some() ||
             db.try_get_asset(AssetType::Rig, self.rig).is_some() ||
@@ -242,7 +247,6 @@ impl PlayerOutfitData {
                 }
             }
         }
-        // 165663
         if version < 10 {
             if flag & 1 != 0 {
                 for x in 0..8 { if colors[x].has_color() { colors[x].values[3] = 1; } }
@@ -274,6 +278,12 @@ impl PlayerOutfitData {
         stream.write_int(self.voice);   //  218
         self.aoc_alt.iter().for_each(|a|{ stream.write_int(*a); }); // 218+16 => 232
     }
+    pub fn assign_unity_color(&mut self, idx: usize, color: engage::unity_engine::Color){
+        self.colors[idx].set( (color.r * 255.0) as u8, 0);
+        self.colors[idx].set( (color.g * 255.0) as u8, 1);
+        self.colors[idx].set( (color.b * 255.0) as u8, 2);
+        self.colors[idx].set( (color.a * 255.0) as u8, 3);
+    }
     pub fn set_color(&self, result: AssetTable_Result) {
         for i in 0..8 {
             if self.colors[i].values[3] != 0 && !self.colors[i].is_zero() { set_color_by_u8_slice(result, i, self.colors[i].values); }
@@ -283,10 +293,14 @@ impl PlayerOutfitData {
         let sequence = GameUserData::get_instance().get_sequence().value;
         let db = get_outfit_data();
         if sequence != 4 {
-            if let Some(voice) = db.hashes.voice.get(&self.voice){ result.get_sound().voice_id = voice.as_str().into(); }
+            if let Some(voice) = db.hashes.voice.get(&self.voice){
+                let mut sound = result.get_sound();
+                sound.voice_id = voice.as_str().into();
+                result.set_sound(sound);
+            }
         }
+        self.set_color(result);
         if mode == 2 {
-            self.set_color(result);
             let original_dress_gender = db.get_dress_gender(result.get_dress_model());
             if let Some(rig) = db.try_get_asset(AssetType::Rig, self.rig) { result.set_body_model(rig.as_str()); }
             if let Some(head) = db.try_get_asset(AssetType::Head, self.uhead) { result.set_head_model(head.as_str()); }
@@ -298,7 +312,6 @@ impl PlayerOutfitData {
             if !engaged || (engaged && self.flag & 2 != 0) || (stun && self.flag & 32 != 0) {
                 let allow_cross_dress = self.flag & 128 != 0;
                 let b = self.ubody;
-                //let b = if self.flag & 32 != 0 && stun { self.break_body } else { self.ubody };
                 if let Some(body) = db.try_get_asset(AssetType::Body, b)
                     .or_else(|| db.try_get_asset(AssetType::Body, self.ubody))
                 {
@@ -342,7 +355,6 @@ impl PlayerOutfitData {
             result.replace(AssetTable_Modes::combat());
         }
         else {
-            // if let Some(skin) = db.list.skin.get(&self.uhead) { ColorPreset::set_color(&mut result.unity_colors[2], *skin); }
             if !engaged || (engaged && self.flag & 2 != 0) {
                 let original_dress_gender = db.get_dress_gender(result.get_body_model());
                 let allow_cross_dress = self.flag & 128 != 0;
@@ -392,6 +404,62 @@ impl PlayerOutfitData {
             result.replace(AssetTable_Modes::onmap());
         }
     }
+    pub fn from_character(character: Character) -> Option<Self> {
+        if character.is_null() { None }
+        else {
+            let builder = character.get_builder();
+            let appearance = builder.appearance();
+            if appearance.is_null() { return None }
+            let mut out = PlayerOutfitData::new();
+            let db = get_outfit_data();
+            for i in [0, 1, 2, 3, 12, 13, 14, 15, 16, 17, 18, 19]{
+                let asset = appearance.assets().get(i);
+                if asset.is_null() || asset.get_name().is_null() { continue; }
+                else {
+                    let asset_str = asset.get_name().to_rust_string();
+                    if let Some(hash) = db.try_get_asset_hash(asset.get_name()) {
+                        match i {
+                            0 => out.rig = hash,
+                            1 => out.ubody = hash,
+                            2 => out.uhead = hash,
+                            3 => out.uhair = hash,
+                            _ => {
+                                if asset_str.contains("uAcc") {
+                                    if asset_str.contains("uAcc_head") {
+                                        if out.acc[0] == 0 { out.acc[0] = hash; }
+                                        else { out.acc[1] = hash; }
+                                    }
+                                    else if asset_str.contains("Hair") { out.uhair = hash; }
+                                    else if asset_str.contains("uAcc_spine") { out.acc[2] = hash; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            out.assign_unity_color(0, appearance.hair_color());
+            out.assign_unity_color(1, appearance.grad_color());
+            out.assign_unity_color(2, appearance.skin_color());
+            out.assign_unity_color(3, appearance.toon_shadow_color());
+            out.assign_unity_color(4, appearance.mask_color100());
+            out.assign_unity_color(5, appearance.mask_color075());
+            out.assign_unity_color(6, appearance.mask_color050());
+            out.assign_unity_color(7, appearance.mask_color025());
+            let go = builder.get_game_object();
+            if let Some(eye) = try_get_material_from_go(go, 3) {
+                UnitAssetData::EYE_COLOR.iter().enumerate().for_each(|(i, &c)|{ out.assign_unity_color(8 + i, eye.get_color_2(c)); });
+            }
+            if let Some(hair2) = try_get_material_from_go(go, 2) { out.assign_unity_color(14, hair2.get_color_2("_BaseColor"), ); }
+            let result = UnitAssetMenuData::get_result();
+            if let Some(voice) = db.try_get_asset_hash(result.get_sound().voice_id) { out.voice = voice; }
+            for i in 0..16 {
+                let v = unity::field_get_value_at_offset::<f32>(result, 0x100+i*4);
+                if v > 0.0 && v < 10.0 { out.scale[i] = ((v * 100.0) as u16) | 1024; }
+                else { out.scale[i] = 0; }
+            }
+            Some(out)
+        }
+    }
     pub fn try_load_from_file(dir_entry: &DirEntry, gender_restriction: Option<engage::app::Gender>) -> Option<Self> {
         if let Ok(file) = read_to_string(dir_entry.path()) {
             let scale_name = SCALE_NAME.iter().map(|v| v.to_lowercase()).collect::<Vec<String>>();
@@ -430,11 +498,16 @@ impl PlayerOutfitData {
                     match var_name {
                         "flags" => { if let Ok(flag) = spilt[1].parse::<i32>() { out.flag = flag; } }
                         _ => {
-                            if let Some((pos, value)) = scale_name.iter().position(|x| *x == var_name).zip(spilt[1].parse::<f32>().ok()) {
-                                if value > 0.01 {
-                                    if value >= 10.0 { out.scale[pos] = 1000; }
-                                    else { out.scale[pos] = (value * 100.0 + 0.005) as u16; }
+                            if let Some(pos) = scale_name.iter().position(|x| *x == var_name){
+                                let on = if spilt[1].to_lowercase().contains("on") { 1024 } else { 0 } as u16;
+                                if let Some(v) = spilt[1].split_whitespace().next()
+                                    .and_then(|x| x.parse::<f32>().ok())
+                                    .or_else(|| spilt[1].parse::<f32>().ok())
+                                {
+                                    let scale = (v * 100.0) as u16;
+                                    out.scale[pos] = if scale > 0 && scale <= 1000 { scale|on} else { 0 };
                                 }
+                                else { out.scale[pos] = 0; }
                             }
                             else if let Some(pos) = color.iter().position(|x| *x == var_name) {
                                 let color = spilt[1].trim_start_matches("0x");
@@ -478,7 +551,8 @@ impl PlayerOutfitData {
                 for y in 0..4 { copy.colors[x].values[y] = preview.color_preview[4*x + y]; }
             }
             for x in 0..16 {
-                if self.scale[x] == 0 || self.scale[x] >= 1000 { copy.scale[x] = preview.scale_preview[x]; }
+                let s = self.scale[x] & 1023;
+                if s == 0 || s >= 1000 { copy.scale[x] = preview.scale_preview[x]; }
             }
             if db.try_get_asset(AssetType::Voice, self.voice).is_none() { copy.voice = preview.original_assets[14]; }
             for x in 0..5 {
@@ -490,43 +564,42 @@ impl PlayerOutfitData {
     }
     pub fn to_string(&self, _hash: i32) -> String {
         let mut string = String::new();
-        /*
-        if let Some(mut string) = PersonData::try_get_hash(hash).map(|v| format!("PID={} [{}]", v.pid, Mess::get_name(v.pid)))
-            .or_else(|| GodData::try_get_hash(hash).map(|v| format!("GID={} [{}]", v.gid, Mess::get(v.mid))))
-        {
-            */
-            let none = "none".into();
-            string.push_str(format!("\nFlags={}\n", self.flag).as_str());
-            let db = OUTFIT_DATA.get_or_init(||OutfitData::init());
-            if let Some(g) = db.get_dress_gender_hash(self.ubody) {
-                string.push_str("Gender=");
-                if g == engage::app::Gender::male() { string.push_str("Male\n"); } else { string.push_str("Female\n"); }
-            }
-            string.push_str(format!("{}={}\n", VAR_NAMES[0], db.try_get_asset(AssetType::Body, self.ubody).unwrap_or(&none)).as_str());
-            string.push_str(format!("{}={}\n", VAR_NAMES[1], db.try_get_asset(AssetType::Head, self.uhead).unwrap_or(&none)).as_str());
-            string.push_str(format!("{}={}\n", VAR_NAMES[2], db.try_get_asset(AssetType::Hair, self.uhair).unwrap_or(&none)).as_str());
-            for x in 0..5 {
-                string.push_str(format!("{}={}\n", VAR_NAMES[3+x], db.try_get_asset(Acc(x as u8), self.acc[x]).unwrap_or(&none)).as_str());
-            }
-            for x in 0..4 {
-                string.push_str(format!("{}={}\n", VAR_NAMES[12+x], db.try_get_asset(AssetType::AOC(x as u8), self.aoc[x]).unwrap_or(&none)).as_str());
-                string.push_str(format!("{}={}\n", VAR_NAMES[16+x], db.try_get_asset(AssetType::AOC(x as u8), self.aoc_alt[x]).unwrap_or(&none)).as_str());
-            }
-            for x in 0..5 {
-                string.push_str(format!("{}={}\n", VAR_NAMES[20+x], db.try_get_asset(AssetType::Mount(x as u8), self.mount[x]).unwrap_or(&none)).as_str());
-            }
-            string.push_str(format!("{}={}\n", VAR_NAMES[25], db.try_get_asset(AssetType::Voice, self.voice).unwrap_or(&none)).as_str());
-            string.push_str(format!("{}={}\n", VAR_NAMES[26], db.try_get_asset(AssetType::Rig, self.rig).unwrap_or(&none)).as_str());
-            for x in 0..16 { string.push_str(format!("{}={}\n", SCALE_NAME[x],  (self.scale[x] as f32) / 100.0).as_str()); }
-            for x in 0..14 {
-                string.push_str(COLORS[x]);
-                string.push('=');
-                string.push_str(format!("{} {} {} {}\n", self.colors[x].values[0], self.colors[x].values[1], self.colors[x].values[2], self.colors[x].values[3]).as_str());
-            }
-            string
+        let none = "none".into();
+        string.push_str(format!("\nFlags={}\n", self.flag).as_str());
+        let db = OUTFIT_DATA.get_or_init(||OutfitData::init());
+        if let Some(g) = db.get_dress_gender_hash(self.ubody) {
+            string.push_str("Gender=");
+            if g == engage::app::Gender::male() { string.push_str("Male\n"); } else { string.push_str("Female\n"); }
         }
-       //  else { String::new() }
-    //}
+        string.push_str(format!("{}={}\n", VAR_NAMES[0], db.try_get_asset(AssetType::Body, self.ubody).unwrap_or(&none)).as_str());
+        string.push_str(format!("{}={}\n", VAR_NAMES[1], db.try_get_asset(AssetType::Head, self.uhead).unwrap_or(&none)).as_str());
+        string.push_str(format!("{}={}\n", VAR_NAMES[2], db.try_get_asset(AssetType::Hair, self.uhair).unwrap_or(&none)).as_str());
+        for x in 0..5 {
+            string.push_str(format!("{}={}\n", VAR_NAMES[3+x], db.try_get_asset(Acc(x as u8), self.acc[x]).unwrap_or(&none)).as_str());
+        }
+        for x in 0..4 {
+            string.push_str(format!("{}={}\n", VAR_NAMES[12+x], db.try_get_asset(AssetType::AOC(x as u8), self.aoc[x]).unwrap_or(&none)).as_str());
+            string.push_str(format!("{}={}\n", VAR_NAMES[16+x], db.try_get_asset(AssetType::AOC(x as u8), self.aoc_alt[x]).unwrap_or(&none)).as_str());
+        }
+        for x in 0..5 {
+            string.push_str(format!("{}={}\n", VAR_NAMES[20+x], db.try_get_asset(AssetType::Mount(x as u8), self.mount[x]).unwrap_or(&none)).as_str());
+        }
+        string.push_str(format!("{}={}\n", VAR_NAMES[25], db.try_get_asset(AssetType::Voice, self.voice).unwrap_or(&none)).as_str());
+        string.push_str(format!("{}={}\n", VAR_NAMES[26], db.try_get_asset(AssetType::Rig, self.rig).unwrap_or(&none)).as_str());
+        for x in 0..16 {
+            let scale = self.scale[x] & 1023;
+            let scale = if scale > 1000 { 0 } else { scale };
+            let on = self.scale[x] & 1024 != 0 && scale != 0;
+            println!("{}: {}, [{}] {}", SCALE_NAME[x], scale, self.scale[x], on);
+            string.push_str(format!("{}={} ({})\n", SCALE_NAME[x],  (scale as f32) / 100.0, if on { "on" } else { "off"}).as_str());
+        }
+        for x in 0..15 {
+            string.push_str(COLORS[x]);
+            string.push('=');
+            string.push_str(format!("{} {} {} {}\n", self.colors[x].values[0], self.colors[x].values[1], self.colors[x].values[2], self.colors[x].values[3]).as_str());
+        }
+        string
+    }
 }
 pub fn deserialize_outfit_data(stream: Stream_2, version: i32) {
     let menu_data = UnitAssetMenuData::get();

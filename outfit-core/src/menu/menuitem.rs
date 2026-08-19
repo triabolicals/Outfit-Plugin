@@ -1,22 +1,23 @@
+
 use engage::{
-	app::{
-		accessorymenuitem::*,
-		IAccessoryMenuItemContent, IBasicMenuItem, IBasicMenuItemMethods,
-		BasicMenu_Result, BasicMenuItem_Attribute, BasicMenuItem, IBasicMenuItemContentMethods,
-		AccessoryMenuItemContent, ISpriteAtlasManager_2, IBasicMenuItemContent
-	},
+	app::ISpriteAtlasManager_2,
 	unity_engine::{
-		IGameObjectMethods, IObject_2Methods,
-		ui::{IGraphicMethods, IImageMethods}
+		IGameObjectMethods, ui::{IGraphicMethods, IImageMethods},
+		recttransform::*
 	},
 	tm_pro::ITMP_TextMethods,
 	system::collections::generic::IDictionary_2Methods,
-	unity_engine::{IRectTransformMethods, RectTransform},
 };
-use unity::{Cast, ClassIdentity, FromIlInstance, Il2CppString, IlNull};
-use crate::{AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData};
-use crate::menu::icons::CustomMenuIcon;
-use super::{CustomAssetMenu, items::{CustomMenuItem, *}};
+use unity::{Cast, FromIlInstance, Il2CppString, IlNull};
+use super::{
+	*,
+	CustomAssetMenu,
+	items::{CustomMenuItem, *}
+};
+use crate::{
+	AssetItem, AssetLabelTable, AssetType, OtherAssetItem, UnitAssetMenuData,
+	menu::icons::CustomMenuIcon
+};
 
 #[unity::inject(
 	namespace = "App",
@@ -59,13 +60,13 @@ impl CustomAssetMenuItem3 {
 		item.set_menu_item_kind(menu_item_type);
 		item
 	}
-	pub fn new_menu(menu_type: CustomAssetMenuKind, name: unity::Il2CppString) -> Self {
+	pub fn new_menu(menu_type: CustomAssetMenuKind, name: Il2CppString) -> Self {
 		let item = Self::new_internal();
 		if !name.is_null() { IBasicMenuItemMethods::set_name(item, name); }
 		item.set_menu_item_kind(Menu(menu_type));
 		item
 	}
-	pub fn new_asset(kind: AssetType, hash: i32, name: unity::Il2CppString, decided: bool, original: bool) -> Self {
+	pub fn new_asset(kind: AssetType, hash: i32, name: Il2CppString, decided: bool, original: bool) -> Self {
 		let item = Self::new_internal();
 		IBasicMenuItemMethods::set_name(item, name);
 		item.set_m_decided(decided);
@@ -216,7 +217,6 @@ impl CustomAssetMenuItem3 {
 			else {
 				content.m_kind_icon_image().set_color(engage::unity_engine::Color { r: 1.0, g: 1.0, b: 1.0, a: 1.0 });
 				if let Some(icon2) = icon.get_icon() {
-					// if let Some(icon_key) = icon.get_system_label() { println!("MenuItemIndex {}: {}", idx, icon_key); }
 					content.m_kind_icon_image().set_sprite(icon2);
 					content.m_kind_icon_object().set_active(true);
 				}

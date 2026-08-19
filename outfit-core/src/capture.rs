@@ -1,18 +1,22 @@
 use std::{io::Write, path::Path, f32::consts::PI};
 use engage::{
-    app::{
-        ISingletonClass_1Methods, IPersonDataMethods, ISingletonProcInst_1Methods, IStructBase, IUnit, IUnitEdit, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window, IUnitMethods, UnitInfo_Side
+    unity_engine::{
+        IGameObjectMethods, ICameraMethods, IComponentMethods,
+        IRenderTextureMethods, ITexture2DMethods, ITextureMethods,
+        ITransformMethods, TextureFormat, Sprite, Color
     },
-    unity_engine::{IGameObjectMethods, ICameraMethods, IComponentMethods, IRenderTextureMethods, ITexture2DMethods, ITextureMethods, ITransformMethods, TextureFormat},
-    app::gameuserdata::GameUserData,
-    app::{GameVariable, IGameUserDataMethods, IGameVariableMethods, ISpriteAtlasManager_2},
-    system::collections::generic::{IDictionary_2Methods, InsertionBehavior},
-    system::IObjectMethods,
+    app::{
+        unit::*, unitinfo::*, gameuserdata::*, gamevariable::*,
+        ISingletonClass_1Methods, IPersonDataMethods,
+        ISingletonProcInst_1Methods, IStructBase,
+        IUnitEdit, IUnitInfoWindowCharaModel,
+        ISpriteAtlasManager_2, IStructData_1Methods
+    },
+    system::{
+        collections::generic::{IDictionary_2Methods, InsertionBehavior}, IObjectMethods
+    },
     Dictionary_2Ext,
-    app::IStructData_1Methods,
-    unity_engine::Sprite
 };
-use engage::unity_engine::Color;
 use unity::Cast;
 use crate::{clamp_value, UnitAssetMenuData, CAPTURE_DIR, THUMB_DIR};
 const PNG: [u8; 8] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];  // PNG File Sig
@@ -36,7 +40,7 @@ impl FacialPositions {
         });
         face
     }
-    pub fn get_position(t: engage::unity_engine::Transform, name: &str, cam: engage::unity_engine::Camera, x_max: f32, y_max: f32) -> Option<(f32, f32)> {
+    pub fn get_position(t: engage::unity_engine::Transform, name: &str, cam: engage::unity_engine::Camera, _x_max: f32, _y_max: f32) -> Option<(f32, f32)> {
         let t2 = engage::combat::Kaneko::find_in_children(t, name);
         if !t2.is_null() {
             let pos = cam.world_to_screen_point_2(t2.get_position());
@@ -53,8 +57,8 @@ impl FacialPositions {
 }
 
 pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, assign_face: bool) {
-    let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
-    let rt = engage::app::UnitInfo::get_render_texture(UnitInfo_Side::left());
+    let camera = UnitInfo::get_face_camera_component(UnitInfo_Side::left());
+    let rt = UnitInfo::get_render_texture(UnitInfo_Side::left());
     engage::unity_engine::RenderTexture::set_active(rt);
     let w = IRenderTextureMethods::get_width(rt) as usize;
     let h = IRenderTextureMethods::get_height(rt) as usize;
@@ -86,7 +90,7 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
         if pc == 0 && y_min > 0 && y_max == 0 { y_max = x; }
     }
     if y_min == 0 || x_min == 0 {
-        engage::app::GameMessage::create_key_wait(proc, "Capture is empty.\nSwitch to `Docked` mode?");
+        engage::app::GameMessage::create_key_wait(proc, "Capture is empty.");
         return;
     }
     for x in 0..h {
@@ -191,7 +195,7 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
                                         m_height: 74.0,
                                     };
                                     texture_cropped.set_filter_mode(engage::unity_engine::FilterMode::trilinear());
-                                    let sprite = engage::unity_engine::Sprite::create_5(
+                                    let sprite = Sprite::create_5(
                                         texture_cropped,
                                         rect,
                                         engage::unity_engine::Vector2{x: 0.5, y: 0.5},
@@ -210,24 +214,6 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
                                     face_thumb.try_insert(active.as_str().into(), sprite, InsertionBehavior::overwrite_existing());
                                     face_thumb.try_insert(loaded.as_str().into(), sprite, InsertionBehavior::overwrite_existing());
                                     engage::app::GameMessage::create_key_wait(proc, format!("Assigned and saved face thumbnail to\n'{}'.", file_path.as_str()));
-                                    /*
-                                    if !GameVariableManager::exist(key.as_str()) { GameVariableManager::make_entry_str(key.as_str(), name); }
-                                    else { GameVariableManager::set_string(key.as_str(), name); }
-                                    let rect = Rect::new(0.0, 0.0, 188.0, 74.0);
-                                    let pivot = Vector2::new(0.5, 0.5);
-                                    texture_cropped.set_filter_mode(engage::unity_engine::FilterMode::trilinear());
-                                    let sprite = Sprite::create2(texture_cropped, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
-                                    // Check if load key is not the original sprite and then destroy it
-                                    if let Some(original) = FaceThumbnail::get_item(&original){
-                                        if let Some(alt) =  FaceThumbnail::get_item(&loaded) {
-                                            if !original.equal(alt) && !original.equals(alt) { alt.destroy(); }
-                                        }
-                                    }
-                                    FaceThumbnail::try_insert(&active, sprite);
-                                    FaceThumbnail::try_insert(&loaded, sprite);
-
-
-                                     */
                                     return;
                                 }
                             }
@@ -244,7 +230,7 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
     engage::unity_engine::Object_2::destroy_2(texture_cropped);
 }
 /// Taken from https://docs.rs/image/latest/src/image/imageops/sample.rs.html
-fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w: i32, new_h: i32) -> Vec<engage::unity_engine::Color> {
+fn resize(data: &Vec<Color>, old_w: i32, old_h: i32, new_w: i32, new_h: i32) -> Vec<Color> {
     let filter_value = 4.0;
     let width = old_w as usize;
     let height = old_h as usize;
@@ -257,7 +243,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
             let ratio = old_h as f32 / new_h as f32;
             let s_ratio = if ratio < 1.0 { 1.0 } else { ratio };
             let src_support = filter_value  * s_ratio;
-            let mut v_sample: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; width * new_height];
+            let mut v_sample: Vec<_> = vec![Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; width * new_height];
             for out_y in 0..new_height {
                 let input_y = (out_y as f32 + 0.5) * ratio;
                 let left = (input_y - src_support).floor() as i32;
@@ -274,7 +260,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
                 }
                 ws.iter_mut().for_each(|w| *w /= sum);
                 for x in 0..width {
-                    let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
+                    let mut c = Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
                     ws.iter().enumerate().for_each(|(i, w)| {
                         let c_idx = x + (left + i) * width;
                         let color = data[c_idx];
@@ -291,7 +277,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
     let ratio = (old_w as f32) / (new_w as f32);
     let s_ratio = if ratio < 1.0 { 1.0 } else { ratio };
     let src_support = filter_value  * s_ratio;
-    let mut out: Vec<_> = vec![engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; new_height * new_width];
+    let mut out: Vec<_> = vec![Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0}; new_height * new_width];
     for out_x in 0..new_width {
         let input_x = (out_x as f32 + 0.5) * ratio;
         let left = (input_x - src_support).floor() as i32;
@@ -308,7 +294,7 @@ fn resize(data: &Vec<engage::unity_engine::Color>, old_w: i32, old_h: i32, new_w
         }
         ws.iter_mut().for_each(|w| *w /= sum);
         for y in 0..new_height {
-            let mut c = engage::unity_engine::Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
+            let mut c = Color{r: 0.0, b: 0.0, g: 0.0, a: 0.0};
             ws.iter().enumerate().for_each(|(i, w)| {
                 let c_idx = (left + i) + y * width;
                 let color = v_sample[c_idx];
@@ -367,7 +353,7 @@ pub fn reset_faces(title: bool) {
     let s =
         face_thumb.iter()
             .filter(|(k, _)| !k.is_null())
-            .filter(|(k, v)| k.to_rust_string().starts_with("o_"))
+            .filter(|(k, _v)| k.to_rust_string().starts_with("o_"))
             .map(|(k, v)| (k.to_rust_string(), v))
             .collect::<Vec<(String, Sprite)>>();
     s.iter().for_each(|(o, s)|{
@@ -394,36 +380,6 @@ pub fn reset_faces(title: bool) {
       }
 
     return;
-    /*
-    let s = FaceThumbnail::get_static_fields().face_thumb.cache_table.entries.iter()
-        .filter(|i| i.key.is_some_and(|a| a.to_string().starts_with("o_")))
-        .map(|c| c.key.unwrap().to_string())
-        .collect::<Vec<String>>();
-
-    s.iter().for_each(|o|{
-        if let Some(original_sprite) = FaceThumbnail::get_item(o){
-            let active = o.trim_start_matches("o_").to_string();
-            let load = format!("a_{}", active);
-            if let Some(loaded) = FaceThumbnail::get_item(&load) {
-                if !loaded.equals(original_sprite) && !loaded.equal(original_sprite) {
-                    FaceThumbnail::try_insert(&load, original_sprite);
-                    FaceThumbnail::try_insert(&active, original_sprite);
-                    loaded.destroy();
-                }
-            }
-        }
-    });
-    if !UnitAssetMenuData::get().is_loaded && !title {
-        UnitAssetMenuData::get().data.iter().for_each(|d|{
-            if let Some(person_data) = PersonData::try_get_hash(d.person) {
-                if let Some(v) = person_data.get_ascii_name() {
-                    let ascii = if d.flag & 16 == 0 { v.to_string() } else { format!("{}W", v) };
-                    load_png_to_by_ascii(&ascii, d.flag & 8 != 0 );
-                }
-            }
-        });
-    }
-     */
 }
 fn load_png_to_by_ascii(ascii: &String, use_sprite: bool) -> bool {
     let file_key = format!("G_Face_{}", ascii);
@@ -471,18 +427,6 @@ pub fn create_face_sprite(data: &mut Vec<u8>) -> Option<engage::unity_engine::Sp
         else { None }
     }
     else { None }
-    /*
-    Texture2D::new(188, 74);
-    if ImageConversion::load_image(new_texture, data) {
-        new_texture.set_filter_mode(FilterMode::Trilinear);
-        let rect = Rect::new(0.0, 0.0, 188.0, 74.0);
-        let pivot = Vector2::new(0.5, 0.5);
-        let sprite = Sprite::create2(new_texture, rect, pivot, 100.0, 1, SpriteMeshType::Tight);
-        Some(sprite)
-    }
-    else { None }
-
-     */
 }
 pub(crate) fn png_file_check(file: &Vec<u8>) -> bool {
     if file.len() < 24 { return false; }

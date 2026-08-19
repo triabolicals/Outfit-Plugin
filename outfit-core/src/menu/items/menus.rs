@@ -5,9 +5,18 @@ use engage::{
     system::collections::generic::IList_1Methods,
     app::{IItemDataMethods, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographPauseDataMethods, IPhotographSequence}
 };
-use crate::{add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose, AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, data::{items::{AssetFlag, CustomMenuItem, Profile}, room::hub_room_set_by_result}, menu::icons::CustomMenuIcon, localize::{MenuText, MenuTextCommand}, room::ReloadType, CustomAssetMenuItem3};
-use crate::data::dress::PersonalDressDataFlags;
-use super::*;
+use crate::{
+    add_key_help, disable_key_help, get_current_profile_name, get_outfit_data, left_right_enclose,
+    AssetType, EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData,
+    data::{
+        items::{AssetFlag, CustomMenuItem, Profile},
+        dress::PersonalDressDataFlags
+    },
+    menu::icons::CustomMenuIcon,
+    localize::{MenuText, MenuTextCommand},
+    CustomAssetMenuItem3,
+};
+use super::{*, super::*};
 
 #[repr(C)]
 #[derive(PartialEq, Copy, Clone)]
@@ -286,10 +295,17 @@ impl CustomAssetMenuKind {
             _ => { None }
         }
     }
+    pub fn post_build(&self) {
+        match self {
+            HairEdit|HeadEdit|Hair|Head => { hub_room_set_by_result(None, ReloadType::All); }
+            _ => {}
+        }
+    }
     pub fn add_menu_items(&self, list: List_1<engage::app::BasicMenuItem>) {
         let db = get_outfit_data();
         let preview = UnitAssetMenuData::get_preview();
         let female = UnitAssetMenuData::get_gender(false) == 2;
+        let mut initial_position: Option<i32> = None;
         match self {
             MainShop => {
                 if UnitAssetMenuData::is_photo_graph() {
@@ -406,8 +422,8 @@ impl CustomAssetMenuKind {
                 let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body, female);
                 let set = if female { &db.list.job_f } else { &db.list.job_m };
                 if let Some(class) = set.get(index) {
-                    class.list.iter().filter(|x| x.kind == AssetType::Body)
-                        .for_each(|a|{
+                    class.list.iter().filter(|x| x.kind == AssetType::Body).enumerate()
+                        .for_each(|(_i, a)|{
                             if let Some(body) = db.hashes.body.get(&a.hash){
                                 let name = db.labels.get_suffix_name(body.as_str()).unwrap_or(body.to_string().trim_start_matches("uBody_").into());
                                 let item = CustomAssetMenuItem3::new_asset(AssetType::Body, a.hash, name, current == a.hash, preview.original_assets[0] == a.hash);
@@ -419,15 +435,21 @@ impl CustomAssetMenuKind {
             }
             ShopBody((2, alt))  => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
+                let current = UnitAssetMenuData::get_current_unit_hash(AssetType::Body, female);
                 db.list.engaged.iter()
                     .filter(|x| x.female == female)
-                    .for_each(|a|{
+                    .enumerate()
+                    .for_each(|(i, a)|{
+                        let is_current = current == a.asset.hash;
+                        if initial_position.is_none() && is_current { initial_position = Some(i as i32); }
                         let item = CustomAssetMenuItem3::new_asset3(&a, &db.labels, true, female);
                         item.set_name(a.get_name(&db.labels, true));
                         list.add(item.as_basic_menu_item());
                     });
             }
-            ShopBody((3, alt)) => { db.list.add_menu_items(AssetType::Body, UnitAssetMenuData::get_gender(*alt) == 2, false, true, &db.labels, list); }
+            ShopBody((3, alt)) => {
+                db.list.add_menu_items(AssetType::Body, UnitAssetMenuData::get_gender(*alt) == 2, false, true, &db.labels, list);
+            }
             ShopBody((4, alt)) => {
                 let female = UnitAssetMenuData::get_gender(*alt) == 2;
                 db.list.added.iter()
@@ -471,26 +493,26 @@ impl CustomAssetMenuKind {
                 }
             }
             ColorSelection(page) => {
-                let k = (*page % 16) as usize;
-                let enable_item = CustomAssetMenuItem3::new(EnableColor(k as u8));
-                enable_item.set_m_decided(preview.preview_data.colors[k].values[3] != 0);
+                let color_kind = (*page % 16) as usize;
+                let enable_item = CustomAssetMenuItem3::new(EnableColor(color_kind as u8));
+                enable_item.set_m_decided(preview.preview_data.colors[color_kind].values[3] != 0);
                 list.add(enable_item.as_basic_menu_item());
-                UnitAssetMenuData::get_preview().color_preview[4*k+3] = 1;
-                if k < 8 {
-                    let reset = CustomAssetMenuItem3::new(ResetColor(k as u8));
+                UnitAssetMenuData::get_preview().color_preview[4* color_kind +3] = 1;
+                if color_kind < 8 {
+                    let reset = CustomAssetMenuItem3::new(ResetColor(color_kind as u8));
                     reset.set_value2(*page as i32);
                     list.add(reset.as_basic_menu_item());
                 }
-                let rgba = CustomAssetMenuItem3::new(RGBA(k as u8));
+                let rgba = CustomAssetMenuItem3::new(RGBA(color_kind as u8));
                 rgba.set_value2(*page as i32);
                 list.add(rgba.as_basic_menu_item());
                 for x in 0..10 {
                     list.add(CustomAssetMenuItem3::new_menu(ColorPresets(x, *page), unity::Il2CppString::null()).as_basic_menu_item());
                 }
-                if preview.preview_data.colors[k].has_color() {
-                    for x in 0..3 { preview.color_preview[4*k+ x] = preview.preview_data.colors[k].values[x]; }
+                if preview.preview_data.colors[color_kind].has_color() {
+                    for x in 0..3 { preview.color_preview[4* color_kind + x] = preview.preview_data.colors[color_kind].values[x]; }
                 }
-                else { for x in 0..3 { preview.color_preview[4*k+ x] = preview.original_color[4*k+x]; } }
+                else { for x in 0..3 { preview.color_preview[4* color_kind + x] = preview.original_color[4* color_kind +x]; } }
             }
             HairEdit => {
                 if preview.original_color[3] != 0 { list.add(CustomAssetMenuItem3::new(FlagMenuItem(AssetFlag::DisableHairAcc)).as_basic_menu_item()); }
@@ -505,53 +527,53 @@ impl CustomAssetMenuKind {
                 for x in 0..6 { list.add(CustomAssetMenuItem3::new_menu(ColorSelection(x+8), unity::Il2CppString::null()).as_basic_menu_item()); }
                 for x in 0..4 { list.add(CustomAssetMenuItem3::new(Expression(x as u8)).as_basic_menu_item()); }
             }
-            ColorPresets(preset_kind, color_kind) => {
-                let kind = *preset_kind;
-                let kind2 = *color_kind;
+            ColorPresets(preset_list, preview_color) => {
+                let preset_kind = *preset_list;
+                let color_kind = *preview_color;
                 let preview = UnitAssetMenuData::get_preview();
-                let k2 = kind2 % 16;
-                if k2 < 8 {
-                    let item = CustomAssetMenuItem3::new(ResetColor(k2));
-                    item.set_value2(*color_kind as i32);
+                let preview_color_kind = color_kind % 16;
+                if preview_color_kind < 8 {
+                    let item = CustomAssetMenuItem3::new(ResetColor(preview_color_kind));
+                    item.set_value2(*preview_color as i32);
                     list.add(item.as_basic_menu_item());
                 }
-                if kind < 8 {
+                if preset_kind < 8 {
                     db.list.color_presets.iter()
-                        .filter(|x| x.colors[kind as usize] != 0)
+                        .filter(|x| x.colors[preset_kind as usize] != 0)
                         .for_each(|x| {
-                            let hash = x.colors[kind as usize];
+                            let hash = x.colors[preset_kind as usize];
                             let mut selected = true;
-                            let mut original = kind2 < 8;
+                            let mut original = color_kind < 8;
                             for x in 0..3 {
                                 let r = ((hash >> 8 * x) & 255) as u8;
-                                if preview.preview_data.colors[k2 as usize].values[x] != r { selected = false; }
-                                if kind2 < 8 {
-                                    if preview.original_color[4 * k2 as usize + x] != r { original = false; }
+                                if preview.preview_data.colors[preview_color_kind as usize].values[x] != r { selected = false; }
+                                if color_kind < 8 {
+                                    if preview.original_color[4 * preview_color_kind as usize + x] != r { original = false; }
                                 }
                             }
                             let name = x.get_name();
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), x.colors[kind as usize], name, selected, original);
-                            item.set_value2(k2 as i32);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(preset_kind), x.colors[preset_kind as usize], name, selected, original);
+                            item.set_value2(preview_color_kind as i32);
                             list.add(item.as_basic_menu_item());
                         });
                 }
-                else if kind == 8 {
+                else if preset_kind == 8 {
                     db.list.eye_colors.iter().for_each(|x| {
                         let name = x.get_name();
-                        let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), x.color, name, false, false);
-                        item.set_value2(k2 as i32);
+                        let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(preset_kind), x.color, name, false, false);
+                        item.set_value2(preview_color_kind as i32);
                         list.add(item.as_basic_menu_item());
                     });
                 } else {
                     let mut used_colors = vec![];
-                    let mut color: i32 = 0;
+                    let mut color: i32;
                     for x in 0..15 {
                         color = 0;
                         for i in 0..3 { color |= (preview.color_preview[4 * x as usize + i] as i32) << (i * 8); }
-                        if k2 != x && color != 0 && !used_colors.contains(&color) {
+                        if preview_color_kind != x && color != 0 && !used_colors.contains(&color) {
                             let name = format!("{} [Current]", MenuText::get_command(1140 + x as i32));
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), color, name.into(), false, false);
-                            item.set_value2(k2 as i32);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(preset_kind), color, name.into(), false, false);
+                            item.set_value2(preview_color_kind as i32);
                             list.add(item.as_basic_menu_item());
                             used_colors.push(color);
                         }
@@ -559,10 +581,10 @@ impl CustomAssetMenuKind {
                     for x in 0..15 {
                         color = 0;
                         for i in 0..3 { color |= (preview.original_color[4 * x as usize + i] as i32) << (i * 8); }
-                        if k2 != x && color != 0 && !used_colors.contains(&color) {
+                        if preview_color_kind != x && color != 0 && !used_colors.contains(&color) {
                             let name = format!("{} [Original]", MenuText::get_command(1140 + x as i32));
-                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(kind), color, name.into(), false, false);
-                            item.set_value2(k2 as i32);
+                            let item = CustomAssetMenuItem3::new_asset(AssetType::ColorPreset(preset_kind), color, name.into(), false, false);
+                            item.set_value2(preview_color_kind as i32);
                             list.add(item.as_basic_menu_item());
                             used_colors.push(color);
                         }
@@ -601,7 +623,6 @@ impl CustomAssetMenuKind {
                     return;
                 }
                 FaceSelection => {
-                    // CustomAssetMenu::toggle_ui();
                     disable_key_help(engage::app::KeyHelpController_Type::minus());
                     UnitAssetMenuData::get().loaded_data.release_faces();
                     return;

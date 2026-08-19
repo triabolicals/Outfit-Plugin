@@ -1,13 +1,11 @@
 use engage::{
     app::{AssetTable_Result, IPhotographDisposInfo},
     system::Object,
-    unity_engine::IGameObjectMethods,
     app::{BasicMenu_Result, IPhotographDisposInfoMethods, IPhotographDisposManager, IPhotographEditDisposMenu, IProcInstMethods, ISingletonProcInst_1Methods, IStructBase, IStructData_1Methods, PhotographEditDisposMenu},
     combat::{CharacterFactoryAsync, ICharacterJointMethods, ICharacterMethods},
-    unity_engine::IComponentMethods,
+    unity_engine::{IComponentMethods, IGameObjectMethods, ITransformMethods},
     system::{Action, object::*},
     root_motion::final_ik::{IIKSolverLookAt, ILookAtIK},
-    unity_engine::{ITransformMethods}
 };
 use unity::{Cast, FromIlInstance};
 use crate::{CustomAssetMenu, MenuMode, UnitAssetMenuData};
@@ -93,13 +91,11 @@ fn set_up(this: CreatePhotographCharacter, _: unity::OptionalMethod) {
                             .and_then(|t| to_option(t.get_game_object()))
                         {
                             if engage::unity_engine::Object_2::op_equality(head_go, go) {
-                                println!("Head Found");
                                 c.solver().set_target(camera_transform);
                                 c.solver().set_eyes_weight(0.5);
                                 this.dispos_info().set_m_look_at_ik_body(c);
                             }
                             else if engage::unity_engine::Object_2::op_equality(character_go, go){
-                                println!("Character Found");
                                 c.solver().set_target(this.dispos_info().m_look_target().get_transform());
                                 c.solver().set_body_weight(0.3);
                                 c.solver().set_head_weight(0.5);

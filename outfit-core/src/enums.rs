@@ -146,14 +146,12 @@ impl Mount {
         }
     }
     pub fn determine_gender(str: impl AsRef<str>) -> Option<(Self, engage::app::Gender)> {
-        ["AM", "BM", "CM", "DM", "EM","FM"].iter()
+        ["AM", "BM", "CM", "DM", "EM", "FM", "AF", "BF", "CF", "DF", "EF", "FF"].iter()
             .position(|x| str.as_ref().contains(x))
-            .map(|x|{ (Mount::from_i32(x as i32), engage::app::Gender::male()) })
-            .or_else(||
-                ["AF", "BF", "CF", "DF", "EF","FF"].iter()
-                    .position(|x| str.as_ref().contains(x))
-                    .map(|x| (Mount::from_i32(x as i32), engage::app::Gender::female()))
-            )
+            .map(|x| {
+                let gender = engage::app::Gender { value: (x as i32) / 6 + 1 };
+                (Mount::from_i32((x % 6) as i32), gender)
+            })
     }
     pub fn determine_mount(ride_asset: impl AsRef<str>) -> Mount {
         if ride_asset.as_ref().contains("DT") { Mount::Wyvern }

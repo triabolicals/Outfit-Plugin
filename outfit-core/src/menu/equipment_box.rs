@@ -1,15 +1,11 @@
+use super::*;
 use engage::{
     List_1Ext,
-    app::{
-        AccessoryData_Kinds,
-        BasicMenuItem,IBasicMenuItem, IBasicMenuItemContentMethods, IBasicMenuItemMethods,
-        accessorydetailinfowindow::*, accessoryequipmentinfo::*, accessorymenuitem::*, accessorymenuitemcontent::*,
-    },
+    app::AccessoryData_Kinds,
     prelude::List_1,
     system::collections::generic::IList_1Methods,
     unity_engine::{
-        gameobject::*,
-        IComponentMethods, IObject_2Methods, ITransformMethods, IRectTransformMethods,
+        IComponentMethods, IObject_2Methods, ITransformMethods,
         ui::{IGraphicMethods, IImageMethods},
     },
     tm_pro::ITMP_TextMethods,
@@ -17,13 +13,13 @@ use engage::{
 use unity::{Cast, FromIlInstance, IlNull};
 use crate::{get_current_profile_name, get_outfit_data, AssetType, MenuText, MenuTextCommand, PlayerOutfitData, UnitAssetMenuData, items::Profile, menu::icons::CustomMenuIcon, FACIAL_STATES};
 const BLANK: &'static str = "------";
-pub fn build_equipment_window(this: engage::app::AccessoryEquipmentInfo, is_room: bool) {
+pub fn build_equipment_window(this: AccessoryEquipmentInfo, is_room: bool) {
     let content = this.m_content_object();
     if content.is_null() { return; }
     let transform = content.get_transform();
     let child_1 = transform.get_child(0).get_game_object();
     for i in 0..4 {
-        let obj = engage::unity_engine::Object_2::instantiate_3(child_1);
+        let obj = Object_2::instantiate_3(child_1);
         obj.set_name(format!("Acc{}",i+6));
         if let Some(go) = obj.try_cast::<GameObject>() {
             let go_t = go.get_transform();
@@ -34,19 +30,12 @@ pub fn build_equipment_window(this: engage::app::AccessoryEquipmentInfo, is_room
     this.set_m_menu_item_list(list);
     let count = transform.get_child_count();
     for i in 0..count {
-        let item = engage::app::AccessoryMenuItem::instantiate().unwrap();
+        let item = AccessoryMenuItem::instantiate().unwrap();
         IBasicMenuItemMethods::ctor(item);
         item.set_m_index(i);
         item.set_m_accessory_kind(AccessoryData_Kinds{value: i});
         let child_transform = transform.get_child(i);
         let item_content = child_transform.get_game_object().get_component::<AccessoryMenuItemContent>();
-        /*
-        let rect = item_content.get_rect_transform();
-        let mut size = rect.get_size_delta();
-        size.x += 40.0;
-        crate::change_rect_transform_in_children_size(child_transform, "Name", 40.0, 0.0);
-        rect.set_size_delta(size);
-         */
         item_content.build(item);
         list.add(BasicMenuItem::from(item));
     }
@@ -135,16 +124,21 @@ impl EquipmentBoxMode {
         Self::set_profile_flags(equipment, flag);
     }
     pub fn set_profile_flags(equipment: AccessoryEquipmentInfo, flag: i32) {
-        Self::set_rows(equipment, 5);
+        let dvc = UnitAssetMenuData::get().is_dvc;
+        if dvc { Self::set_rows(equipment, 5); }
+        else { Self::set_rows(equipment, 4); }
+
         let engage =
             if flag & 6 == 2 { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::on_off(false)) }
             else if flag & 6 == 4 { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::Emblem) }
             else { format!("{}: {}", MenuTextCommand::Engage, MenuTextCommand::on_off(true)) }.into();
 
         set_content_data_slot(equipment, 1, CustomMenuIcon::EngageCommon.get_icon(), Some(engage));
-        set_content_data_slot(equipment, 2, CustomMenuIcon::Body.get_icon(), Some(format!("{}: {}", MenuText::get_command(25), MenuTextCommand::on_off(flag & 8 != 0)).into()));
-        set_content_data_slot(equipment, 3,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
-        set_content_data_slot(equipment, 4, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
+        set_content_data_slot(equipment, 2,  CustomMenuIcon::Gift.get_icon(), Some(format!("{}: {}", MenuText::get_command(23), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 8 != 0)).into()));
+        set_content_data_slot(equipment, 3, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
+        if dvc {
+            set_content_data_slot(equipment, 4, CustomMenuIcon::Body.get_icon(), Some(format!("{}: {}", MenuText::get_command(25), MenuTextCommand::on_off(UnitAssetMenuData::get_person_flag() & 16 != 0)).into()));
+        }
     }
     pub fn set_viewing_mode(equipment: AccessoryEquipmentInfo, slot: usize) {
         let (kind, icon) = if UnitAssetMenuData::get().is_shop_combat { ("MID_TUT_CATEGORY_TITLE_Battle", CustomMenuIcon::Weapon) } else { ("MID_SAVEDATA_SEQ_HUB", CustomMenuIcon::Day) };
@@ -154,7 +148,7 @@ impl EquipmentBoxMode {
         set_content_data_slot(equipment, slot, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
     }
     pub fn set_profile_name(equipment: AccessoryEquipmentInfo, profile: Option<Profile>) {
-        let name = profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|d| v.get_name()))
+        let name = profile.and_then(|v| UnitAssetMenuData::get_current_asset_data().map(|_d| v.get_name()))
             .unwrap_or_else(|| get_current_profile_name());
 
         let name = format!("{} [Preview: {}]", name, engage::app::Mess::get(if UnitAssetMenuData::get().is_shop_combat { "MID_TUT_CATEGORY_TITLE_Battle" } else { "MID_SAVEDATA_SEQ_HUB" }));
@@ -173,7 +167,13 @@ impl EquipmentBoxMode {
                     .or_else(|| Some(preview.preview_data.get_asset_hash(kind, female)))
                     .unwrap_or(0);
                 let color_str =
-                    if color == 0 { "--/--/--".to_string() }
+                    if color == 0 {
+                        let r = preview.original_color[4*k as usize];
+                        let g = preview.original_color[4*(k as usize)+1];
+                        let b = preview.original_color[4*(k as usize)+2];
+                        if r == 0 && b == 0 || g == 0 { "--/--/--".to_string() }
+                        else { format!("{} / {} / {}", r, g, b) }
+                    }
                     else { format!("{} / {} / {}", color & 255, (color >> 8) & 255, (color >> 16) & 255) };
 
                 let text = format!("{}: {}", MenuText::get_command(1140 + k as i32), color_str);
@@ -194,7 +194,7 @@ impl EquipmentBoxMode {
             }
         }
     }
-    pub fn set_data(equipment: engage::app::AccessoryEquipmentInfo, page: EquipmentBoxPage, data: Option<&PlayerOutfitData>) {
+    pub fn set_data(equipment: AccessoryEquipmentInfo, page: EquipmentBoxPage, data: Option<&PlayerOutfitData>) {
         if UnitAssetMenuData::is_photo_graph() { return; }
         let preview = UnitAssetMenuData::get_preview();
         match page {
@@ -209,17 +209,6 @@ impl EquipmentBoxMode {
                 Self::set_asset(equipment, 3, AssetType::Hair, data);
                 Self::set_asset(equipment, 4, AssetType::Rig, data);
                 Self::set_asset(equipment, 5, AssetType::Voice, data);
-                let obody = "-------";
-                /*
-                db.hashes.get_obody(data.ubody).map(|v| v.to_string().as_str())
-                    .or_else(|| db.hashes.o_body.get(&preview.original_assets[3]).filter(|_| no_data).map(|v| v.split_once("_").unwrap().1))
-                    .unwrap_or("------".into());
-                let ohead = db.hashes.get_ohair(data.uhair)
-                    .or_else(|| db.hashes.o_hair.get(&preview.original_assets[4]).map(|v| v.as_str().into()).filter(|_| no_data))
-                    .or_else(|| db.hashes.get_ohair(preview.original_assets[2]).filter(|_| no_data))
-                    .or_else(|| db.hashes.get_ohair(preview.original_assets[1]).filter(|_| no_data))
-                    .or_else(|| Some("------".into()));
-                 */
             }
             EquipmentBoxPage::AccessoryAssets => {
                 Self::set_rows(equipment, 6);
@@ -231,25 +220,8 @@ impl EquipmentBoxMode {
             }
             EquipmentBoxPage::AOCAnimations(female) => {
                 Self::set_rows(equipment, 6);
-                println!("AOC Female: {}", female);
                 for x in 0..4 { Self::set_asset_gender(equipment, x+1, AssetType::AOC(x as u8), data, female); }
                 set_content_data_slot(equipment, 5, CustomMenuIcon::SolaTail.get_icon(), Some(format!("Expression: {}", FACIAL_STATES[UnitAssetMenuData::get().facial].0).into()));
-                /*
-                let gender = db.get_dress_gender_hash(data.ubody).unwrap_or(
-                    if UnitAssetMenuData::get_current_dress_gender() == 2 {
-                        engage::app::Gender::female() } else { engage::app::Gender::male() }
-                );
-                for x in 0..4 {
-                    let hash = if gender == engage::app::Gender::female() { data.aoc_alt[x] } else { data.aoc[x] };
-                    let aoc_name =
-                        db.try_get_asset(AssetType::AOC(x as u8), hash)
-                        .or_else(|| db.try_get_asset(AssetType::AOC(x as u8), preview.original_assets[10 + x]).filter(|_| no_data))
-                        .map(|v| v.as_str().into()).or_else(|| Some("------".into()));
-
-                    set_content_data_slot(equipment, 1 + x, CustomMenuIcon::SolaTail.get_icon(), aoc_name);
-                }
-
-                 */
             }
             EquipmentBoxPage::Color(kind) => {
                 let k = kind % 16;
@@ -267,7 +239,8 @@ impl EquipmentBoxMode {
                 let d = data.as_ref().map(|d| d.scale.clone()).unwrap_or(preview.preview_data.scale.clone());
                 for x in 0..8 {
                     let scale_index = set as usize * 8 + x;
-                    let value = if d[scale_index] > 0 && d[scale_index] < 1000 { (d[scale_index] as f32 / 100.0).to_string() }
+                    let v = d[scale_index] & 1023;
+                    let value = if v > 0 && v < 1000 { (v as f32 / 100.0).to_string() }
                     else if data.is_none() { (preview.original_scaling[scale_index] as f32 / 100.0).to_string() }
                     else { "--".to_string() };
                     set_content_data_slot(
@@ -279,7 +252,7 @@ impl EquipmentBoxMode {
             }
         }
     }
-    pub fn change_equipment_box(self, equipment: engage::app::AccessoryEquipmentInfo) {
+    pub fn change_equipment_box(self, equipment: AccessoryEquipmentInfo) {
         if UnitAssetMenuData::is_photo_graph()   { return; }
         if let Some(con) = get_content(equipment, 0) {
             let profile_name = get_current_profile_name();
@@ -368,7 +341,7 @@ impl EquipmentBoxMode {
         if UnitAssetMenuData::is_photo_graph()   { return; }
         if let Some(equipment) = get_equipment_box(){ self.change_equipment_box(equipment); }
     }
-    pub fn change_cursor(equipment: engage::app::AccessoryEquipmentInfo, kind: Option<i32>) {
+    pub fn change_cursor(equipment: AccessoryEquipmentInfo, kind: Option<i32>) {
         if UnitAssetMenuData::is_photo_graph()  { return; }
         if let Some(k) = kind { equipment.show_cursor_3(AccessoryData_Kinds{value: k}); }
         else { equipment.hide_cursor(); }
@@ -390,15 +363,15 @@ impl EquipmentBoxMode {
         }
     }
 }
-pub fn get_equipment_box() -> Option<engage::app::AccessoryEquipmentInfo> {
+pub fn get_equipment_box() -> Option<AccessoryEquipmentInfo> {
     let go =  GameObject::find("EquipmentAcc");
     if !go.is_null() {
-        let equip = go.get_component::<engage::app::AccessoryEquipmentInfo>();
+        let equip = go.get_component::<AccessoryEquipmentInfo>();
         if !equip.is_null() { Some(equip) } else { None }
     }
     else { None }
 }
-pub fn get_content(equipment: engage::app::AccessoryEquipmentInfo, slot: i32) -> Option<AccessoryMenuItemContent> {
+pub fn get_content(equipment: AccessoryEquipmentInfo, slot: i32) -> Option<AccessoryMenuItemContent> {
     let item = equipment.m_menu_item_list().get(slot);
     if !item.is_null() {
         let content = unsafe { item.get_menu_item_content().cast::<AccessoryMenuItemContent>() };
@@ -468,10 +441,9 @@ pub fn set_icon_to_color(content: AccessoryMenuItemContent, kind: i32, color: Op
 
 }
 pub fn set_detail_box(name: Option<unity::Il2CppString>, help: Option<unity::Il2CppString>, body: Option<unity::Il2CppString>, sprite: Option<engage::unity_engine::Sprite>) {
-    //if UnitAssetMenuData::is_photo_graph()  { return; }
     let helpwdw = GameObject::find("WdwAccHelp");
     if !helpwdw.is_null() {
-        let detail = helpwdw.get_component::<engage::app::AccessoryDetailInfoWindow>();
+        let detail = helpwdw.get_component::<AccessoryDetailInfoWindow>();
         if !detail.is_null() {
             if let Some(help) = help { detail.m_message().set_text_2(help, true); }
             if let Some(name) = name { detail.m_accessory_name().set_text_2(name, true); }

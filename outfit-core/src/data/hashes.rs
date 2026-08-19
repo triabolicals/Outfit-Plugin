@@ -2,7 +2,6 @@ use std::collections::{HashMap, HashSet};
 use engage::app::Random_2;
 use unity::system::string::IIl2CppStringMethods;
 use crate::{hash_string, AssetType, Randomizer};
-use engage::system::collections::generic::IList_1Methods;
 #[derive(Default)]
 pub struct OutfitHashes {
     pub male_ou: Vec<(i32, i32)>,

@@ -2,19 +2,19 @@ use engage::{
     prelude::*,
     app::{AssetTable_Result, IAssetTable_ResultMethods, IStructBase}
 };
-use engage::app::IStructData_1Methods;
+use engage::app::{IGodDataMethods, IStructData_1Methods};
 use unity::Cast;
 pub mod transform;
 pub mod dress;
 use outfit_core::*;
 
 #[skyline::hook(offset=0x1bb4180)]
-pub fn asset_table_setup_person_outfit(
+pub fn asset_table_setup_person_outfit_outfit(
     this: AssetTable_Result,
     mode: i32,
     person: engage::app::PersonData,
-    conditions: unity::Array<unity::Il2CppString>,
-    method_info: unity::OptionalMethod) -> AssetTable_Result
+    conditions: Array<Il2CppString>,
+    method_info: OptionalMethod) -> AssetTable_Result
 {
     let result = call_original!(this, mode, person, conditions, method_info);
     if is_tiki_engage(result) { return result;}
@@ -29,7 +29,7 @@ pub fn asset_table_setup_person_outfit(
 pub fn asset_table_result_setup_hook_outfit(
     this: AssetTable_Result,
     mode: i32,
-    unit: engage::app::Unit,
+    unit: Unit,
     equipped: engage::app::ItemData,
     conds: Array<Il2CppString>,
     method_info: OptionalMethod
@@ -42,8 +42,8 @@ pub fn asset_table_result_setup_hook_outfit(
 }
 
 #[skyline::hook(offset= 0x2b0ed80)]
-pub fn appearance_create_from_result(this: AssetTable_Result, map_distance: i32, o: unity::OptionalMethod) -> engage::combat::CharacterAppearance {
-    let appearance:  engage::combat::CharacterAppearance = call_original!(this, map_distance, o);
+pub fn appearance_create_from_result_outfit(this: AssetTable_Result, map_distance: i32, o: OptionalMethod) -> CharacterAppearance {
+    let appearance:  CharacterAppearance = call_original!(this, map_distance, o);
     if !appearance.is_null() {
         if !this.get_pid().is_null() {
             let person = engage::app::PersonData::get(this.get_pid());
@@ -74,6 +74,7 @@ pub fn asset_table_result_god_setup_outfit(
         let menu_data = UnitAssetMenuData::get();
         if menu_data.is_preview { menu_data.preview.preview_data.set_result(result, 2, is_darkness, false); }
         else { UnitAssetMenuData::set_god_assets(result, mode, god_data, is_darkness); }
+        result.set_pid(god_data.get_gid());
     }
     result
 }

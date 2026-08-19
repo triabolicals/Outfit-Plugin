@@ -1,34 +1,41 @@
-use engage::{tm_pro::{ITMP_Text, TextMeshProUGUI}, app::{
-	basicmenu::*,
-	titlebar::*,
-	BasicMenuItem_Attribute,
-	IUnitMethods, IPersonDataMethods, ISingletonProcInst_1Methods, ISingletonMonoBehaviourList_1Methods,
-	accessoryshopchangemenu::*,
-	AccessoryDetailInfoWindow, AccessoryEquipmentInfo, AccessoryShopChangeMenuContent, AccessoryShopChangeRoot,
-	BasicMenuContent,
-	IAccessoryShopChangeRoot, IBasicMenuMethods, IBasicMenuSelectMethods,
-	IGameUserDataMethods, IProcInstMethods, ISingletonClass_1Methods,
-	ISortieSequenceUnitSelect, ResourceManager_2,
-	IUnitInfo, IUnitInfo_Window, IUnitInfoWindowCharaModel,
-	UnitInfoCharaImageMaskOffset,
-	IUnitInfoCharaImageMaskOffset, IUnitInfoCharaImageMaskOffsetMethods,
-	UnitInfo_Side, BackgroundManager, UnitInfo,
-	ISortieSequenceUnitSelectMethods, ISortieSelectionUnitManager,
-	UnitSelectMenu,
-	IUnitSelectMenuMethods, IBasicMenuItemMethods, IBasicMenuItem,
-	SortieSelectionUnitManager,
-	IMapMindMethods, IBasicMenu,
-	AssetTable_Result,
-	IAssetTable_ResultMethods, IStructData_1Methods, IStructBase,
-	SortieUtil,
-	IAssetTable_Result, IPad,
-	BasicMenu
-}, List_1Ext, nn::hid::NpadButton, prelude::List_1, system::{collections::generic::IList_1Methods, IObjectMethods}, tm_pro::ITMP_TextMethods, unity_engine::{
-	IAnimatorMethods, IComponentMethods, IGameObjectMethods, IMaterialMethods,
-	IObject_2, IRectTransformMethods, IRenderTextureMethods, ITransformMethods, IObject_2Methods
-}, BasicMenuExt, ProcVoidMethodExt, ProcBoolMethodExt};
-use engage::app::{GameUserData, IMapTerrainInfoMethods, ProcInst};
-use engage::unity_engine::{RectTransform, Screen};
+use engage::{
+	app::{
+		basicmenuitemcontent::*, basicmenu::*, basicmenuselect::*,
+		basicmenuitem::*, basicmenucontent::*, pad::*,
+		accessorydetailinfowindow::*,
+		accessorymenuitem::*, accessoryequipmentinfo::*, accessoryshopchangemenu::*,
+		accessoryshopchangeroot::*, accessoryshopchangemenucontent::*, accessorymenuitemcontent::*,
+	}
+};
+use engage::{
+	tm_pro::{ITMP_TextMethods, ITMP_Text, TextMeshProUGUI},
+	app::{
+		unitinfocharaimagemaskoffset::*,
+		gameuserdata::*, mapmind::*,
+		sortiesequenceunitselect::*, sortieselectionunitmanager::*,
+		unitselectmenu::*,
+		IPersonDataMethods,
+		ISingletonProcInst_1Methods, ISingletonMonoBehaviourList_1Methods, IProcInstMethods,
+		ISingletonClass_1Methods,
+		ResourceManager_2, BackgroundManager,
+		IStructBase,
+		SortieUtil,
+		IMapTerrainInfoMethods,
+		ProcInst
+	},
+	List_1Ext,
+	nn::hid::NpadButton,
+	prelude::List_1,
+	system::{collections::generic::IList_1Methods},
+	unity_engine::{
+		gameobject::*, animator::*, object_2::*,
+		IMaterialMethods,
+		IRectTransformMethods, IRenderTextureMethods, ITransformMethods,
+	},
+};
+use engage::app::{ITitleBar, ITitleBarMethods};
+use super::*;
+pub use crate::model::*;
 use unity::{Array, Cast, ClassIdentity, FromIlInstance, IlNull, OptionalMethod, SystemType};
 pub use crate::{unitasset::*, localize::{MenuText, MenuTextCommand}, get_outfit_data, UnitAssetMenuData};
 
@@ -45,10 +52,7 @@ pub use items::*;
 pub use equipment_box::*;
 pub use keyhelp::*;
 pub use control::*;
-use crate::data::room::hub_room_set_by_result;
 use crate::menu::proc::OutfitSequence;
-use crate::result_to_string;
-use crate::room::ReloadType;
 
 #[unity::inject(namespace = "App", name = "CustomAssetMenu", parent = AccessoryShopChangeMenu)]
 pub struct CustomAssetMenu {
@@ -85,14 +89,16 @@ impl CustomAssetMenu {
 				t.set_m_font_size_min(22.0);
 			});
 		let transform = content.get_transform();
-		crate::utils::change_rect_transform_in_children_size(transform, "AccName", 100.0, 0.0);
-		crate::utils::change_rect_transform_in_child_anchor(transform, "BodyParts", 100.0, 0.0);
+		change_rect_transform_in_children_size(transform, "AccName", 100.0, 0.0);
+		change_rect_transform_in_child_anchor(transform, "BodyParts", 100.0, 0.0);
 	}
-	pub fn create_bind_unit_info(proc: impl Into<engage::app::ProcInst>, unit: engage::app::Unit){
+	pub fn create_bind_unit_info(proc: impl Into<ProcInst>, unit: Unit){
 		if unit.is_null() { return; }
 		let menu_data = UnitAssetMenuData::get();
 		if let Some(root) = Self::get_root() {
-			let content: AccessoryShopChangeMenuContent = unsafe { root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() };
+			let content: AccessoryShopChangeMenuContent = unsafe { 
+				root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() 
+			};
 			if content.is_null() { return; }
 			let equipment = root.get_component_in_children_3::<AccessoryEquipmentInfo>();
 			let detail_box = root.get_component_in_children_3::<AccessoryDetailInfoWindow>();
@@ -111,8 +117,7 @@ impl CustomAssetMenu {
 				name.set_text_2(unit.get_name(), true);
 				menu.set_unit_name(name);
 			}
-			let centered_position = 0.49 * Screen::get_width() as f32;
-			println!("Centered Position: {}", centered_position);
+			let centered_position = 0.49 * engage::unity_engine::Screen::get_width() as f32;
 			BackgroundManager::bind_2();
 			let descs = menu.create_default_desc();
 			menu.create_bind(proc, descs, "OutfitMenu");
@@ -143,10 +148,12 @@ impl CustomAssetMenu {
 		if let Some(root) = Self::get_root() {
 			let equipment = root.m_equipment_info_window_object();
 			let detail_box = root.m_detail_info_window_object();
-			if !equipment.is_null() { engage::unity_engine::Object_2::destroy_2(equipment); }
-			if !detail_box.is_null() { engage::unity_engine::Object_2::destroy_2(detail_box); }
-			if !root.m_unit_name_object().is_null() { engage::unity_engine::Object_2::destroy_2(root.m_unit_name_object()) }
-			let content: AccessoryShopChangeMenuContent = unsafe { root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() };
+			if !equipment.is_null() { Object_2::destroy_2(equipment); }
+			if !detail_box.is_null() { Object_2::destroy_2(detail_box); }
+			if !root.m_unit_name_object().is_null() { Object_2::destroy_2(root.m_unit_name_object()) }
+			let content: AccessoryShopChangeMenuContent = unsafe { 
+				root.get_component_in_children(SystemType::from_il2cpp_type(AccessoryShopChangeMenuContent::class().raw().get_type()).unwrap(), true).cast() 
+			};
 			if content.is_null() { return; }
 			let menu = Self::new(content);
 			menu_data.mode = MenuMode::PhotoGraph;
@@ -171,11 +178,11 @@ impl CustomAssetMenu {
 	}
 	pub fn new(menu_content: AccessoryShopChangeMenuContent) -> Self {
 		let menu = Self::instantiate().unwrap();
-		let items = List_1::<engage::app::BasicMenuItem>::new();
+		let items = List_1::<BasicMenuItem>::new();
 		MainShop.add_menu_items(items);
 		IBasicMenuMethods::ctor(menu, items, menu_content);
-		let selects = unity::Array::<engage::app::BasicMenuSelect>::new(engage::app::BasicMenuSelect::class().raw(), CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
-		for x in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT { selects.set(x,engage::app::BasicMenuSelect::new()); }
+		let selects = Array::<BasicMenuSelect>::new(BasicMenuSelect::class().raw(), CustomAssetMenuKind::SAVE_SELECT_COUNT).unwrap();
+		for x in 0..CustomAssetMenuKind::SAVE_SELECT_COUNT { selects.set(x, BasicMenuSelect::new()); }
 		menu.set_m_selects(selects);
 		menu.set_menu_kind(MainShop);
 		menu.set_next(None);
@@ -197,6 +204,8 @@ impl CustomAssetMenu {
 		let items = self.m_full_menu_item_list();
 		items.clear();
 		menu.add_menu_items(items);
+		let items2: List_1::<CustomAssetMenuItem3> = unsafe { items.cast() };
+		let position = items2.iter().position(|s| s.get_m_decided());
 		menu.key_help_update(false);
 		if save_select { self.save_select(); }
 		else {
@@ -210,14 +219,21 @@ impl CustomAssetMenu {
 		menu.get_save_select_index()
 			.map(|i| self.m_selects().get(i))
 			.unwrap_or({
-				let s = engage::app::BasicMenuSelect::new();
+				let s = BasicMenuSelect::new();
 				s.set_scroll(0);
 				s.set_index(0);
 				s
 			});
+		if let Some(pos) = position {
+			if select.get_index() == 0 && select.get_scroll() == 0 {
+				select.set_scroll(pos as i32);
+				select.set_index(pos as i32);
+			}
+		}
 		self.set_menu_kind(menu);
 		self.rebuild_instant_2(select);
 		IBasicMenuMethods::after_build(self);
+		menu.post_build();
 		self.restore_select(select);
 		if menu == FaceSelection { self.toggle_ui(); }
 	}
@@ -226,7 +242,7 @@ impl CustomAssetMenu {
 		if !self.detail_box().is_null() { Self::toggle_animator_open_close_state(self.detail_box().get_game_object()); }
 		if !self.equipment().is_null() { Self::toggle_animator_open_close_state(self.equipment().get_game_object()); }
 	}
-	pub fn toggle_animator_open_close_state(go: engage::unity_engine::GameObject) {
+	pub fn toggle_animator_open_close_state(go: GameObject) {
 		if !go.is_null() {
 			let anim = go.get_component::<engage::unity_engine::Animator>();
 			if !anim.is_null() {
@@ -266,9 +282,9 @@ impl CustomAssetMenu {
 	}
 	pub fn open_sortie_unit_select() {
 		UnitInfo::chara_only_off();
-		let sortie = engage::app::SortieSequenceUnitSelect::get_instance();
+		let sortie = SortieSequenceUnitSelect::get_instance();
 		if !sortie.is_null() {
-			UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
+			UnitInfo::set_unit(UnitInfo_Side::left(), Unit::null(), false, false, false, engage::system::Action::null());
 			sortie.m_window().get_game_object().set_active(true);
 			sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(true);
 			sortie.disp_all();
@@ -294,15 +310,15 @@ impl CustomAssetMenu {
 			}
 		}
 		else {
-			let map_mind = engage::app::MapMind::get_instance();
+			let map_mind = MapMind::get_instance();
 			if !map_mind.is_null() {
 				let unit = map_mind.get_unit();
 				if !unit.is_null() {
-					UnitInfo::set_unit(UnitInfo_Side::left(), engage::app::Unit::null(), false, false, false, engage::system::Action::null());
+					UnitInfo::set_unit(UnitInfo_Side::left(), Unit::null(), false, false, false, engage::system::Action::null());
 					UnitInfo::set_unit(UnitInfo_Side::left(), unit, false, false, false, engage::system::Action::null());
 				}
 			}
-			TitleBar::get_instance().close_header();
+			TitleBar::close_header();
 		}
 
 	}
@@ -323,7 +339,7 @@ impl CustomAssetMenu{
 				let request_close = self.m_request_close_event_handler();
 				if !request_close.is_null() { request_close.invoke(); }
 			}
-			BasicMenu_Result{value: 513}
+			BasicMenu_Result{value: 513} 
 		}
 	}
 	#[override_virtual(name = "PlusCall")]
@@ -337,10 +353,10 @@ impl CustomAssetMenu{
 	#[override_virtual(name = "OnDispose")]
 	pub fn on_dispose(self){
 		let menu = UnitAssetMenuData::get();
-		menu.control.reset_all();
 		match menu.mode {
 			MenuMode::UnitInfo => {
 				menu.is_preview = false;
+				menu.control.reset_all();
 				let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
 				UnitInfoCharaImageMaskOffset::get_instance().iter().for_each(|mask| {
 					if IObject_2Methods::equals(mask.m_texture(), render_texture) && mask.is_visible() {
@@ -352,28 +368,31 @@ impl CustomAssetMenu{
 				});
 				if !self.detail_box().is_null() {
 					let go = self.detail_box().get_game_object();
-					if !go.is_null() { engage::unity_engine::Object_2::destroy_2(go); }
+					if !go.is_null() {Object_2::destroy_2(go); }
 				}
 				if !self.equipment().is_null() {
 					let go = self.equipment().get_game_object();
-					if !go.is_null() { engage::unity_engine::Object_2::destroy_2(go); }
+					if !go.is_null() { Object_2::destroy_2(go); }
 				}
-				let name = engage::unity_engine::GameObject::find("CharacterName");
-				if !name.is_null() { engage::unity_engine::Object_2::destroy_2(name); }
+				let name = GameObject::find("CharacterName");
+				if !name.is_null() { Object_2::destroy_2(name); }
 				Self::open_sortie_unit_select();
 				BackgroundManager::unbind();
 			}
-            MenuMode::PhotoGraph => { TitleBar::get_instance().close_header(); }
+            MenuMode::PhotoGraph => {
+				menu.control.reset_all();
+				TitleBar::close_header();
+			}
 			_ => {}
 		}
 		menu.menu_adj = 0.0;
 	}
 	#[override_virtual(name = "OnBuild")]
 	pub fn on_build(self) {
-		let go = engage::unity_engine::GameObject::find("Category");
+		let go = GameObject::find("Category");
 		if !go.is_null() {
 			go.set_active(false);
-			engage::unity_engine::Object_2::destroy_2(go);
+			Object_2::destroy_2(go);
 		}
 	}
 	#[override_virtual(name = "KeyLeft")]
@@ -384,8 +403,8 @@ impl CustomAssetMenu{
 
 	#[override_virtual(name = "TickInput")]
 	pub fn tick_input(self) -> bool {
-		let left = engage::app::Pad::is_trigger(NpadButton::left());
-		let right = engage::app::Pad::is_trigger(NpadButton::right());
+		let left = Pad::is_trigger(NpadButton::left());
+		let right = Pad::is_trigger(NpadButton::right());
 		let unit_info = UnitAssetMenuData::is_unit_info();
 		if (left || right) && left != right {
 			if self.get_menu_item_kind().can_facial() && self.menu_kind().can_facial() {
@@ -408,16 +427,16 @@ impl CustomAssetMenu{
 					self.m_menu_content().get_game_object().set_active(true);
 					self.toggle_ui();
 					self.set_pause(false);
-					TitleBar::get_instance().show_header();
+					engage::app::TitleBar::get_instance().show_header();
 					menu_kind.key_help_update(false);
 				}
-				else if engage::app::Pad::is_trigger(NpadButton::x()) {
-					let title = TitleBar::get_instance();
+				else if Pad::is_trigger(NpadButton::x()) {
+					let title = engage::app::TitleBar::get_instance();
 					if title.m_is_show_header() { title.hide_header(); } else { title.show_header(); }
 				}
 				return true;
 			}
-			else if engage::app::Pad::is_trigger(NpadButton::plus()) {
+			else if Pad::is_trigger(NpadButton::plus()) {
 				self.toggle_ui();
 				self.m_menu_content().get_game_object().set_active(false);
 				self.set_pause(true);
@@ -426,8 +445,8 @@ impl CustomAssetMenu{
 			}
 			if stick { return true; }
 			if menu_kind == MainShop && unit_info {
-				let l = engage::app::Pad::is_trigger(NpadButton::l());
-				let r = engage::app::Pad::is_trigger(NpadButton::r());
+				let l = Pad::is_trigger(NpadButton::l());
+				let r = Pad::is_trigger(NpadButton::r());
 				if (l || r) && l != r { self.lr_base(r); }
 			}
 		}
@@ -448,11 +467,11 @@ pub fn is_button_pressed(button: i64, check: NpadButton) -> bool { button & chec
 
 fn model_camera_control(rgb: bool) -> bool {
 	let menu_data = UnitAssetMenuData::get();
-	let pad = engage::app::Pad::get_instance();
+	let pad = Pad::get_instance();
 	let buttons = pad.m_npad_state().buttons.value;
 	let fast = buttons & NpadButton::y().value != 0;
 	let mut translation_change: [i32; 3] = [0; 3];
-	let r_stick = engage::app::Pad::is_trigger(NpadButton::stick_r());
+	let r_stick = Pad::is_trigger(NpadButton::stick_r());
 	let rotation_y =
 		if is_button_pressed(buttons, NpadButton::stick_r_left()) { if fast { -7.5 } else { -2.5 } }
 		else if is_button_pressed(buttons, NpadButton::stick_r_right())  { if fast { 7.5 } else { 2.5 } }
@@ -481,11 +500,11 @@ fn model_camera_control(rgb: bool) -> bool {
 		}
 		MenuMode::PhotoGraph => {
 			if !rgb {
-				if engage::app::Pad::is_button(NpadButton::zl()) { rot_x = -1.25; }
-				else if engage::app::Pad::is_button(NpadButton::zr()) { rot_x = 1.25; }
+				if Pad::is_button(NpadButton::zl()) { rot_x = -1.25; }
+				else if Pad::is_button(NpadButton::zr()) { rot_x = 1.25; }
 
-				if engage::app::Pad::is_button(NpadButton::l()) { rot_z = -1.25; }
-				else if engage::app::Pad::is_button(NpadButton::r()) { rot_z = 1.25; }
+				if Pad::is_button(NpadButton::l()) { rot_z = -1.25; }
+				else if Pad::is_button(NpadButton::r()) { rot_z = 1.25; }
 			}
 			if rot_x != 0.0 || rot_z != 0.0 { menu_data.control.camera_rotation(rot_x, 0.0, rot_z); }
 			if rotation_y != 0.0 { menu_data.control.character_rotation(0.0, rotation_y, 0.0); }
@@ -500,7 +519,7 @@ fn model_camera_control(rgb: bool) -> bool {
 	}
 	rl_stick
 }
-pub fn unit_item_y_call(this: engage::app::BasicMenuItem, _: OptionalMethod) -> BasicMenu_Result {
+pub fn unit_item_y_call(this: BasicMenuItem, _: OptionalMethod) -> BasicMenu_Result {
 	if OutfitSequence::create_bind(this.m_menu()).is_some() { BasicMenu_Result::close_decide() }
 	else { BasicMenu_Result::se_miss() }
 }
@@ -518,7 +537,7 @@ pub fn add_sub_unit_menu_item(proc: ProcInst) {
 
 pub fn change_selected_profile() -> bool {
 	let emblem = UnitAssetMenuData::get().god_mode;
-	if crate::r_l_press(true, false, true) {
+	if r_l_press(true, false, true) {
 		let limit = if emblem { 3 } else { 5 };
 		let preview = UnitAssetMenuData::get_preview();
 		let previous = preview.selected_profile;
@@ -528,7 +547,7 @@ pub fn change_selected_profile() -> bool {
 		hub_room_set_by_result(None, ReloadType::All);
 		true
 	}
-	else if crate::r_l_press(false, true, true) {
+	else if r_l_press(false, true, true) {
 		let limit = if emblem { 3 } else { 5 };
 		let preview = UnitAssetMenuData::get_preview();
 		let previous = preview.selected_profile;

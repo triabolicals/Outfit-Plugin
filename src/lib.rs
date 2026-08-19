@@ -47,14 +47,14 @@ extern "C" fn event_install(event: &Event<SystemEvent>) {
                         if !UnitAssetMenuData::get().init {
                             outfit_core::install_outfit_plugin(false);
                             skyline::install_hooks!(
-                                assets::appearance_create_from_result,
-                                assets::dress::modify_colors,
+                                assets::appearance_create_from_result_outfit,
+                                assets::dress::modify_colors_outfit,
                                 assets::asset_table_setup_person_outfit,
                                 assets::asset_table_result_setup_hook_outfit,
                                 assets::transform::change_dragon2,
                                 assets::asset_table_result_god_setup_outfit,
                                 assets::transform::transformation_chain_atk,
-                                assets::dress::combat_character_play_facial,
+                                assets::dress::combat_character_play_facial_outfit,
                             );
                         } else { outfit_core::reset_faces(true); }
                     }

@@ -1,14 +1,20 @@
 use engage::{
-    system::collections::generic::IList_1Methods,
-    app::ISingletonProcInst_1Methods,
-    app::{AssetTable_Modes, AssetTable_Result, IAccessoryMenuItemMethods, IAssetTable_Result, IAssetTable_ResultMethods, IBasicMenu, IBasicMenuItem, IBasicMenuItemMethods},
-    List_1Ext
+    app::{
+        ISingletonProcInst_1Methods,
+        IAccessoryMenuItemMethods,
+        IBasicMenu,
+        IBasicMenuItem,
+        IBasicMenuItemMethods,
+        IGameUserDataMethods,
+        IRandom_2Methods,
+        ISingletonClass_1Methods
+    },
+    List_1Ext,
 };
-use engage::app::{HubAccessoryRoom, IGameUserDataMethods, IHubAccessoryRoom, IProcInstMethods, IRandom_2Methods, ISingletonClass_1Methods, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window, UnitInfo};
 use unity::Cast;
-use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, UnitAssetMenuData, V_EVENTS, data::room::hub_room_set_by_result, localize::MenuText, room::ReloadType, set_color_by_i32};
+use crate::{get_outfit_data, left_right_enclose, EquipmentBoxPage, MenuTextCommand, UnitAssetMenuData, V_EVENTS, localize::MenuText, set_color_by_u8};
+use crate::model::*;
 use super::*;
-use std::io::Write;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum AssetType {
@@ -73,7 +79,6 @@ impl AssetType {
         }
     }
     pub fn update_model(&self, menu_item: CustomAssetMenuItem3) {
-        let mut reload_type = ReloadType::ForcedUpdate;
         let menu_index = menu_item.get_asset_menu().menu_kind().to_index();
         let is_engaged = menu_index == 16 || menu_index == 17;
         let result = if is_engaged {
@@ -82,49 +87,19 @@ impl AssetType {
             result
         }
         else { UnitAssetMenuData::get_result() };
-        /*
-        let photo = UnitAssetMenuData::is_photo_graph();
-        if photo {
-            let hash = menu_item.value();
-            let preview = UnitAssetMenuData::get_preview();
-            match self {
-                AssetType::ColorPreset(kind) => {
-                    for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
-                    reload_type = ReloadType::ColorScale;
-                }
-                AssetType::Body => {
-                    preview.preview_data.ubody = hash;
-                    reload_type = ReloadType::Dress;
-                }
-                AssetType::Hair => { preview.preview_data.uhair = hash; }
-                AssetType::Head => { preview.preview_data.uhead = hash; }
-                AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
-                AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
-                AssetType::AOC(kind) => {
-                    if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
-                    else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
-                }
-                AssetType::Rig => { preview.preview_data.rig = hash; },
-                _ => {}
-            }
-            preview.preview_data.set_result(result, 2, false, false);
-            hub_room_set_by_result(Some(result), reload_type);
-            return;
-        }
-        */
         result.set_ride_model("");
         result.set_ride_dress_model("");
         result.set_left_hand("null");
         result.set_right_hand("null");
         match self {
             AssetType::Voice => { return; }
-            AssetType::ColorPreset(kind) => {
+            AssetType::ColorPreset(_) => {
                 let v = menu_item.value();
-                let k = *kind % 16;
+                let preview_kind = (menu_item.value2() % 16) as usize;
                 let selected_color: [u8; 3] = [(v & 255) as u8, ((v >> 8) & 255) as u8, ((v>> 16) & 255) as u8];
                 let menu_data = UnitAssetMenuData::get_preview();
-                if k < 8 { set_color_by_i32(result, k as usize, v); }
-                for x in 0..3 { menu_data.color_preview[4*(k as usize) + x] =  selected_color[x]; }
+                for x in 0..3 { menu_data.color_preview[4*(preview_kind) + x] =  selected_color[x]; }
+                if preview_kind < 8 { set_color_by_u8(result, preview_kind, selected_color[0], selected_color[1], selected_color[2]); }
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 return;
             }
@@ -149,13 +124,10 @@ impl AssetType {
             AssetType::Mount(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
             AssetType::AOC(kind) => { EquipmentBoxMode::set_cursor(Some(*kind as i32 + 1)); }
             AssetType::Voice => { EquipmentBoxMode::set_cursor(Some(5)); }
-            AssetType::ColorPreset(kind) => {
+            AssetType::ColorPreset(_) => {
                 let v2 = menu_item.value2();
                 if v2 == 14 { EquipmentBoxMode::set_cursor(Some(4)); }
-                else {
-                    let k = *kind;
-                    EquipmentBoxMode::set_color_cursor(Some(k as i32));
-                }
+                else { EquipmentBoxMode::set_color_cursor(Some(v2)); }
             }
         }
     }
@@ -193,10 +165,10 @@ impl CustomMenuItem for AssetType {
             Self::Hair => EquipmentBoxMode::Hair,
             Self::Acc(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AccessoryAssets),
             Self::Voice|Self::AOC(_) => EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::AOCAnimations(item.female())),
-            Self::ColorPreset(kind) => {
+            Self::ColorPreset(_) => {
                 let v2 = item.value2();
                 if v2 == 14 { EquipmentBoxMode::Hair }
-                else { EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(*kind)) }
+                else { EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Color(v2 as u8)) }
             }
             Self::Mount(_) =>  EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::RideMounts),
         }
@@ -282,8 +254,9 @@ impl CustomMenuItem for AssetType {
         let preview = UnitAssetMenuData::get_preview();
         let hash = if menu_item.get_m_decided() { 0 } else { menu_item.value() };
         match self {
-            AssetType::ColorPreset(kind) => {
-                for x in 0..3 { preview.preview_data.colors[*kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
+            AssetType::ColorPreset(_) => {
+                let kind = menu_item.value2();
+                for x in 0..3 { preview.preview_data.colors[kind as usize].values[x] = ((hash >> x*8) & 255) as u8; }
                 menu_item.get_asset_menu().b_call();
                 return BasicMenu_Result::se_decide();
             }
@@ -304,7 +277,9 @@ impl CustomMenuItem for AssetType {
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }
             AssetType::Acc(kind) => { preview.preview_data.acc[*kind as usize] = hash; }
             AssetType::AOC(kind) => {
-                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage::app::Gender::male()) { preview.preview_data.aoc[*kind as usize] = hash; }
+                if get_outfit_data().get_aoc_gender_hash(*kind as i32, hash) == Some(engage::app::Gender::male()) {
+                    preview.preview_data.aoc[*kind as usize] = hash;
+                }
                 else { preview.preview_data.aoc_alt[*kind as usize] = hash; }
             }
             AssetType::Rig => { preview.preview_data.rig = hash; },

@@ -10,7 +10,7 @@ use super::*;
 pub fn commit_for_unit_dress(
     result: AssetTable_Result,
     mode: i32,
-    unit: engage::app::Unit,
+    unit: Unit,
     equipped: engage::app::ItemData,
     conds: Array<Il2CppString>,
     conditions: &mut AssetConditions
@@ -100,10 +100,12 @@ pub fn commit_for_unit_dress(
         return;
     }
     else { hair_adjustment(result); }
+    /*
     if condition_unit.check_status(Unit_Status::engage_attack()) && conditions.mode == 2{
         AnimData::adjust_engage_atk(result, db.get_dress_gender(result.get_dress_model()));
         return;
     }
+     */
     if conditions.flags.contains(AssetFlags::CombatTranforming) { AnimData::remove(result, true, true); }
     db.correct_anims(result, unit, profile_flag, conditions);
 }
@@ -121,13 +123,13 @@ fn hair_adjustment(result: AssetTable_Result) {
      */
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]
-pub fn modify_colors(this: engage::combat::CharacterAppearance, go: engage::unity_engine::GameObject, method_info: unity::OptionalMethod) {
+pub fn modify_colors_outfit(this: CharacterAppearance, go: engage::unity_engine::GameObject, method_info: OptionalMethod) {
     get_head_hair_colors(go);
     call_original!(this, go, None);
     apply_preview_head_hair_color(this, go);
 }
 #[skyline::hook(offset=0x2b011f0)]
-fn combat_character_play_facial(this: engage::combat::Character, state_hash: i32, transition: f32, optional_method: unity::OptionalMethod) {
+fn combat_character_play_facial_outfit(this: Character, state_hash: i32, transition: f32, optional_method: OptionalMethod) {
     if !UnitAssetMenuData::get().is_preview {
         let builder = this.get_builder().appearance();
         let hash = unity::field_get_value_at_offset::<i32>(builder, 0xd4);

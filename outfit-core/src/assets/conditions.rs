@@ -3,7 +3,7 @@ use engage::{
     app::{IUnitEditMethods, IAccessoryDataMethods, IAssetTable_ConditionFlags, IBitField32, IGameUserDataMethods, IGodDataMethods, IGodUnit, IItemDataMethods, IPersonDataMethods, ISingletonClass_1Methods, ISkillArrayMethods, IStructBase, IStructData_1Methods, IUnit, IUnitAccessory, IUnitAccessoryList, IUnitEdit, IUnitMethods},
     List_1Ext
 };
-use engage::app::{AssetTable, IAssetTable_ConditionFlagsMethods};
+use engage::app::{AssetTable, Gender, IAssetTable_ConditionFlagsMethods};
 use unity::Cast;
 use crate::{get_condition_index, get_outfit_data, UnitAssetMenuData};
 
@@ -63,6 +63,7 @@ pub struct AssetConditions {
     pub emblem_unit: bool,
     pub broken: bool,
     pub profile_flag: i32,
+    pub dress_gender: Gender,
     pub random_dress: RandomDressMode,
 }
 impl AssetConditions {
@@ -84,10 +85,11 @@ impl AssetConditions {
                 else { 0 }
             }
             else { 0 };
+        
         let broken = if !unit.is_null() { unit.m_private_skill().find("SID_気絶").is_null() || unit.m_mask_skill().find("SID_気絶").is_null() } else { false };
 
         Self {
-            kind, mode, broken, engaged,
+            kind, mode, broken, engaged, dress_gender: Gender::none(),
             profile_flag: 0, emblem_unit: false,
             random_dress: RandomDressMode::new(),
             character_mode: CharacterAssetMode::get(),
@@ -122,7 +124,7 @@ pub enum CharacterAssetMode {
 impl CharacterAssetMode {
     const CONDITIONS: [&'static str; 8] = ["クラスチェンジ中", "詳細", "情報", "拠点", "デモ", "会話", "コンバット", "私服"];
     pub fn get() -> Self {
-        let flags = engage::app::AssetTable::s_condition_flags();
+        let flags = AssetTable::s_condition_flags();
         if let Some(pos) = Self::CONDITIONS.iter().position(|x| flags.m_keys().iter().any(|s| s.to_rust_string().contains(x))){
             match pos {
                 0 => CharacterAssetMode::ClassChange,
@@ -180,11 +182,6 @@ bitflags! {
 }
 
 impl AssetFlags {
-    pub const UNIT_STATUS_ENGAGED: u64 = 8388608;
-    pub const UNIT_STATUS_ENGAGE_ATK: u64 = 16777216;
-    pub const UNIT_STATUS_ENGAGE_LINK: u64 = 33554432;
-    pub const UNIT_STATUS_VISION: u64 = 134217728;
-    pub const UNIT_STATUS_SUMMON: u64 = 35184372088832;
     pub const ASSET_TABLE_CONDITIONS: [&'static str; 26] = [
         "私服", "AID_異形兵", "AID_一般兵", "AID_幻影兵", "残像",
         "エンゲージ開始", "エンゲージ中", "後日談支援Ｓ", "エンゲージ合体技",
@@ -194,14 +191,13 @@ impl AssetFlags {
         "AID_ヴェロニカ_フリズスキャルヴ",
     ];
     pub fn new(unit: engage::app::Unit) -> Self {
-        let flags = engage::app::AssetTable::s_condition_flags();
-
+        let flags = AssetTable::s_condition_flags();
         let bits =
             Self::ASSET_TABLE_CONDITIONS.iter()
             .enumerate()
             .filter_map(|(i, con)| Some(i).zip(get_condition_index(*con)))
-            .filter(|(i, idx)| flags.m_bits().get(*idx))
-            .fold(0, |x, (i, idx)| x | (1 << i));
+            .filter(|(_i, idx)| flags.m_bits().get(*idx))
+            .fold(0, |x, (i, _idx)| x | (1 << i));
 
         let mut flags = Self::from_bits(bits).unwrap();
         if !unit.is_null() {
@@ -247,9 +243,9 @@ impl AssetFlags {
         }
         flags
     }
-    pub fn set_gender(&mut self, gender: engage::app::Gender) {
-        self.set_condition_flag(AssetFlags::Male, gender == engage::app::Gender::male());
-        self.set_condition_flag(AssetFlags::Female, gender == engage::app::Gender::female());
+    pub fn set_gender(&mut self, gender: Gender) {
+        self.set_condition_flag(AssetFlags::Male, gender == Gender::male());
+        self.set_condition_flag(AssetFlags::Female, gender == Gender::female());
     }
     pub fn set_condition_flag(&mut self, rhs: Self, value: bool){
         if let Some(condition) = Self::FLAGS.iter()

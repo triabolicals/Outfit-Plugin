@@ -108,6 +108,7 @@ impl OutfitLists {
         let sola_hash = hashes.add_acc("uBody_Msc0AT_c000");
         self.other.push(
             OtherAssetItem{
+                asset_name: "uBody_Msc0AT_c000".to_string(),
                 label: "MPID_Sola".to_string(), is_mess: true,female: false,
                 asset: AssetItem { hash: sola_hash, count: 0, kind: AssetType::Acc(3), flags: AssetItemFlags::empty(), },
             }
@@ -120,6 +121,7 @@ impl OutfitLists {
                 self.other.push(asset);
             }
         }
+        self.added.sort_by(|a, b| a.asset_name.cmp(&b.asset_name));
     }
     pub fn add_menu_items(&self, kind: AssetType, female: bool, char: bool, other: bool, labels: &AssetLabelTable, menu_item_list: List_1<BasicMenuItem>) {
         let photo = UnitAssetMenuData::is_photo_graph();

@@ -4,7 +4,7 @@ use engage::{
     List_1Ext
 };
 use unity::{Cast, system::string::IIl2CppStringMethods};
-use crate::{capitalize_first, get_condition_index, has_condition_index, AssetLabelTable, AssetType};
+use crate::{capitalize_first, has_condition_index, AssetLabelTable, AssetType};
 
 const ACC: [&str; 10] = ["Band", "Dress", "Ear", "Glass", "Hat", "Kings", "Tiara", "Helm", "Shield", "Hood"];
 bitflags! {
@@ -81,16 +81,16 @@ pub struct OtherAssetItem {
     pub asset: AssetItem,
     pub is_mess: bool,
     pub female: bool,
-
+    pub asset_name: String,
 }
 impl OtherAssetItem {
     pub fn new(label: impl AsRef<str>, asset: impl AsRef<str>, female: bool, flags: i32, is_mess: bool) -> Option<Self> {
         let label = label.as_ref().to_string();
+        let asset_name = asset.as_ref().to_string();
         let lower = label.to_lowercase();
         let mut asset = AssetItem::new(asset.as_ref(), flags)?;
         if lower.contains("playable") && lower.starts_with("mpid") { asset.flags.insert(AssetItemFlags::Playable); }
-
-        Some(Self{ label, female, is_mess, asset })
+        Some(Self{ label, female, is_mess, asset, asset_name})
     }
     pub fn get_name(&self, labels: &AssetLabelTable, body_first: bool) -> unity::Il2CppString {
         if self.is_mess { self.asset.get_name(self.label.as_str()) }

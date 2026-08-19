@@ -1,11 +1,15 @@
 use engage::{
-    app::{ISingletonProcInst_1Methods, IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window},
-    unity_engine::{IComponentMethods, ITransformMethods},
-    app::{IPhotographCameraController, IPhotographDisposInfo, IPhotographDisposManager, IPhotographSequence},
+    app::{
+        ISingletonProcInst_1Methods,
+        IUnitInfo, IUnitInfoWindowCharaModel, IUnitInfo_Window,
+        IPhotographCameraController, IPhotographDisposInfo, IPhotographDisposManager, IPhotographSequence
+    },
+    unity_engine::{
+        transform::*, renderer::*,
+        IComponentMethods, ICameraMethods, IGameObjectMethods,
+    },
     combat::ICharacterJointMethods,
-    unity_engine::{ICameraMethods, IGameObjectMethods, IRendererMethods, Renderer}
 };
-use engage::unity_engine::Transform;
 use unity::Cast;
 use crate::{clamp_value, MenuMode};
 
@@ -23,7 +27,7 @@ impl PositionRotation {
     pub fn new2(pos: engage::unity_engine::Vector3, rotation: engage::unity_engine::Quaternion) -> Self {
         Self { pos, rotation }
     }
-    pub fn from_transform(transform: engage::unity_engine::Transform, local_rotation: bool) -> Self {
+    pub fn from_transform(transform: Transform, local_rotation: bool) -> Self {
         let pos = transform.get_position();
         let rot = if local_rotation { transform.get_local_rotation() } else { transform.get_rotation() };
         Self::new2(pos, rot)
@@ -283,7 +287,7 @@ impl PhotoCameraControl {
             transform.set_local_rotation(self.current_character.rotation);
         }
     }
-    pub fn get_character_transform(&self) -> Option<engage::unity_engine::Transform> {
+    pub fn get_character_transform(&self) -> Option<Transform> {
         match self.mode {
             MenuMode::PhotoGraph => {
                 crate::photo::get_photosequence().map(|p| p.m_dispos_manager().m_current_dispos_info().m_character_cmp().get_transform())

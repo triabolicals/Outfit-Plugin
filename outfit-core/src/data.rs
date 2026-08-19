@@ -1,13 +1,11 @@
 use std::{collections::{HashSet, HashMap}, io::{Cursor, Read}};
 use engage::{
     app::{
-        assettable::*,
         IGameUserDataMethods, IGodDataMethods, IGodUnit, IJobDataMethods, ISingletonClass_1Methods,
         IStructBase, IStructData_1Methods, IUnitMethods, ResourceManager_2
     },
     Dictionary_2Ext,
     List_1Ext,
-    app::assettable::prelude::IList_1Methods,
     system::collections::generic::IList_1,
     app::{IAccessoryDataMethods, IPersonDataMethods, IRandom_2Methods}
 };
@@ -30,7 +28,7 @@ pub use list::*;
 use anim::AnimData;
 pub use crate::data::dress::{PersonalDressDataFlags, DressData, JobDressData};
 use crate::enums::Mount;
-use engage::app::{IBitField32, Random_2};
+use engage::app::{IBitField32, ItemData, Random_2};
 pub const KINDS: [&str; 8] = ["uBody_", "uHead_", "uHair_", "uAcc_spine2_Hair", "uAcc_head_", "uAcc_spine", "uAcc_Eff", "uAcc_shield_"];
 pub const NULL: [&str; 4] = ["uBody_null", "uHead_null", "uHair_null", "uAcc_head_null"];
 const ASSET_FILENAME: [&str; 6] = ["UAS_", "Item/Acc/", "Unit/Model/", "AOC_", "uRig", "uWep"];
@@ -163,14 +161,16 @@ impl OutfitData {
                         let female = flags.contains(AssetItemFlags::LabelFemale);
                         let label = labels.get(label_idx).map(|v| v.to_string()).unwrap();
                         remove_hashes.insert(hash);
-                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}});
+                        let asset_name = asset.1.clone();
+                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}, asset_name});
                     }
-                    else if hashes.voice.iter().find(|v| *v.0 == hash).is_some() {
+                    else if let Some(asset) = hashes.voice.iter().find(|v| *v.0 == hash) {
                         let count = asset_data[11] as i32;
+                        let asset_name = asset.1.clone();
                         let is_mess = flags.contains(AssetItemFlags::LabelMess);
                         let female = flags.contains(AssetItemFlags::LabelFemale);
                         let label = labels.get(label_idx).map(|v| v.to_string()).unwrap();
-                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}});
+                        group.push(OtherAssetItem{ label,is_mess, female, asset: AssetItem { count, kind, hash, flags}, asset_name});
                     }
                 }
             }
@@ -290,6 +290,7 @@ impl OutfitData {
         hashes.get_info_anim();
         hashes.create_uo_pairs();
         new_list.add_eye_presets(&new_labels);
+        new_list.added.sort_by(|a, b| a.asset_name.cmp(&b.asset_name));
         println!("Finished with Outfit Plugin Data");
         Self {
             dress, anims, hashes, weapons,
@@ -298,7 +299,7 @@ impl OutfitData {
             item: ItemAsset::init(),
         }
     }
-    pub fn is_monster_class(&self, unit: engage::app::Unit) -> bool {
+    pub fn is_monster_class(&self, unit: Unit) -> bool {
         let job = unit.get_job();
         if job.is_null() { false }
         else {
@@ -307,27 +308,28 @@ impl OutfitData {
             (gender == 1 || gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && !x.is_transform).is_some()
         }
     }
-    pub fn is_transform_class(&self, unit: engage::app::Unit) -> bool {
-        let job = unit.get_job();
-        if job.is_null() { false } else {
-            let gender = unit.get_gender().value;
-            let hash = job.hash();
-            (gender == 1 || gender == 2) && self.dress.transform.iter().find(|x| x.hash == hash && x.is_transform).is_some()
-        }
-    }
-    pub fn apply_monster_asset(&self, result: AssetTable_Result, unit: engage::app::Unit, mode: i32) -> bool {
+    pub fn apply_transformation_asset(&self, result: AssetTable_Result, unit: Unit, item: ItemData, mode: i32) -> bool {
         let job = unit.get_job();
         if job.is_null() { false }
         else {
             let hash = job.hash();
             if let Some(transform) = self.dress.transform.iter().find(|x| x.hash == hash) {
-                transform.set_result(mode, unit, result);
+                transform.set_result(mode, unit, item, result);
                 true
             }
             else { false }
         }
     }
-    pub fn adjust_dress(&self, result: AssetTable_Result, unit: engage::app::Unit, conditions: &AssetConditions) {
+    pub fn get_combat_transformation(&self, unit: Unit, item: ItemData) -> Option<AssetTable_Result> {
+        let job = unit.get_job();
+        if job.is_null() { None }
+        else {
+            let hash = job.hash();
+            let data = self.dress.transform.iter().find(|x| x.hash == hash)?;
+            Some(data.get_result(2, unit, item))
+        }
+    }
+    pub fn adjust_dress(&self, result: AssetTable_Result, unit: Unit, conditions: &AssetConditions) {
         let job_data = unit.get_job();
         let job = job_data.hash();
         let engaged = unit.is_engaging_2();
@@ -379,8 +381,9 @@ impl OutfitData {
             }
         }
         else {
+            let job_dress_data = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data));
             if job == 185671037 {   // Alear Fell Child
-                if let Some(d) = self.dress.get_job_dress(job_data, dress_gender) { d.apply(result, conditions.mode, true, engaged); }
+                if let Some(d) = job_dress_data.as_ref() { d.apply(result, conditions.mode, true, engaged); }
             }
             else if unit.get_person().get_flag().m_value() & 512 == 0 && !unit.get_person().get_job().is_null() {
                 let force = unit.get_force_type();
@@ -388,18 +391,19 @@ impl OutfitData {
                     if let Some(person_data) = self.dress.get_personal_dress(unit) {
                         person_data.apply(result, conditions.mode, is_promoted, None, &self.hashes);
                         return;
-                    } else if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)) {
-                        dress_data.apply(result, conditions.mode, false, false);
+                    }
+                    else if let Some(dress_data) = job_dress_data.as_ref(){
+                        dress_data.apply(result, conditions.mode, false, !engaged);
                         return;
                     }
                 }
             }
             if transforming { return; }
-            if let Some(dress_data) = self.dress.job.iter().find(|x| x.hash == job) {
+            if let Some(dress_data) = job_dress_data.as_ref() {
                 dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
             }
             if job != 1443627162 && JobDressData::is_sword_fighter(result, conditions.mode) {
-                if let Some(dress_data) = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data)) {
+                if let Some(dress_data) = job_dress_data.as_ref() {
                     dress_data.apply(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted), !engaged);
                 }
                 else if let Some(person_data) = self.dress.get_personal_dress(unit) {
@@ -452,9 +456,10 @@ impl OutfitData {
                 let head = result.get_head_model().to_rust_string();
                 if body.contains("AF_c051") && head.contains("h050") { result.set_head_model("oHair_h051"); }
             }
+            if let Some(ride) = il2str(result.get_ride_model()) { AnimData::scale_ride(result, Mount::determine_mount(ride)); }
         }
     }
-    pub fn correct_anims(&self, result: AssetTable_Result, unit: engage::app::Unit, profile_flags: i32, conditions: &AssetConditions){
+    pub fn correct_anims(&self, result: AssetTable_Result, unit: Unit, profile_flags: i32, conditions: &AssetConditions){
         if conditions.flags.contains(AssetFlags::SSupport) {
             AnimData::remove(result, true, true);
             return;
@@ -521,6 +526,9 @@ impl OutfitData {
                     }
                     else { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_); }
                 }
+                if conditions.flags.contains(AssetFlags::DragonStone) {
+                    result.get_body_anims().add(if dress_gender.value == 2 { "End0AF-No2_c099_N" } else {"End0AM-No2_c049_N"}.into());
+                }
             }
             else {
                 if !unit.get_person().get_job().is_null() {
@@ -530,6 +538,9 @@ impl OutfitData {
                     result.get_body_anims().clear();
                     self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
                 }
+            }
+            if conditions.flags.contains(AssetFlags::DragonStone) {
+                result.get_body_anims().add(if dress_gender.value == 2 { "Sds0AF-No2_c099_N" } else {"Sds0AM-No2_c049_N"}.into());
             }
         }
         else {

@@ -1,7 +1,6 @@
 use engage::{
-    app::{IKeyHelpTitleBarController, IKeyHelpTitleBarControllerMethods, ITitleBar, ITitleBar_Title, KeyHelpController_Type},
-    List_1Ext,
-    unity_engine::IGameObjectMethods
+    app::{keyhelpcontroller::*, keyhelptitlebarcontroller::*, titlebar::*},
+    List_1Ext, unity_engine::IGameObjectMethods
 };
 use unity::Cast;
 use crate::VERSION;
@@ -36,7 +35,7 @@ pub fn start_key_help(kind: OutfitMenuKind){
     }
 }
 pub fn add_key_help(key_help_button: KeyHelpController_Type, text: impl Into<unity::Il2CppString>) {
-    let title = engage::app::TitleBar::get_instance().m_current_title();
+    let title = TitleBar::get_instance().m_current_title();
     if title.is_null() { return; }
     let key_controller =  title.key_help();
     if key_controller.is_null() { return; }
@@ -47,7 +46,7 @@ pub fn add_key_help(key_help_button: KeyHelpController_Type, text: impl Into<uni
     }
 }
 pub fn disable_key_help(key_help_button: KeyHelpController_Type){
-    let title = engage::app::TitleBar::get_instance().m_current_title();
+    let title = TitleBar::get_instance().m_current_title();
     if !title.is_null() { return; }
     let key_controller =  title.key_help();
     if !key_controller.is_null() { return; }

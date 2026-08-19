@@ -3,8 +3,10 @@ use engage::{
     app::ISpriteAtlasManager_2,
     system::collections::generic::{IDictionary_2Methods, InsertionBehavior}
 };
-use crate::capture::{create_face_sprite, png_file_check};
-use crate::EquipmentBoxPage;
+use crate::{
+    capture::{create_face_sprite, png_file_check}, 
+    EquipmentBoxPage
+};
 use super::*;
 
 pub struct UnitAssetLoadData {
@@ -62,8 +64,6 @@ impl UnitAssetLoader {
             dir.filter_map(|f| f.ok().filter(|f| f.path().is_file() && read_to_string(f.path()).is_ok())) //.is_ok_and(|f| f.starts_with("#Outfit Plugin"))))
             .for_each(|file| {
                 if let Some(load_data) = PlayerOutfitData::try_load_from_file(&file, Some(gender_restrict)){
-                    let name = file.path().to_path_buf();
-                    println!("File: {}", name.display());
                     self.loaded_data.push(UnitAssetLoadData::new(load_data, file.path().to_path_buf()));
                 }
             });
@@ -90,10 +90,7 @@ impl UnitAssetLoader {
             let key = format!("LOAD_{}", d.index);
             let sprite = thumbs.try_get_value(format!("LOAD_{}", d.index).as_str().into());
             thumbs.remove(key.as_str().into());
-            if destroy && sprite.0 {
-                engage::unity_engine::Object_2::destroy_2(sprite.1);
-                println!("Removed: {}", d.file_name);
-            }
+            if destroy && sprite.0 { engage::unity_engine::Object_2::destroy_2(sprite.1); }
         });
         self.load_face.clear();
     }

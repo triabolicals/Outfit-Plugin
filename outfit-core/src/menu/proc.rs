@@ -1,9 +1,17 @@
-use engage::app::{ISortieSelectionUnitManagerMethods, hubsequence::*, hublocatorgroup::*, hubplayercontroller::*, ISingletonProcInst_1Methods, AccessoryShopChangeRoot, GameUserData, HubSequence, IGameUserDataMethods, IMapMindMethods, ISingletonClass_1Methods, MapMind, Proc, ProcBoolMethod, ProcDesc, ProcInst, ProcVoidMethod, ResourceManager_2, Force, Force_Type, UnitFor, UnitPool, IUnitMethods, SortieSelectionUnitManager, BasicMenu, UnitInfo, UnitInfo_Side, ISortieSequenceUnitSelect, IBasicMenu, ISortieSequenceUnitSelectMethods, ISortieSelectionUnitManager, UnitSelectMenu, TitleBar, IUnitSelectMenuMethods, IBasicMenuMethods, IBasicMenuItemMethods, ITitleBarMethods};
-use engage::{BasicMenuExt, ForceExt, List_1Ext, ProcBoolMethodExt, ProcVoidMethodExt};
-use engage::app::procinst::*;
-use engage::unity_engine::IComponentMethods;
-use unity::{Array, Cast, ClassIdentity, FromIlInstance, IlNull, OptionalMethod};
-use engage::unity_engine::IGameObjectMethods;
+use engage::{
+    app::{
+        sortieselectionunitmanager::*,
+        hubsequence::*, hublocatorgroup::*, hubplayercontroller::*,
+        gameuserdata::*, mapmind::*,
+        AccessoryShopChangeRoot,
+        ISingletonClass_1Methods,ISingletonProcInst_1Methods,
+        Proc, ProcBoolMethod, ProcDesc, ProcVoidMethod, ResourceManager_2,
+        UnitPool, IUnitMethods,
+        basicmenu::*, procinst::*
+    },
+    ForceExt, ProcBoolMethodExt, ProcVoidMethodExt,
+};
+use unity::{Array, Cast, OptionalMethod};
 use crate::{CustomAssetMenu, UnitAssetMenuData};
 pub struct OutfitSequence;
 
@@ -79,7 +87,6 @@ impl OutfitSequence {
         if let Some(menu) = this.get_super().try_cast::<BasicMenu>() {
             IBasicMenuMethods::open_anime_all(menu);
         }
-
     }
     extern "C" fn reset_look_at(_this: ProcInst, _: OptionalMethod) {
         if let Some(group) = Self::get_hub_locator_group() { group.reset_look_at(); }
@@ -103,9 +110,9 @@ impl OutfitSequence {
     extern "C" fn restore_player_controller(_this: ProcInst, _: OptionalMethod) {
         if let Some(player) = Self::get_player_controller() { player.restore_accessory(); }
     }
-    extern "C" fn load_accessory_resources(_this: ProcInst, _: OptionalMethod) { AccessoryShopChangeRoot::load_prefab_async(); }
-    extern "C" fn unload_accessory_resources(_this: ProcInst, _: OptionalMethod) { AccessoryShopChangeRoot::unload_prefab(); }
-    extern "C" fn is_loading(_this: ProcInst, _: OptionalMethod) -> bool { AccessoryShopChangeRoot::is_loading_prefab() }
+    extern "C" fn load_accessory_resources(_: ProcInst, _: OptionalMethod) { AccessoryShopChangeRoot::load_prefab_async(); }
+    extern "C" fn unload_accessory_resources(_: ProcInst, _: OptionalMethod) { AccessoryShopChangeRoot::unload_prefab(); }
+    extern "C" fn is_loading(_: ProcInst, _: OptionalMethod) -> bool { AccessoryShopChangeRoot::is_loading_prefab() }
     extern "C" fn create_unit_info_bind(proc: ProcInst, _: OptionalMethod) {
         if let Some(unit) = UnitAssetMenuData::get_unit(){ CustomAssetMenu::create_bind_unit_info(proc, unit); }
         else { proc.jump(4); }

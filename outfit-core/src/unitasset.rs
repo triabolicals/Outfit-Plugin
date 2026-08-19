@@ -1,22 +1,21 @@
 use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
     app::{
-        AssetTable_Modes, AssetTable_Result,
-        IAssetTable, IAssetTableMethods, IAssetTable_AccessoryMethods,
-        IAssetTable_ConditionIndexesMethods, IAssetTable_Result, IAssetTable_ResultMethods,
-        IBitField32, IGameUserDataMethods, IPersonDataMethods, ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods
+        unit::*, assettable::*,
+        IBitField32, IGameUserDataMethods, IPersonDataMethods,
+        ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnitEdit, IGodDataMethods
     },
     List_1Ext,
     system::collections::generic::IList_1,
-    app::{IGodDataMethods, IMapMindMethods, ISortieSelectionUnitManager}
 };
-use engage::unity_engine::Color;
 use unity::Cast;
-pub use crate::playerdata::*;
-use crate::{assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl, data::{
-    room::hub_room_set_by_result,
-    unitselect::{UnitSelect, UnitSelectList}
-}, anim::AnimData, room::ReloadType, get_result_color_u8, set_result_scale_u16, set_color_by_u8_slice, set_color_by_i32, il2str, get_result_scale_u16, try_get_il2cpp_hash};
+use crate::playerdata::*;
+use crate::{
+    model::*,
+    assets::unit_dress_gender, get_outfit_data, AssetConditions, AssetType, Mount, PhotoCameraControl,
+    data::{unitselect::{UnitSelect, UnitSelectList}},
+    anim::AnimData, get_result_color_u8, set_result_scale_u16, set_color_by_u8_slice, set_color_by_i32, il2str, get_result_scale_u16, try_get_il2cpp_hash
+};
 
 mod load;
 pub use load::*;
@@ -273,6 +272,7 @@ impl UnitAssetMenuData {
     pub fn get_unit_data(unit: engage::app::Unit) -> Option<&'static UnitAssetData>  {
         let person = unit.get_person();
         let hash = person.hash();
+        if unit.check_status(Unit_Status::dispos_guset()) { return None; }
         Self::get_by_person_data(hash, false)
             .or_else(||
                 if person.is_hero() || ((1  << unit.get_force_type().value) & 25 != 0 && !unit.is_summon() && !unit.is_vision()){
@@ -366,13 +366,13 @@ impl UnitAssetMenuData {
         if !photo { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
         true
     }
-    pub fn set_unit(unit: engage::app::Unit) -> bool {
+    pub fn set_unit(unit: Unit) -> bool {
         if unit.is_null() || unit.get_person().is_null() { false }
         else {
             Self::set_by_hash(unit.get_person().hash())
         }
     }
-    pub fn get_shop_unit() -> Option<engage::app::Unit> {
+    pub fn get_shop_unit() -> Option<Unit> {
         let data = Self::get();
         if data.god_mode { None }
         else {
@@ -389,35 +389,42 @@ impl UnitAssetMenuData {
     }
     pub fn reload_unit(kind: ReloadPreview) {
         let data = Self::get();
-        let result = Self::get_result();
         match kind {
             ReloadPreview::Asset => { return; }
             ReloadPreview::Color(kind) => {
-                let mut color: i32 = 0;
-                let k = kind as usize;
-                if k < 8 {
-                    for x in 0..3 { color |= ( data.preview.color_preview[4*kind as usize + x] as i32) << (8*x) }
-                    println!("Reloading Color {}: {} {} {}", kind, data.preview.color_preview[4*kind as usize],
-                        data.preview.color_preview[4*kind as usize + 1], data.preview.color_preview[4*kind as usize + 2]
-                    );
-                    if color > 0 { set_color_by_i32(result, k, color); }
+                if kind < 8 {
+                    let result = Self::get_result();
+                    let mut color: i32 = 0;
+                    let k = kind as usize;
+                    if k < 8 {
+                        for x in 0..3 { color |= ( data.preview.color_preview[4*kind as usize + x] as i32) << (8*x) }
+                        if color == 0 {
+                            color = 0;
+                            for x in 0..3 { color |= (data.preview.original_color[4*kind as usize + x] as i32) << (8*x); }
+                        }
+                        set_color_by_i32(result, k, color);
+                    }
+                    hub_room_set_by_result(Some(result), ReloadType::ColorScale);
                 }
-                hub_room_set_by_result(Some(result), ReloadType::ColorScale);
+                else { hub_room_set_by_result(None, ReloadType::HeadColor); }
             }
             ReloadPreview::ResetColor(kind) => {
+                let result = Self::get_result();
                 let k = (kind % 16) as usize;
                 let c = [data.preview.original_color[4*k], data.preview.original_color[4*k+1], data.preview.original_color[4*k+2], 255];
                 set_color_by_u8_slice(result, k, c);
                 hub_room_set_by_result(Some(result), ReloadType::ColorScale);
             }
-            ReloadPreview::Scale => { hub_room_set_by_result(Some(result), ReloadType::Scale); }
+            ReloadPreview::Scale => { hub_room_set_by_result(None, ReloadType::Scale); }
             ReloadPreview::ScalePreview(kind) => {
+                let result = Self::get_result();
                 set_result_scale_u16(result, kind as usize,data.preview.scale_preview[kind as usize]);
                 hub_room_set_by_result(Some(result), ReloadType::Scale);
             }
             ReloadPreview::Preset(index) => {
                 let db = get_outfit_data();
                 if let Some(appearance) = db.dress.personal.get(index) {
+                    let result = Self::get_result();
                     appearance.apply_appearance(result, 2, false, None, &db.hashes, true);
                     result.set_ride_model(unity::Il2CppString::null());
                     result.set_ride_dress_model(unity::Il2CppString::null());
@@ -428,6 +435,7 @@ impl UnitAssetMenuData {
                 }
             }
             ReloadPreview::LoadedData => {
+                let result = Self::get_result();
                 if let Some(loaded) = data.loaded_data.selected_index.and_then(|i| data.loaded_data.loaded_data.get_mut(i as usize)) {
                     let flag = loaded.data.flag;
                     loaded.data.flag |= 193;
@@ -436,8 +444,8 @@ impl UnitAssetMenuData {
                 }
                 hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate);
             }
-            ReloadPreview::Forced => { hub_room_set_by_result(Some(result), ReloadType::ForcedUpdate); }
-            ReloadPreview::Full => { hub_room_set_by_result(Some(result), ReloadType::All); }
+            ReloadPreview::Forced => { hub_room_set_by_result(None, ReloadType::ForcedUpdate); }
+            ReloadPreview::Full => { hub_room_set_by_result(None, ReloadType::All); }
         }
         data.reload_type = None;
     }

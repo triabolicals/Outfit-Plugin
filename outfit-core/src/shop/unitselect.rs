@@ -1,25 +1,25 @@
 use std::sync::OnceLock;
 use engage::{
     app::{
-        ISingletonClass_1Methods, accessoryequipmentinfo::*, IHubAccessoryRoomMethods, 
-        AssetTable_Modes, AssetTable_Result, 
-        IBasicMenuItemMethods, IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods, 
-        IStructBase, IStructData_1Methods, IUnit, IUnitEdit, IUnitMethods, IAssetTable_ResultMethods, 
-        ShopUnitSelectMenuItem, IProcInstMethods, IHubAccessoryShopSequence, 
-        AccessoryShopTopMenu_Result2, BasicMenu_Result, 
-        IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods, 
-        IShopUnitSelectMenuItemContent, IUnitMenuItemSetter, IShopUnitSelectMenuItemContentMethods,
-        ShopUnitSelectMenuItemContent, ShopUnitSelectMenu, IBasicMenu, IBasicMenuMethods, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods, BasicMenuItem}
-    ,
+        basicmenuitem::*, basicmenu::*,
+        shopunitselectmenuitemcontent::*, accessoryequipmentinfo::*,
+        ISingletonClass_1Methods,
+        IGodDataMethods, IPersonDataMethods, ISingletonProcInst_1Methods,
+        IStructBase, IStructData_1Methods, IUnitEdit,
+        ShopUnitSelectMenuItem, IProcInstMethods, IHubAccessoryShopSequence,
+        AccessoryShopTopMenu_Result2, BasicMenu_Result,
+        IAccessoryShopUnitSelectRoot, IHubAccessoryShopSequenceMethods,
+        IUnitMenuItemSetter,
+        ShopUnitSelectMenu, ISingletonPool_2, IGodUnit, IGodUnitMethods, IGameUserDataMethods
+    },
     List_1Ext,
     system::collections::generic::IList_1Methods,
     unity_engine::{IComponentMethods, IGameObjectMethods, ui::IImageMethods},
     app::BasicMenuItem_Attribute,
     tm_pro::ITMP_TextMethods
 };
-use engage::app::BasicMenu;
-use unity::{Cast, Class, FromIlInstance};
-use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, room::ReloadType, shop::room::hub_room_set_by_result, get_default_asset_conditions, build_equipment_window, new_asset_table_accessory, ACC_LOC, UnitAssetData};
+use crate::{model::*, *};
+use crate::{EquipmentBoxMode, EquipmentBoxPage, UnitAssetMenuData, get_default_asset_conditions, build_equipment_window, new_asset_table_accessory, ACC_LOC};
 
 #[derive(Default)]
 pub struct UnitSelectList {
@@ -109,13 +109,13 @@ impl UnitSelect {
             else { god.get_female() != 0 };
         Self{ hash: god.hash(), god: true, recruited: false, female }
     }
-    pub fn from_unit(unit: engage::app::Unit) -> Self {
+    pub fn from_unit(unit: Unit) -> Self {
         let edit_gender = unit.m_edit().m_gender().value;
         let female = if edit_gender != 0 { edit_gender == 2 } else { unit.get_dress_gender().value == 2 };
         let recruited = if unit.get_force().is_null() { false } else { (1 << unit.get_force_type().value) & 9 != 0 };
         Self{ recruited, female, hash: unit.get_person().hash(), god: false, }
     }
-    pub fn try_get_unit(&self) -> Option<engage::app::Unit> {
+    pub fn try_get_unit(&self) -> Option<Unit> {
         self.try_get_person().and_then(|p|{
             let unit = engage::app::UnitPool::get_from_person(p, false);
             if unit.is_null() { None } else { Some(unit) }
@@ -133,7 +133,7 @@ impl UnitSelect {
             if p.is_null() { None } else { Some(p) }
         } else { None }
     }
-    pub fn get_name(&self) -> Option<unity::Il2CppString> {
+    pub fn get_name(&self) -> Option<Il2CppString> {
         self.try_get_unit().map(|v| v.get_name() )
             .or_else(|| self.try_get_god().map(|v| engage::app::Mess::get(v.get_mid())))
             .or_else(|| self.try_get_person().map(|v| engage::app::Mess::get(v.get_name() )))
@@ -156,7 +156,7 @@ impl UnitSelect {
 pub struct ShopUnitSelect;
 impl ShopUnitSelect {
     pub fn get_hub_shop_sequence() -> Option<engage::app::HubAccessoryShopSequence> {
-        let room = engage::app::HubAccessoryRoom::get_instance();
+        let room = HubAccessoryRoom::get_instance();
         if room.is_null() { None } else { room.get_child().try_cast::<engage::app::HubAccessoryShopSequence>() }
     }
     pub fn get_class() -> Class {
@@ -173,8 +173,8 @@ impl ShopUnitSelect {
             klass
         })
     }
-    pub fn build_attr(_: ShopUnitSelectMenuItem, _: unity::OptionalMethod) -> BasicMenuItem_Attribute { BasicMenuItem_Attribute::enable() }
-    pub fn a_call(this: ShopUnitSelectMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
+    pub fn build_attr(_: ShopUnitSelectMenuItem, _: OptionalMethod) -> BasicMenuItem_Attribute { BasicMenuItem_Attribute::enable() }
+    pub fn a_call(this: ShopUnitSelectMenuItem, _: OptionalMethod) -> BasicMenu_Result {
         let hash = unity::field_get_value_at_offset::<i32>(this, 0x64);
         if UnitAssetMenuData::set_by_hash(hash) {
             if let Some(shop) = Self::get_hub_shop_sequence() {
@@ -186,7 +186,7 @@ impl ShopUnitSelect {
         }
         else { BasicMenu_Result::se_miss() }
     }
-    pub fn b_call(_: ShopUnitSelectMenuItem, _: unity::OptionalMethod) -> BasicMenu_Result {
+    pub fn b_call(_: ShopUnitSelectMenuItem, _: OptionalMethod) -> BasicMenu_Result {
         UnitAssetMenuData::get().preview.person = 0;
         if let Some(shop) = Self::get_hub_shop_sequence() {
             shop.set_m_shop_unit_select_menu_result(BasicMenu_Result{value: 513});
@@ -195,12 +195,11 @@ impl ShopUnitSelect {
         }
         BasicMenu_Result::close_decide()
     }
-    pub fn on_select(this: ShopUnitSelectMenuItem, _: unity::OptionalMethod) {
-        println!("BUILDING SHOPUNITSELECT_MENUITEM ONSELECT ");
+    pub fn on_select(this: ShopUnitSelectMenuItem, _: OptionalMethod) {
         unsafe { BasicMenuItem::on_select(this) };
         let select = &mut UnitAssetMenuData::get().unit_select;
         select.selected = Some(this.get_index());
-        let default_conditions = engage::combat::CharacterAppearance::conditions();
+        let default_conditions = CharacterAppearance::conditions();
         if let Some(select) = select.get_selected() {
             let mut name = None;
             if let Some(unit) = select.try_get_unit() {
@@ -246,11 +245,10 @@ impl ShopUnitSelect {
 pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem){
     if content.is_null() || item.is_null() { return; }
     let hash = unity::field_get_value_at_offset::<i32>(item, 0x64);
-    let mut name: Option<unity::Il2CppString> = None;
+    let mut name: Option<Il2CppString> = None;
     let mut sprite: Option<engage::unity_engine::Sprite> = None;
     let god = engage::app::GodData::try_get_from_hash(hash);
     if !god.is_null() {
-        println!("GOD: {}", god.get_mid());
         let s = engage::app::FaceThumbnail::get_3(god);
         if !s.is_null() { sprite = Some(s); }
         name = Some(engage::app::Mess::get(god.get_mid()));
@@ -258,7 +256,6 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     else {
         let person = engage::app::PersonData::try_get_from_hash(hash);
         if !person.is_null() {
-            println!("PERSON: {}", person.get_name());
             let unit = engage::app::UnitPool::get_from_person(person, false);
             if !unit.is_null() {
                 let s = engage::app::FaceThumbnail::get(unit);
@@ -280,10 +277,8 @@ pub fn set_name_sprite(content: ShopUnitSelectMenuItemContent, item: ShopUnitSel
     }
 }
 pub fn shop_unit_select_menu_item_content_build(this: ShopUnitSelectMenuItemContent, item: ShopUnitSelectMenuItem, _: unity::OptionalMethod) {
-    println!("BUILDING SHOPUNITSELECT_MENUITEM 1 ");
     unsafe { shop_select_build(this, item, None) };
     if UnitAssetMenuData::get().is_preview { set_name_sprite(this, item); }
-    println!("BUILDING SHOPUNITSELECT_MENUITEM 2 ");
 }
 
 pub extern "C" fn create_accessory_unit_select(this: engage::app::HubAccessoryShopSequence, _: unity::OptionalMethod) {
@@ -306,10 +301,6 @@ pub extern "C" fn create_accessory_unit_select(this: engage::app::HubAccessorySh
             });
             menu.set_select_index(menu_data.unit_select_index);
         }
-        /*
-        EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets)
-            .change_equipment_box(this.m_accessory_shop_unit_select_root().m_accessory_equipment_info_window());
-         */
     }
 }
 #[skyline::from_offset(0x2479d90)]

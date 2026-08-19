@@ -6,7 +6,7 @@ use engage::{
 use unity::{Cast, Il2CppString, OptionalMethod};
 use crate::new_asset_table_accessory;
 
-pub fn get_result_hash(result: AssetTable_Result, optional_method: OptionalMethod) -> i32 {
+pub fn get_result_hash(result: AssetTable_Result, _optional_method: OptionalMethod) -> i32 {
     let mut hash = unsafe { AssetTable_Result::get_hash_code(result) };
     for x in 0..16 {
         let scale = get_result_scale_u16(result, x) as i32 / 10;
@@ -212,7 +212,7 @@ pub fn try_get_model_at_locator(result: AssetTable_Result, search_locator: &str)
     result.m_accessories().items().iter()
         .filter(|a| !a.is_null())
         .filter_map(|a| crate::il2str(a.get_model()).zip(crate::il2str(a.get_locator())))
-        .find(|(model, locator)| locator == search_locator)
+        .find(|(_model, locator)| locator == search_locator)
         .map(|(model, _)| model.clone())
 }
 pub fn get_result_anim(result: AssetTable_Result, index: usize) -> Option<Il2CppString> {

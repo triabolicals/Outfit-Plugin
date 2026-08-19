@@ -4,7 +4,7 @@ use crate::{
     r_l_press, set_detail_box, LoadResult, MenuTextCommand, ReloadPreview,
     UnitAssetMenuData, THUMB_DIR, localize::MenuText
 };
-use crate::room::{hub_room_set_by_result, ReloadType};
+use crate::model::*;
 use super::*;
 #[repr(u8)]
 #[derive(PartialEq, Copy, Clone)]
@@ -55,7 +55,7 @@ impl AssetFlag {
     pub fn is_decided(&self) -> bool {
         let mode = UnitAssetMenuData::get_flag();
         match self {
-            Self::RandomAppearance => { mode & 8 != 0 }
+            Self::RandomAppearance => { UnitAssetMenuData::get_person_flag() & 16 != 0 }
             Self::EnableBattleAccessories => { mode & 32 != 0 }
             Self::EnableCrossDressing => { mode & 128 != 0 }
             Self::EngagedAnimation => { mode & 256 != 0 }
@@ -138,7 +138,6 @@ impl CustomMenuItem for AssetFlag {
                         let str = engage::GameVariableManager::get_string(key.as_str()).to_string();
                         if str.contains(".png") { message += format!("File: {}. ", str).as_str(); }
                     }
-
                     Some(message.into())
                 }
                 else { s }
@@ -152,7 +151,7 @@ impl CustomMenuItem for AssetFlag {
         match self {
             Self::RandomAppearance => {
                 change_unit = true;
-                UnitAssetMenuData::toggle_profile_flag(8);
+                UnitAssetMenuData::toggle_unit_flag(16);
             }
             Self::EnableBattleAccessories => {
                 change_unit = false;

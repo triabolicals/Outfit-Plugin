@@ -2,16 +2,15 @@ use std::collections::HashMap;
 use engage::{
     system::collections::generic::IDictionary_2Methods,
     List_1Ext,
-    app::{AssetTable, IAccessoryDataMethods, IAssetTable, IAssetTableMethods, IAssetTable_ConditionIndexes, IBitField32, IGodDataMethods, IStructBase, IStructData_1Methods},
-    app::IPersonDataMethods,
-    app::IJobDataMethods,
-    system::collections::generic::IList_1Methods,
-    app::{IUnit, IUnitEdit, IUnitMethods}
+    app::{
+        assettable::*, unit::*, IUnitEdit, IAccessoryDataMethods,
+        IBitField32, IGodDataMethods, IStructBase, IStructData_1Methods,IPersonDataMethods, IJobDataMethods,
+    }
 };
 use unity::Cast;
 mod accessory;
 mod conditions;
-mod result;
+pub mod result;
 
 pub use accessory::*;
 pub use result::*;

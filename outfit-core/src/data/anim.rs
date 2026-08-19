@@ -1,20 +1,40 @@
 use engage::{
-    app::{AssetTable_Modes, AssetTable_Result, IAssetTableMethods, IAssetTable_ResultMethods, IGodDataMethods, IJobDataMethods, ISkillData, IStructBase, IStructData_1Methods, IUnitMethods},
-    combat::IAnimSetDBMethods,
+    app::{
+        assettable::*, itemdata::*, unit::*,
+        IGodDataMethods, IJobDataMethods,ISkillArrayMethods,
+        ISkillData, IStructBase, IStructData_1Methods,IStructDictionary_1Methods, IStructBaseMethods,
+        StructTemplate_1
+    },
+    combat::animsetdb::*,
     List_1Ext,
-    system::collections::generic::IList_1Methods
+    system::collections::generic::IList_1Methods,
 };
-use engage::app::{IStructBaseMethods, IStructDictionary_1Methods, StructTemplate_1};
-use engage::combat::AnimSetDB;
-use unity::system::string::IIl2CppStringMethods;
-use unity::{Cast, FromIlInstance, Il2CppString};
-use crate::{get_condition_index, has_condition_index, il2str, Mount};
-use crate::assets::{new_asset_table_accessory};
+use unity::{system::string::IIl2CppStringMethods, Cast, FromIlInstance, Il2CppString};
+use crate::{get_condition_index, has_condition_index, il2str, Mount, assets::{new_asset_table_accessory}};
 
 pub const ANIM_KIND: [&str; 11] = ["No1", "Sw1", "Lc1", "Ax1", "Bw1", "Dg1", "Mg1", "Rd1", "Ft1", "No2", "Mg2"];
 pub const INF_KIND: [&str; 11] = ["Com0A", "Swd0A", "Lnc0A", "Axe0A", "Bow0A", "Dge0A", "Mag0A", "Com0A", "Rod0A", "Sds0A", "Mcn3A"];
 pub const INF_KIND2: [&str; 11] = ["Com0A", "Swd1A", "Lnc1A", "Axe1A", "Axe2A", "Dge0A", "Mag1A", "Com0A", "Rod1A", "Sds0A", "Mcn3A"];
 
+#[derive(PartialOrd, PartialEq, Copy, Clone)]
+pub enum SpecialAttackType {
+    Bullet,
+    Transform,
+    NormalAttack,
+}
+impl SpecialAttackType {
+    pub fn determine_from_unit(unit: Unit, item: ItemData) -> Self {
+        if item.get_kind().value != 9 { Self::NormalAttack }
+        else {
+            let can_dragon = !unit.m_mask_skill().find("SID_竜石装備").is_null();
+            let can_bullet = !unit.m_mask_skill().find("SID_弾丸装備").is_null();
+            let ranged = item.get_range_i() > 2;
+            if (item.is_dragon() || item.is_breath()) && !item.is_bullet() { Self::Transform }
+            else if can_bullet && (item.is_bullet() || ranged || !can_dragon) { Self::Bullet }
+            else { Self::Transform }
+        }
+    }
+}
 pub struct JobAnimSet {
     pub hash: i32,
     pub gender: engage::app::Gender,
@@ -67,7 +87,6 @@ pub struct AnimData {
     pub engaging_anim_m: Vec<String>,
     pub engaging_anim_f: Vec<String>,
 }
-
 pub struct EngageAnim {
     pub sid_hash: Vec<i32>,
     pub male_index: Option<i32>,
@@ -88,7 +107,7 @@ impl EngageAnim {
         let asset = [get_condition_index(god_data.get_asset_id()), get_condition_index("エンゲージ技")];
         let male = get_condition_index("男装").unwrap();
         let female = get_condition_index("女装").unwrap();
-        let search_list = engage::app::AssetTable::s_search_lists();
+        let search_list = AssetTable::s_search_lists();
         let male_index =
         search_list.get(2).iter()
             .find(|x| asset[0].is_none_or(|v| has_condition_index(*x, v)) && asset[1].is_none_or(|v| has_condition_index(*x, v)) && has_condition_index(*x, male))
@@ -160,8 +179,7 @@ impl AnimData {
                                 while let Some(kind) = iter.next(){
                                     anim_str_list.iter().filter(|x| x.starts_with(old_prefix) && x.contains(kind))
                                         .for_each(|x|{
-                                            let mut new_anim = x.replace(old_prefix, new_prefix);
-                                            println!("Copying {} to {}", x, new_anim);
+                                            let new_anim = x.replace(old_prefix, new_prefix);
                                             if let Some(new) = create_anim_from_copy(&new_anim, x, None){
                                                 let index = new.get_index();
                                                 let key = new.get_name();
@@ -281,24 +299,8 @@ impl AnimData {
             anim_db_dic.add("Dnc0AF-No1_c000_N".into(), index);
             list.add(dnc0af);
         }
-        /*
-        if let Some((dnc0af, male)) = AnimSetDB::get_mut("Dnc0AF-No1_c000_N").zip(AnimSetDB::get_mut("Dnc0AM-No1_c000_N")){
-            dnc0af.atks[0] = Some("Enb0AF-No1_c000_Attack1".into());
-            for x in 1..male.atks.len() {
-                if male.atks[x].is_none() { dnc0af.atks[x] = None; }
-                else if male.atks[x].is_some_and(|x| x.to_string() == "null") { dnc0af.atks[x] = Some("null".into()); }
-            }
-            for x in 0..male.other.len() {
-                if male.other[x].is_none() { dnc0af.other[x] = None; }
-                else if male.other[x].is_some_and(|x| x.to_string() == "null") { dnc0af.other[x] = Some("null".into()); }
-                else if male.other[x].is_some() { dnc0af.other[x] = Some("Rod0AF-Ft1_c000=".into()); }
-            }
-            [16, 17, 18, 19, 21, 26, 27, 28].iter().for_each(|x|{ dnc0af.other[*x] =  Some("Rod0AF-Ft1_c000=".into()); });
-        }
-
-         */
         let hashes = list.iter().map(|anim| anim.get_name().get_hash_code()).collect::<Vec<i32>>();
-        let search_lists = engage::app::AssetTable::s_search_lists();
+        let search_lists = AssetTable::s_search_lists();
         let hashes_left = engage::app::JobData::get_list().iter()
             .filter(|j| !job_anims.iter().any(|x| x.hash == j.hash()))
             .map(|j| j.hash()).collect::<Vec<i32>>();
@@ -404,7 +406,7 @@ impl AnimData {
                         if a.contains("-Bw1_") { if a.ends_with("M") { a.replace("_M", "_L") } else if a.ends_with("N") { a.replace("_N", "_L") } else { a } }
                         else if a.contains("-Mg1_") { if a.ends_with("L") { a.replace("_N", "_M") } else if a.ends_with("N") { a.replace("_N", "_M") } else { a } }
                         else { a };
-                    unity::Il2CppString::new(a).get_hash_code()
+                    Il2CppString::new(a).get_hash_code()
                 })
                 .any(|x| self.hashes.contains(&x))
         }
@@ -415,7 +417,7 @@ impl AnimData {
                 .unwrap_or(false)
         }
     }
-    pub fn set_basic_anims(&self, result: AssetTable_Result, unit: engage::app::Unit, kind: i32, dress_gender: engage::app::Gender, is_morph: bool, engaged: bool) -> bool {
+    pub fn set_basic_anims(&self, result: AssetTable_Result, unit: Unit, kind: i32, dress_gender: engage::app::Gender, is_morph: bool, engaged: bool) -> bool {
         let mount = self.get_mount_type(unit, dress_gender).unwrap_or(Mount::None);
         let mount = if (mount != Mount::None && kind > 7) || mount == Mount::None { Mount::None } else { mount.clone() };
         let dress_gender = if mount == Mount::Pegasus { engage::app::Gender::female() } else { dress_gender };
@@ -425,15 +427,11 @@ impl AnimData {
             self.add_anim_to_result(result, dress_gender, "Com0B", 0, is_morph);
             self.add_anim_to_result(result, dress_gender, "Com0B", kind, is_morph);
         }
-        if mount == Mount::None  {
+        if mount == Mount::None {
             Self::remove(result, true, false);
             let set = if unit.get_job().is_low() && unit.get_level() <= 20 { INF_KIND[kind as usize] } else { INF_KIND2[kind as usize] };
             self.add_anim_to_result(result, dress_gender, set, 0, is_morph);
-            if kind == 9 {
-                if dress_gender.value == 1 { result.get_body_anims().add("Sds0AM-No2_c049_N".into()); }
-                else { result.get_body_anims().add("Sds0AF-No2_c099_N".into()); }
-            }
-            else if kind > 0 { self.add_anim_to_result(result, dress_gender, set, kind, is_morph); }
+            if kind != 9 && kind > 0 { self.add_anim_to_result(result, dress_gender, set, kind, is_morph); }
         }
         else {
             let set = mount.get_default_asset(false);
@@ -496,11 +494,11 @@ impl AnimData {
                 self.job_anims.iter().find(|x| x.is_match(dress_gender, job)).map(|d| d.apply_anim(result, 2, kind, is_morph)).unwrap_or(false)
             }
             9 => {
-                let body = if dress_gender == engage::app::Gender::female() { "Sds0AF-No2_c099_N" } else { "Sds0AM-No2_c049_N" };
-                result.get_body_anims().add(body.into());
+                self.add_anim_to_result(result, dress_gender, "Com0A", 0, is_morph);
                 true
             }
             10 => {
+                self.add_anim_to_result(result, dress_gender, "Mcn3A", 0, is_morph);
                 self.add_anim_to_result(result, dress_gender, "Mcn3A", kind, is_morph);
                 true
             }
@@ -509,9 +507,9 @@ impl AnimData {
     }
     pub fn remove(result: AssetTable_Result, mount: bool, acc: bool) {
         if mount {
-            result.set_ride_model("null");
-            result.set_ride_dress_model("null");
-            result.set_ride_anim("null");
+            result.set_ride_model(Il2CppString::null());
+            result.set_ride_dress_model(Il2CppString::null());
+            result.set_ride_anim(Il2CppString::null());
             result.commit_8(new_asset_table_accessory("null", "c_hip_loc"));
         }
         if acc {
@@ -542,9 +540,7 @@ impl AnimData {
             let body_anims = result.get_body_anims();
             if !body_anims.iter().any(|x| x.contains(obody_anim)) { false }
             else {
-                if let Some(uas_anim) =
-                    self.job_anims.iter().find(|x| x.is_match(dress_gender, job))
-                {
+                if let Some(uas_anim) = self.job_anims.iter().find(|x| x.is_match(dress_gender, job)){
                     if let Some(ride) = uas_anim.mode_1r.as_ref() {
                         result.set_ride_anim(ride.as_str());
                     }
@@ -555,6 +551,14 @@ impl AnimData {
                 }
                 else { false }
             }
+        }
+    }
+    pub fn scale_ride(result: AssetTable_Result, mount: Mount){
+        result.set_map_scale_all(if mount != Mount::None { 2.1 } else { 2.6 });
+        match mount {
+            Mount::Pegasus => { result.set_map_scale_wing(0.6); }
+            Mount::Wyvern|Mount::Griffin => { result.set_map_scale_wing(0.5); }
+            _ => {}
         }
     }
     pub fn set_uas_anims(&self, result: AssetTable_Result, mount: Mount, dress_gender: engage::app::Gender, job: engage::app::JobData) {
@@ -600,7 +604,7 @@ impl AnimData {
         let body_anims = result.get_body_anims();
         match dress_gender.value {
             2 => {
-                if body_anims.iter().find(|s| s.to_rust_string().contains("AF-No1") && !engage::combat::AnimSetDB::get(*s).is_null()).is_none() {
+                if body_anims.iter().find(|s| s.to_rust_string().contains("AF-No1") && !AnimSetDB::get(*s).is_null()).is_none() {
                     body_anims.add("Dnc0AF-No1_c000_N".into());
                     result.set_body_anim("Dnc0AF-No1_c000_N");
                 }
@@ -635,13 +639,11 @@ impl AnimData {
             };
         Self::remove(result, true, true);
         self.add_anim_to_result(result, gender, "Com0A", 0, false);
-        self.add_anim_to_result(result, gender, set, 0, false);
-        if kind == 9 {
-            let anim = if gender == engage::app::Gender::male() { "End0AM-No2_c049_N" } else { "End0AF-No2_c099_N" };
-            body_anims.add(anim.into());
-            result.set_body_anim(anim);
+        self.add_anim_to_result(result, gender, "Enb0A", 0, false);
+        if kind == 10 {
+            self.add_anim_to_result(result, gender, "Mcn3A", 10, false);
+            self.add_anim_to_result(result, gender, "Enh0A", 10, false);
         }
-        else if kind == 10 { body_anims.add(if gender == engage::app::Gender::male() { "Enh0AM-Mg2_c000_M" } else { "Enh0AF-Mg2_c000_M" }.into()); }
         else { self.add_anim_to_result(result, gender, set, kind, false); }
     }
     fn add_anim_to_result(&self, result: AssetTable_Result, gender: engage::app::Gender, anim_set_prefix: impl AsRef<str> + std::fmt::Display, kind: i32, is_morph: bool){
@@ -658,28 +660,39 @@ impl AnimData {
                 body_anims.add(format!("{}{}-{}_{}_{}", anim_set_prefix, gender_str.0, ANIM_KIND[kind as usize], gender_str.1, nlm).into());
             }
         }
-        else { body_anims.add(if gender == engage::app::Gender::male() { "Sds0AM-No2_c049_N" } else { "Sds0AF-No2_c099_N" }.into()); }
     }
-    pub fn add_uas_gen_str(set: &str, gender: engage::app::Gender) -> unity::Il2CppString {
+    pub fn add_uas_gen_str(set: &str, gender: engage::app::Gender) -> Il2CppString {
         let mut s = set.to_string();
         s.push( if gender == engage::app::Gender::male() { 'M' } else { 'F' });
         s.into()
     }
-    pub fn adjust_engage_atk(result: AssetTable_Result, gender: engage::app::Gender) {
-        /*
-        let body_anims = result.get_body_anims();
-        body_anims.iter().for_each(|anim| {
+    /*
+pub fn adjust_engage_atk(result: AssetTable_Result, gender: engage::app::Gender) {
 
-        })
-        result.body_anims.iter_mut()
-            .filter(|x| AnimSetDB::get(x.to_string().as_str()).is_some_and(|x| x.other[25].is_some_and(|x| x.to_string() == "=")))
-            .for_each(|x| {
-                let anim = x.to_string();
-                if anim.contains("F-") && gender == engage::app::Gender::male() { *x = anim.replace("F-", "M-").into() }
-                else if anim.contains("M-") && gender == engage::app::Gender::female() { *x = anim.replace("M-", "F-").into() }
-            });
+let body_anims = result.get_body_anims();
+body_anims.iter().for_each(|anim| {
 
-         */
+})
+result.body_anims.iter_mut()
+    .filter(|x| AnimSetDB::get(x.to_string().as_str()).is_some_and(|x| x.other[25].is_some_and(|x| x.to_string() == "=")))
+    .for_each(|x| {
+        let anim = x.to_string();
+        if anim.contains("F-") && gender == engage::app::Gender::male() { *x = anim.replace("F-", "M-").into() }
+        else if anim.contains("M-") && gender == engage::app::Gender::female() { *x = anim.replace("M-", "F-").into() }
+    });
+    }
+ */
+
+    pub fn get_transforming_anim(engaged: bool, female: bool) -> &'static str {
+        match (engaged, female) {
+            (true, false) => {"Enb0AM-No2_c049_N"}
+            (true, true) => {"Enb0AF-No2_c099_N"}
+            (false, false) => {"Sds0AM-No2_c049_N"}
+            (false, true) => {"Sds0AF-No2_c099_N"}
+        }
+    }
+    pub fn bullet_anim(engaged: bool, female: bool) -> String{
+        format!("{}{}-Mg2_c000_M", if engaged { "Enh0A" } else { "Mcn3A" }, if female { "F" } else { "M" })
     }
 }
 fn create_anim_from_copy(new_anim_name: &str, copy_anim_name_1:  &str, copy_anim_name_2: Option<&str>) -> Option<AnimSetDB> {
