@@ -17,6 +17,7 @@ use engage::{
     },
     Dictionary_2Ext,
 };
+use engage::app::AssetTable;
 use unity::Cast;
 use crate::{clamp_value, UnitAssetMenuData, CAPTURE_DIR, THUMB_DIR};
 const PNG: [u8; 8] = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];  // PNG File Sig
@@ -74,53 +75,55 @@ pub fn capture_unit_info(proc: impl Into<engage::app::ProcInst>, face: bool, ass
     let pixels = texture.get_pixels_4();
     let mut x_min = w;
     let mut x_max = 0;
-    let mut y_min = 0;
+    let mut y_min = h;
     let mut y_max = 0;
-    for x in 0..h {
-        let start = x * w;
-        let mut pc = 0;
-        for ww in 0..w { // Left Bound
-            let p1 = pixels.get(start + ww);
-            if p1.r > 0.0 || p1.b > 0.0 || p1.g > 0.0 {
-                pc += 1;
-                if ww > x_max { x_max = ww; }
+    let mut pixel_count = 0;
+    for y in 0..h {
+        let start = y * w;
+        let mut pixel_y_count = 0;
+        for x in 0..w { // Left Bound
+            let pixel_xy = pixels.get(start + x);
+            if AssetTable::has_color(pixel_xy) {
+                pixel_y_count += 1;
+                pixel_count += 1;
+                if x < x_min { x_min = x; }
+                if x > x_max && x > x_min { x_max = x; }
             }
         }
-        if pc > 10 && y_min == 0 { y_min = x; }
-        if pc == 0 && y_min > 0 && y_max == 0 { y_max = x; }
+        if pixel_y_count > 2 {
+            if y < y_min { y_min = y; }
+            if y > y_min && y > y_max { y_max = y; }
+        }
     }
-    if y_min == 0 || x_min == 0 {
+    if pixel_count == 0 {
         engage::app::GameMessage::create_key_wait(proc, "Capture is empty.");
         return;
     }
-    for x in 0..h {
-        let end = (x + 1) * w;
-        for ww in (w - x_min)..w { // Left Bound
-            let x_right = w - ww;
-            let p1 = pixels.get(end - ww);
-            if p1.r > 0.0 || p1.b > 0.0 || p1.g > 0.0 { if x_right < x_min  { x_min = x_right; } }
-        }
-    }
-    let y_size = y_max - y_min;
-    let texture_cropped = engage::unity_engine::Texture2D::new_8((x_max - x_min) as i32, y_size as i32,TextureFormat{value: 4}, false);
+    if y_min > 0 { y_min -= 1; }
+    if y_max < h - 1 { y_max += 1; }
+    if x_min > 0 { x_min -= 1; }
+    if x_max < w - 1 { x_max += 1; }
+    let y_size = if y_max > y_min { y_max - y_min } else { w };
+    let x_size = if x_max > x_min { x_max - x_min } else { h };
+    let texture_cropped = engage::unity_engine::Texture2D::new_8(x_size as i32, y_size as i32,TextureFormat{value: 4}, false);
     let mut message = String::new();
     if !face {
-        for y in 0..(y_max - y_min) {
-            for x in 0..x_max - x_min{
+        for y in 0..y_size {
+            for x in 0..x_size {
                 let index = ((y + y_min) * w ) + (x + x_min);
                 let mut color = pixels.get(index);
                 texture_cropped.set_pixel(x as i32, y as i32,color.get_gamma());
             }
         }
         if let Some(file) = save_texture_png(texture_cropped, false) {
-            message = format!("Screen capture created in '{}'", file);
+            message = format!("Screen capture created in '{}'.", file);
         }
-        else { message ="Unable to save capture.\nMissing directory?".to_string(); }
+        else { message ="Unable to save capture.\nMissing directory or in Handheld mode?".to_string(); }
     }
     else {
         let screen_height = engage::unity_engine::Screen::get_height() as f32;
         let screen_width =  engage::unity_engine::Screen::get_width() as f32;
-        let char = engage::app::UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara();
+        let char = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_chara();
         if !char.is_null(){
             let go = char.get_game_object();
             let facial_pos = FacialPositions::from_transform(go.get_transform(), camera, screen_width, screen_height);
@@ -311,7 +314,7 @@ fn resize(data: &Vec<Color>, old_w: i32, old_h: i32, new_w: i32, new_h: i32) -> 
 pub fn save_texture_png(texture2d1: engage::unity_engine::Texture2D, is_face: bool) -> Option<String> {
     let data1 = engage::unity_engine::ImageConversion::encode_to_png(texture2d1);
     if let Some(unit) = UnitAssetMenuData::get_unit() {
-        let name = unit.get_name();
+        let name = unit.get_person().get_ascii_name();
         let path = if is_face { THUMB_DIR } else { CAPTURE_DIR };
         let file_path = crate::get_next_filename(path, &name.to_string(), "png");
         if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(file_path.as_str()){
@@ -325,7 +328,7 @@ pub fn save_texture_png(texture2d1: engage::unity_engine::Texture2D, is_face: bo
 /// - active (ascii name) used in game
 /// - original (o_ + ascii name) the original sprite
 /// - loaded (a_ + ascii_name) the replacement sprite
-pub fn get_unit_face_keys(unit: engage::app::Unit) -> Option<(String, String, String)> {
+pub fn get_unit_face_keys(unit: Unit) -> Option<(String, String, String)> {
     let ascii_name = unit.get_person().get_ascii_name();
     let mut active = ascii_name.to_string();
     let mut original = format!("o_{}", ascii_name);
@@ -338,7 +341,7 @@ pub fn get_unit_face_keys(unit: engage::app::Unit) -> Option<(String, String, St
     }
     Some((active, original, loaded))
 }
-pub fn update_face(unit: engage::app::Unit, use_original: bool){
+pub fn update_face(unit: Unit, use_original: bool){
     if let Some((active, loaded, original)) = get_unit_face_keys(unit) {
         let face_thumb = engage::app::FaceThumbnail::s_face_thumb().m_cache_table();
         let (found, sprite) =
@@ -407,7 +410,7 @@ fn load_png_to_by_ascii(ascii: &String, use_sprite: bool) -> bool {
     }
     false
 }
-pub fn create_face_sprite(data: &mut Vec<u8>) -> Option<engage::unity_engine::Sprite> {
+pub fn create_face_sprite(data: &mut Vec<u8>) -> Option<Sprite> {
     let data = unity::Array::from_slice(data.as_slice())?;
     let new_texture = engage::unity_engine::Texture2D::new_9(188, 74);
     if engage::unity_engine::ImageConversion::load_image_2(new_texture, data) {

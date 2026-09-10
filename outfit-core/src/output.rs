@@ -1,14 +1,8 @@
-use crate::{OUTPUT_ASSET_TABLE_DIR};
 use super::*;
-use std::io::Write;
-use std::path::Path;
-use engage::{
-	app::{
-		assettable::*, jobdata::*,
-		IGodDataMethods, IStructData_1Methods, IUnitMethods
-	}
-};
-use crate::room::CustomHubAccessoryRoom;
+use std::{io::Write, path::Path};
+use engage::app::{assettable::*, IGodDataMethods, IStructData_1Methods, IUnitMethods};
+
+use crate::{OUTPUT_ASSET_TABLE_DIR, room::CustomHubAccessoryRoom};
 
 pub fn get_next_filename(dir: &str, stem: &String, ext: &str) -> String {
 	let stem = stem.replace("é", "e");
@@ -57,26 +51,45 @@ pub fn output_unit_result(preview: bool) -> (String, String, bool) {
 	}
 	(filename, filename1, false)
 }
+/*
 pub fn output_job_asset_data() {
+	let db = get_outfit_data();
 	let filename = "sd:/Outfits/JobDressData.txt";
 	if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(filename) {
-		let db = get_outfit_data();
 		db.dress.job.iter().for_each(|j| {
 			let name = Mess::get(JobData::try_get_from_hash(j.hash).get_name());
 			writeln!(file, "Job: {} [{}] {}", name, if j.gender.value == 1 { "Male" } else { "Female" }, j.hash).unwrap();
 			writeln!(file, "\tMount: {}", j.mount).unwrap();
-			writeln!(file, "\tDress: {}", j.dress_model).unwrap();
-			if let Some(ride) = j.ride_dress.as_ref() { writeln!(file, "\tRide Model: {}", ride).unwrap(); }
-			if let Some(ride) = j.ride_body.as_ref() { writeln!(file, "\tRide Body Model: {}", ride).unwrap(); }
-
-
+			writeln!(file, "\tDress: {} / {}", j.dress_model, Il2CppString::new(j.dress_model.as_str()).get_hash_code()).unwrap();
+			if let Some(ride) = j.ride_dress.as_ref() { writeln!(file, "\tRide Model: {} / {}", ride, Il2CppString::new(ride.as_str()).get_hash_code()).unwrap(); }
+			if let Some(ride) = j.ride_body.as_ref() { writeln!(file, "\tRide Body Model: {} / {}", ride, Il2CppString::new(ride.as_str()).get_hash_code()).unwrap(); }
+		});
+	}
+	let filename = "sd:/Outfits/JobDressData.bin";
+	if let Ok(mut file) = std::fs::File::options().create(true).write(true).truncate(true).open(filename) {
+		let count = db.dress.job.len() as i32;
+		file.write(&count.to_be_bytes()).unwrap();
+		db.dress.job.iter().for_each(|j| {
+			file.write(&j.hash.to_be_bytes()).unwrap();
+			let head = [
+				if j.gender.value == 1 { 1u8 } else { 2u8 },
+				j.mount as u8,
+				if j.ride_dress.is_some() { 1u8 } else { 0 },
+				if j.ride_body.is_some() { 1u8 } else { 0 },
+			];
+			file.write(&head).unwrap();
+			let hash_code = Il2CppString::new(j.dress_model.as_str()).get_hash_code();
+			file.write(&hash_code.to_be_bytes()).unwrap();
+			if let Some(ride) = j.ride_dress.as_ref() { file.write(&Il2CppString::new(ride.as_str()).get_hash_code().to_be_bytes()).unwrap(); }
+			if let Some(ride) = j.ride_body.as_ref() { file.write(&Il2CppString::new(ride.as_str()).get_hash_code().to_be_bytes()).unwrap(); }
 		});
 	}
 }
+ */
 fn il2str_or_blank(str: Il2CppString) -> String {
 	if !str.is_null() { str.to_rust_string() } else {"".to_string() }
 }
-pub fn result_to_string(result: engage::app::AssetTable_Result, mode: i32) -> String {
+pub fn result_to_string(result: AssetTable_Result, mode: i32) -> String {
 	let mut out = format!("			<Param Out=\"\" PresetName=\"\" Mode=\"{}\" Conditions=\"\" BodyModel=", mode);
     out.push_str(format!("\"{}\" DressModel=", il2str_or_blank(result.get_body_model())).as_str());
 	out.push_str(format!("\"{}\" ", il2str_or_blank(result.get_dress_model())).as_str());

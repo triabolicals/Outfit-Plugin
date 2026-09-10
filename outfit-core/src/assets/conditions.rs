@@ -178,17 +178,19 @@ bitflags! {
         const NeedCommonClass = 1 << 29;
         const NPC = 1 << 30;
         const Monster = 1 << 31;
+        const NoMount = 0x1021D080;
     }
 }
 
 impl AssetFlags {
     pub const ASSET_TABLE_CONDITIONS: [&'static str; 26] = [
-        "私服", "AID_異形兵", "AID_一般兵", "AID_幻影兵", "残像",
-        "エンゲージ開始", "エンゲージ中", "後日談支援Ｓ", "エンゲージ合体技",
-        "メイン", "サブ", "EID_チキ",
-        "竜石", "竜化", "踊り", "砲台", "弾丸",
-        "男装", "女装", "神将", "闇化", "クラスチェンジ中", "☆3", "☆5", "エンゲージ技",
-        "AID_ヴェロニカ_フリズスキャルヴ",
+        "私服", "AID_異形兵", "AID_一般兵", "AID_幻影兵",
+        "残像", "エンゲージ開始", "エンゲージ中", "後日談支援Ｓ",
+        "エンゲージ合体技", "メイン", "サブ", "EID_チキ",
+        "竜石", "竜化", "踊り", "砲台",
+        "弾丸", "男装", "女装", "神将",
+        "闇化", "クラスチェンジ中", "☆3", "☆5",
+        "エンゲージ技", "AID_ヴェロニカ_フリズスキャルヴ",
     ];
     pub fn new(unit: engage::app::Unit) -> Self {
         let flags = AssetTable::s_condition_flags();

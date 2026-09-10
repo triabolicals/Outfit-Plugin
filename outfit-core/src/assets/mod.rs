@@ -7,6 +7,8 @@ use engage::{
         IBitField32, IGodDataMethods, IStructBase, IStructData_1Methods,IPersonDataMethods, IJobDataMethods,
     }
 };
+use engage::app::assettable::prelude::IList_1Methods;
+use engage::app::Gender;
 use unity::Cast;
 mod accessory;
 mod conditions;
@@ -17,17 +19,17 @@ pub use result::*;
 pub use conditions::{AssetFlags, AssetConditions, CharacterAssetMode};
 use crate::il2str;
 
-pub fn find_aid_condition_prefix(entry: AssetTable, prefix: &str, with_gender: bool, map: &HashMap<i32, String>) -> Option<(String, engage::app::Gender)> {
+pub fn find_aid_condition_prefix(entry: AssetTable, prefix: &str, with_gender: bool, map: &HashMap<i32, String>) -> Option<(String, Gender)> {
     let male = AssetTable::s_condition_indexes().get_item("男装".into());
     let female = AssetTable::s_condition_indexes().get_item("女装".into());
     let entry_indexes = entry.m_condition_indexes();
     let gender =
         if with_gender{
-            if entry_indexes.m_list().iter().any(|i| i.iter().any(|i| i == male)) { Some(engage::app::Gender::male()) }
-            else if entry_indexes.m_list().iter().any(|i| i.iter().any(|i| i == female)) { Some(engage::app::Gender::female()) }
+            if entry_indexes.m_list().iter().any(|i| i.iter().any(|i| i == male)) { Some(Gender::male()) }
+            else if entry_indexes.m_list().iter().any(|i| i.iter().any(|i| i == female)) { Some(Gender::female()) }
             else { None }
         }
-        else { Some(engage::app::Gender::none()) };
+        else { Some(Gender::none()) };
     let condition = entry_indexes.m_list().iter()
         .filter(|i| i.count() == 1)
         .find_map(|i| i.iter().find(|idx| map.get(&idx).is_some_and(|v| v.starts_with(prefix))))
@@ -36,12 +38,12 @@ pub fn find_aid_condition_prefix(entry: AssetTable, prefix: &str, with_gender: b
     if gender.is_none() { condition.clone().as_ref().and_then(|c| condition.zip(get_gender_from_condition(c))) }
     else { condition.zip(gender) }
 }
-pub fn get_gender_from_condition(condition: &String) -> Option<engage::app::Gender> {
+pub fn get_gender_from_condition(condition: &String) -> Option<Gender> {
     if condition.starts_with("GID_") {
         let god_data = engage::app::GodData::get(condition.as_str().into());
         if !god_data.is_null() {
-            if god_data.get_female() == 1 { Some(engage::app::Gender::female()) }
-            else { Some(engage::app::Gender::male()) }
+            if god_data.get_female() == 1 { Some(Gender::female()) }
+            else { Some(Gender::male()) }
         }
         else { None }
     }
@@ -50,8 +52,8 @@ pub fn get_gender_from_condition(condition: &String) -> Option<engage::app::Gend
         if !data.is_null() {
             if data.index() > 1 && data.get_flag().m_value() & 128 == 0 {
                 let gen = data.get_gender().value;
-                if gen == 2 { Some(engage::app::Gender::female()) }
-                else if gen == 1 { Some(engage::app::Gender::male()) }
+                if gen == 2 { Some(Gender::female()) }
+                else if gen == 1 { Some(Gender::male()) }
                 else { None }
             }
             else { None }
@@ -62,8 +64,8 @@ pub fn get_gender_from_condition(condition: &String) -> Option<engage::app::Gend
         let person = engage::app::PersonData::get_list();
         if let Some(p) = person.iter().find(|v| il2str(v.get_name()).is_some_and(|v| *v == *condition)) {
             let gender = p.get_gender().value;
-            if gender == 1 { Some(engage::app::Gender::male()) }
-            else if gender == 2 { Some(engage::app::Gender::female()) }
+            if gender == 1 { Some(Gender::male()) }
+            else if gender == 2 { Some(Gender::female()) }
             else { None }
         }
         else { None }
@@ -72,16 +74,33 @@ pub fn get_gender_from_condition(condition: &String) -> Option<engage::app::Gend
         let person = engage::app::PersonData::get_list();
         if let Some(p) = person.iter().find(|v| il2str(v.get_aid()).is_some_and(|v| *v == *condition)) {
             let gender = p.get_gender().value;
-            if gender == 1 { Some(engage::app::Gender::male()) }
-            else if gender == 2 { Some(engage::app::Gender::female()) }
+            if gender == 1 { Some(Gender::male()) }
+            else if gender == 2 { Some(Gender::female()) }
             else { None }
         }
         else { None }
     }
     else { None }
 }
+pub fn get_jid_condition(asset_table_indexes: Vec<i32>, map: &HashMap<i32, String>) -> Option<(String, Gender)> {
+    let male = AssetTable::s_condition_indexes().get_item("男装".into());
+    let female = AssetTable::s_condition_indexes().get_item("女装".into());
+    let list = AssetTable::get_list();
+    asset_table_indexes.iter()
+        .map(|&idx| list.get(idx))
+        .find_map(|x|{
+            let cons = x.m_condition_indexes().m_list();
+            let condition = cons.iter()
+                .filter(|i| i.count() == 1)
+                .find_map(|i| i.iter().find(|idx| map.get(&idx).is_some_and(|v| v.starts_with("JID_"))))
+                .and_then(|i| map.get(&i).cloned());
 
-pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool, map: &HashMap<i32, String>) -> Option<(String, engage::app::Gender)> {
+            if cons.iter().any(|x| x.get(0) == male) { condition.zip(Some(Gender::male())) }
+            else if cons.iter().any(|x| x.get(0) == female){ condition.zip(Some(Gender::female())) }
+            else { None }
+        })
+}
+pub fn get_aid_condition(asset_table_indexes: Vec<i32>, with_gender: bool, map: &HashMap<i32, String>) -> Option<(String, Gender)> {
     let list = AssetTable::get_list();
     if let Some(s) = asset_table_indexes.iter()
         .map(|&idx| list.get(idx))
@@ -149,7 +168,7 @@ pub fn get_condition_label(label: &String) -> Option<String> {
     }
     else { None }
 }
-pub fn unit_dress_gender(unit: engage::app::Unit) -> i32 {
+pub fn unit_dress_gender(unit: Unit) -> i32 {
     if unit.m_edit().m_gender().value != 0 {unit.m_edit().m_gender().value }
     else { unit.get_dress_gender().value }
 }
@@ -158,8 +177,8 @@ pub fn find_entries_with_model_field(mode: i32, model: &str, filter: impl Fn(Ass
     AssetTable::s_search_lists().get(mode as usize).iter().filter(|e| filter(*e, model)).map(|e| e.index()).collect()
 }
 
-pub fn find_mode_1_body(condition_index: i32, gender: engage::app::Gender) -> Option<String> {
-    let gender = if gender == engage::app::Gender::female() { AssetTable::s_condition_indexes().get_item("女装".into()) }
+pub fn find_mode_1_body(condition_index: i32, gender: Gender) -> Option<String> {
+    let gender = if gender == Gender::female() { AssetTable::s_condition_indexes().get_item("女装".into()) }
     else { AssetTable::s_condition_indexes().get_item("男装".into()) };
     AssetTable::s_search_lists().get(1).iter().find(|a|{
         let con_idx = a.m_condition_indexes();

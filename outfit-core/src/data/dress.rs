@@ -16,6 +16,8 @@ use engage::{
 };
 use unity::{Cast, system::string::IIl2CppStringMethods};
 use crate::{new_asset_table_accessory, ColorPreset, Mount, OutfitHashes, ACC_LOC, data::util::parse_arg_from_name, assets::*, il2str, get_outfit_data};
+use crate::anim::AnimData;
+
 const MONSTER: [&str; 6] = [
     "JID_異形竜,MG_FireBreath",
     "JID_幻影竜,MG_FireBreath",
@@ -54,7 +56,6 @@ impl DressData {
                             let job = spilt.next().and_then(|jid| JobData::get(jid));
                             let item = spilt.next().and_then(|iid| ItemData::get(iid));
                             if let Some((job, item)) = job.zip(item){ transform_items.push((job.parent.hash, item.parent.hash)); }
-
                              */
                         }
                         _ => {}
@@ -188,7 +189,8 @@ impl DressData {
         let search_lists = AssetTable::s_search_lists();
         let job_conditions = JobData::get_list().iter().filter(|j| !job.iter().any(|x| x.hash == j.hash()))
             .flat_map(|j| get_condition_index(j.get_jid()).zip(Some(j.hash())))
-            .collect::<Vec<(i32, i32)>>();
+            .collect::<Vec<(i32, i32)>>();  // Vec<Condition, JobHash>
+
         let mode_2: Vec<_> =
             search_lists.get(2).iter()
                 .filter(|x| !x.get_ride_dress_model().is_null() && !x.get_dress_model().is_null())
@@ -196,8 +198,10 @@ impl DressData {
                     (
                         il2str(x.get_dress_model()).filter(|c| c.contains("M_c") || c.contains("F_c") || c.contains("m_c") || c.contains("f_c")),
                         il2str(x.get_ride_dress_model()),
-                        job_conditions.iter().filter(|(_, c)| has_condition_index(x, *c)).map(|v| v.0).collect::<Vec<i32>>()
-                    )
+                        job_conditions.iter()
+                            .filter(|(condition, hash)| has_condition_index(x, *condition))
+                            .map(|v| v.1).collect::<Vec<i32>>()
+                    )   // Vec<Dress, Ride, Vec<JobHash>>
                 }).collect();
         let mode_1: Vec<_> =
             search_lists.get(1).iter()
@@ -206,11 +210,13 @@ impl DressData {
                     (
                         il2str(x.get_body_model()).filter(|c| c.contains("M_c") || c.contains("F_c") || c.contains("m_c") || c.contains("f_c")),
                         il2str(x.get_ride_model()),
-                        job_conditions.iter().filter(|(_, c)| has_condition_index(x, *c)).map(|v| v.0).collect::<Vec<i32>>()
-                    )
+                        job_conditions.iter()
+                            .filter(|(condition, hash)| has_condition_index(x, *condition))
+                            .map(|v| v.1).collect::<Vec<i32>>()
+                    ) // Vec<Dress, Ride, Vec<JobHash>>
                 }).collect();
 
-        job_conditions.iter().for_each(|&(hash, _condition)|{
+        job_conditions.iter().for_each(|&(_condition, hash)|{
             let mode_1m = mode_1.iter()
                 .find(|x| x.2.contains(&hash) && (x.0.as_ref().is_some_and(|c| c.contains("M_c") || c.contains("m_c")))).and_then(|v| v.0.clone());
 
@@ -257,7 +263,7 @@ impl DressData {
     pub fn get_job_dress(&self, job: JobData, gender: engage::app::Gender) -> Option<&JobDressData> {
         self.job.iter().find(|x| x.is_match(gender, job))
     }
-    pub fn get_personal_dress(&self, unit: engage::app::Unit) -> Option<&PersonalDressData> {
+    pub fn get_personal_dress(&self, unit: Unit) -> Option<&PersonalDressData> {
         if unit.is_null() || unit.get_person().is_null() || unit.get_person().get_job().is_null() { None }
         else if unit.m_edit().is_enable() {
             self.get_personal_dress_by_person(unit.get_person(), unit.m_edit().m_gender().value ==2)
@@ -390,7 +396,7 @@ impl PersonalDressData {
             .filter(|x| hash_list.voice.contains_key(x)) { self.voice = v; }
         result.set_head_model(Il2CppString::null());
         for x in 0..8 { set_color_by_i32(result, x, 0); }
-        for x in 0..19 { crate::set_result_scale_u16(result, x, 100); }
+        for x in 0..19 { set_result_scale_u16(result, x, 100); }
         result.commit(AssetTable_Modes::onmap());
         result.replace(AssetTable_Modes::onmap());
         self.process_map_result(result, hash_list);
@@ -537,7 +543,7 @@ impl PersonalDressData {
             if try_get_model_at_locator(result, ACC_LOC[4]).is_none() { result.commit_8(new_asset_table_accessory("null", ACC_LOC[4])); }
             for x in 0..16 {
                 let v = self.scale[x];
-                if v > 0 { crate::set_result_scale_u16(result, x, v); }
+                if v > 0 { set_result_scale_u16(result, x, v); }
             }
             for x in 0..8 {
                 let color = self.color[x];
@@ -599,8 +605,8 @@ pub struct JobTransformData {
     pub hash: i32,
     pub is_transform: bool,
     pub mode_2_conditions: Vec<String>,
+    pub mode_1_name: Option<String>,
     pub magic: Option<String>,
-
 }
 impl JobTransformData {
     pub fn check_result(result: AssetTable_Result) -> bool {
@@ -611,6 +617,7 @@ impl JobTransformData {
         if !job_data.is_null() {
             Some(
                 Self{
+                    mode_1_name: None,
                     hash: job_data.hash(),
                     is_transform: false,
                     mode_2_conditions: vec![jid.to_string()],
@@ -637,6 +644,7 @@ impl JobTransformData {
             if Self::check_result(result) {
                 return Some(
                     Self {
+                        mode_1_name: Some(person.get_name().to_rust_string()),
                         hash: job.hash(),
                         is_transform: true,
                         mode_2_conditions: conditions,
@@ -646,7 +654,6 @@ impl JobTransformData {
             }
         }
         else {
-            flags.add_2("Transformed");
             flags.add_2(jid);
             result.commit(mode);
             result.replace(mode);
@@ -655,6 +662,7 @@ impl JobTransformData {
                 conditions.push("Transformed".to_string());
                 return Some(
                     Self {
+                        mode_1_name: Some(person.get_name().to_rust_string()),
                         hash: job.hash(),
                         is_transform: true,
                         mode_2_conditions: conditions,
@@ -665,14 +673,21 @@ impl JobTransformData {
         }
         None
     }
-    pub fn get_result(&self, mode: i32, unit: engage::app::Unit, item: ItemData) -> AssetTable_Result{
+    pub fn get_result(&self, mode: i32, unit: Unit, item: ItemData) -> AssetTable_Result{
         let result = AssetTable_Result::new();
         result.clear();
         let conditions = AssetTable::s_condition_flags();
-        conditions.add_2(unit.get_person().get_name());
-        conditions.add_2(unit.get_pid());
+
         if item.get_kind().value == 9 && !item.is_bullet() { conditions.add_3(item); }
-        self.mode_2_conditions.iter().for_each(|key|{ conditions.add_2(key.as_str()); });
+        if mode == 1 {
+            conditions.add_2("竜化");
+            if let Some(name) = self.mode_1_name.as_ref() { conditions.add_2(name.as_str()); }
+        }
+        else {
+            conditions.add_2(unit.get_person().get_name());
+            conditions.add_2(unit.get_pid());
+            self.mode_2_conditions.iter().for_each(|key|{ conditions.add_2(key.as_str()); });
+        }
         result.commit(AssetTable_Modes{value: mode});
         result.replace(AssetTable_Modes{ value: mode });
         if mode == 2 && il2str(result.get_magic()).is_some_and(|v| v.len() > 0){
@@ -680,14 +695,25 @@ impl JobTransformData {
         }
         result
     }
-    pub fn set_result(&self, mode: i32, unit: engage::app::Unit, item: ItemData, result: AssetTable_Result) {
+    pub fn set_result(&self, mode: i32, unit: Unit, item: ItemData, result: AssetTable_Result) {
         result.clear();
         let conditions = AssetTable::s_condition_flags();
-        conditions.add_2(unit.get_person().get_name());
-        conditions.add_2(unit.get_pid());
         if item.get_kind().value == 9 && !item.is_bullet() { conditions.add_3(item); }
-        if mode == 1 && self.is_transform { conditions.add_2("竜化"); }
-        self.mode_2_conditions.iter().for_each(|key|{ conditions.add_2(key.as_str()); });
+        if mode == 1 {
+            if self.is_transform {
+                if let Some(name) = self.mode_1_name.as_ref() { conditions.add_2(name.as_str()); }
+                conditions.add_2("竜化");
+            }
+            else {
+                conditions.add_2(unit.get_job().get_jid());
+                self.mode_2_conditions.iter().for_each(|key|{ conditions.add_2(key.as_str()); });
+            }
+        }
+        else if mode == 2 {
+            conditions.add_2(unit.get_person().get_name());
+            conditions.add_2(unit.get_pid());
+            self.mode_2_conditions.iter().for_each(|key|{ conditions.add_2(key.as_str()); });
+        }
         result.commit(AssetTable_Modes{value: mode});
         result.replace(AssetTable_Modes{ value: mode });
         if let Some(magic) = self.magic.as_ref() { result.set_magic(magic.as_str()); }
@@ -820,6 +846,7 @@ impl JobDressData {
                     result.set_ride_model(ride_model);
                 }
                 else { result.set_ride_model(ride.as_str()); }
+                AnimData::scale_ride(result, self.mount);
             }
         }
     }

@@ -1,15 +1,16 @@
 use engage::{
     app::{
+        unitmodel::*,
         assettable::*, itemdata::*, unit::*,
-        IGodDataMethods, IJobDataMethods,ISkillArrayMethods,
-        ISkillData, IStructBase, IStructData_1Methods,IStructDictionary_1Methods, IStructBaseMethods,
+        IGodDataMethods, IJobDataMethods, ISkillArrayMethods,
+        ISkillData, IStructBase, IStructData_1Methods, IStructDictionary_1Methods, IStructBaseMethods,
         StructTemplate_1
     },
     combat::animsetdb::*,
     List_1Ext,
     system::collections::generic::IList_1Methods,
 };
-use unity::{system::string::IIl2CppStringMethods, Cast, FromIlInstance, Il2CppString};
+use unity::{system::string::IIl2CppStringMethods, Cast, Il2CppString, OptionalMethod};
 use crate::{get_condition_index, has_condition_index, il2str, Mount, assets::{new_asset_table_accessory}};
 
 pub const ANIM_KIND: [&str; 11] = ["No1", "Sw1", "Lc1", "Ax1", "Bw1", "Dg1", "Mg1", "Rd1", "Ft1", "No2", "Mg2"];
@@ -73,7 +74,7 @@ impl JobAnimSet {
                 r = true;
             }
             if let Some(ride) = self.mode_1r.as_ref() { result.set_ride_anim(ride.as_str()); }
-            else { result.set_ride_anim(unity::Il2CppString::null()); }
+            else { result.set_ride_anim(Il2CppString::null()); }
         }
         r
     }
@@ -119,10 +120,10 @@ impl EngageAnim {
 
         Some(Self { sid_hash, male_index, female_index})
     }
-    pub fn get(&self, gender: engage::app::Gender) -> Option<engage::app::AssetTable> {
+    pub fn get(&self, gender: engage::app::Gender) -> Option<AssetTable> {
         match gender.value {
-            1 => self.male_index.map(|v| engage::app::AssetTable::try_get_2(v)),
-            2 => self.female_index.map(|v| engage::app::AssetTable::try_get_2(v)),
+            1 => self.male_index.map(|v| AssetTable::try_get_2(v)),
+            2 => self.female_index.map(|v| AssetTable::try_get_2(v)),
             _ => None,
         }
     }
@@ -154,6 +155,8 @@ impl AnimData {
                     });
             }
         }
+        let com0af = AnimSetDB::get("Com0AF-No1_c000_N".into());
+        if !com0af.is_null() { com0af.set_attack1("Enb0AF-No1_c000_Attack1"); }
         let mut section = 0;
         include_str!("../../data/anim.txt").lines()
             .map(|l| l.split_whitespace().collect::<Vec<&str>>())
@@ -278,27 +281,6 @@ impl AnimData {
             engage::app::GodData::get_list().iter()
                 .filter( | x| ! x.get_engage_attack().is_null() )
                 .flat_map( | x| EngageAnim::new(x)).collect::<Vec<_ > > ();
-
-        if let Some(dnc0af) = AnimSetDB::instantiate() {
-            let rod = AnimSetDB::get("Rod0AF-Ft1_c000_N".into());
-            let index = AnimSetDB::get_count();
-            dnc0af.set_name("Dnc0AF-No1_c000_N");
-            dnc0af.set_attack1("Enb0AF-No1_c000_Attack1");
-            dnc0af.set_index(index);
-            for x in 1..35 {
-                let offset = 0x28 + x*8;
-                if x < 7 { unity::field_set_value_at_offset::<Il2CppString>(dnc0af, offset, "null".into()); }
-                else {
-                    let rod_v = unity::field_get_value_at_offset::<Il2CppString>(rod, offset);
-                    if let Some(rod_v2) = il2str(rod_v) {
-                        if rod_v2 == "=" { unity::field_set_value_at_offset::<Il2CppString>(dnc0af, offset, "Rod0AF-Ft_c000=".into()); }
-                        else if rod_v2.contains("=") { unity::field_set_value_at_offset(dnc0af, offset,rod_v); }
-                    }
-                }
-            }
-            anim_db_dic.add("Dnc0AF-No1_c000_N".into(), index);
-            list.add(dnc0af);
-        }
         let hashes = list.iter().map(|anim| anim.get_name().get_hash_code()).collect::<Vec<i32>>();
         let search_lists = AssetTable::s_search_lists();
         let hashes_left = engage::app::JobData::get_list().iter()
@@ -375,7 +357,7 @@ impl AnimData {
             hashes, job_anims, uas, engage_atk_anim
         }
     }
-    pub fn get_mount_type(&self, unit: engage::app::Unit, gender: engage::app::Gender) -> Option<Mount> {
+    pub fn get_mount_type(&self, unit: Unit, gender: engage::app::Gender) -> Option<Mount> {
         let job = unit.get_job();
         if job.is_null() { None }
         else {
@@ -458,7 +440,7 @@ impl AnimData {
         result.replace(AssetTable_Modes::combat());
         true
     }
-    pub fn set_engage_atk_anim(&self, result: AssetTable_Result, dress_gender: engage::app::Gender, unit: engage::app::Unit) -> i32 {
+    pub fn set_engage_atk_anim(&self, result: AssetTable_Result, dress_gender: engage::app::Gender, unit: Unit) -> i32 {
         let engage_atk = unit.get_engage_attack();
         if !engage_atk.is_null() {
             let sid = engage_atk.m_prefixless_sid().to_rust_string();
@@ -541,12 +523,8 @@ impl AnimData {
             if !body_anims.iter().any(|x| x.contains(obody_anim)) { false }
             else {
                 if let Some(uas_anim) = self.job_anims.iter().find(|x| x.is_match(dress_gender, job)){
-                    if let Some(ride) = uas_anim.mode_1r.as_ref() {
-                        result.set_ride_anim(ride.as_str());
-                    }
-                    if let Some(body) = uas_anim.mode_1.as_ref() {
-                        result.set_body_anim(body.as_str());
-                    }
+                    if let Some(ride) = uas_anim.mode_1r.as_ref() { result.set_ride_anim(ride.as_str()); }
+                    if let Some(body) = uas_anim.mode_1.as_ref() { result.set_body_anim(body.as_str()); }
                     true
                 }
                 else { false }
@@ -604,9 +582,18 @@ impl AnimData {
         let body_anims = result.get_body_anims();
         match dress_gender.value {
             2 => {
-                if body_anims.iter().find(|s| s.to_rust_string().contains("AF-No1") && !AnimSetDB::get(*s).is_null()).is_none() {
-                    body_anims.add("Dnc0AF-No1_c000_N".into());
-                    result.set_body_anim("Dnc0AF-No1_c000_N");
+                if let Some(s) = body_anims.iter().find(|s|{
+                    let anim =  s.to_rust_string().to_lowercase();
+                    !anim.contains("com0a") && anim.contains("af-no1") && !AnimSetDB::get(*s).is_null()
+                }).filter(|s| !AnimSetDB::get(*s).get_attack1().is_null()) {
+                    body_anims.clear();
+                    body_anims.add(s);
+                    result.set_body_anim(s);
+                }
+                else {
+                    body_anims.clear();
+                    body_anims.add("Com0AF-No1_c000_N".into());
+                    result.set_body_anim("Com0AF-No1_c000_N");
                 }
             }
             1 => { body_anims.add("Dnc0AM-No1_c000_N".into()); }
@@ -666,23 +653,6 @@ impl AnimData {
         s.push( if gender == engage::app::Gender::male() { 'M' } else { 'F' });
         s.into()
     }
-    /*
-pub fn adjust_engage_atk(result: AssetTable_Result, gender: engage::app::Gender) {
-
-let body_anims = result.get_body_anims();
-body_anims.iter().for_each(|anim| {
-
-})
-result.body_anims.iter_mut()
-    .filter(|x| AnimSetDB::get(x.to_string().as_str()).is_some_and(|x| x.other[25].is_some_and(|x| x.to_string() == "=")))
-    .for_each(|x| {
-        let anim = x.to_string();
-        if anim.contains("F-") && gender == engage::app::Gender::male() { *x = anim.replace("F-", "M-").into() }
-        else if anim.contains("M-") && gender == engage::app::Gender::female() { *x = anim.replace("M-", "F-").into() }
-    });
-    }
- */
-
     pub fn get_transforming_anim(engaged: bool, female: bool) -> &'static str {
         match (engaged, female) {
             (true, false) => {"Enb0AM-No2_c049_N"}
@@ -746,4 +716,14 @@ fn get_anim(anim: Il2CppString, set: &str) -> Il2CppString {
     if anim == "=" { format!("{}=", set).into() }
     else if anim.starts_with("=") && anim.len() > 2 { anim.replace("=", format!("{}_", set).as_str()).into() }
     else { anim.as_str().into() }
+}
+#[skyline::hook(offset=0x1fc0020)]
+pub fn unit_model_play_anim(this: UnitModel, ty: i32, time: i32, optional_method: OptionalMethod) {
+    if !this.m_ride().is_null() {
+        let k = if ty == 10 { 9 }
+            else if ty > 7 && ty < 10 { 1 }
+            else { ty };
+        call_original!(this, k, time, optional_method);
+    }
+    else { call_original!(this, ty, time, optional_method); }
 }

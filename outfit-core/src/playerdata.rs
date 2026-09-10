@@ -2,11 +2,12 @@ use std::{collections::HashSet, fs::{read_to_string, DirEntry}};
 use engage::{
     app::{assettable::*, gameuserdata::*, ISingletonClass_1Methods, IStream_2Methods, IStructData_1Methods, Stream_2},
     combat::{Character, ICharacterAppearance, ICharacterAssetForm, ICharacterAssetT_1Methods, ICharacterMethods},
-    unity_engine::{IComponentMethods, IMaterialMethods}
+    unity_engine::{IObject_2Methods, IMaterialMethods},
+    List_1Ext,
 };
 use unity::Cast;
 use unity::system::string::IIl2CppStringMethods;
-use crate::{assets::new_asset_table_accessory, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim, apply_result_hair, try_get_material_from_go};
+use crate::{assets::new_asset_table_accessory, get_outfit_data, AssetColor, AssetType, Mount, OutfitData, PersonalDressData, UnitAssetMenuData, OUTFIT_DATA, AssetType::Acc, set_color_by_u8_slice, set_result_scale_u16, il2str, try_get_il2cpp_hash, set_result_anim, apply_result_hair};
 const PLAYABLE_HASH: [i32; 41] = [
     276380359,152765422,1875144918,1654010808,-594922007,7981978,1201591043,-59016776,
     1808009585,1348996286,1172357650,-1768838071,-204100902,-1916470567,473157409,1486827994,
@@ -51,7 +52,7 @@ impl UnitAssetData {
     pub fn new_hash(hash: i32, random_app: bool) -> Self {
         let (profile, flag) =
         if !engage::app::GodData::try_get_from_hash(hash).is_null() { (vec![PlayerOutfitData::new_with_flag(0); 3], 1) }
-        else { (vec![PlayerOutfitData::new_with_flag(0); 5], if random_app { 8 } else { 0 }) };
+        else { (vec![PlayerOutfitData::new_with_flag(0); 5], if random_app { 16 } else { 0 }) };
         Self { person: hash, profile, set_profile: [0, 1, 2, 0, 0], flag, }
     }
     pub fn serialize(&self, stream: Stream_2){
@@ -445,11 +446,17 @@ impl PlayerOutfitData {
             out.assign_unity_color(5, appearance.mask_color075());
             out.assign_unity_color(6, appearance.mask_color050());
             out.assign_unity_color(7, appearance.mask_color025());
-            let go = builder.get_game_object();
-            if let Some(eye) = try_get_material_from_go(go, 3) {
-                UnitAssetData::EYE_COLOR.iter().enumerate().for_each(|(i, &c)|{ out.assign_unity_color(8 + i, eye.get_color_2(c)); });
+            if !appearance.m_instanced_materials().is_null() {
+                appearance.m_instanced_materials().iter().for_each(|v|{
+                    let name = v.get_name().to_rust_string();
+                    if name.starts_with("MtEye") && !name.contains("Eye2") {
+                        UnitAssetData::EYE_COLOR.iter().enumerate().for_each(|(i, &c)|{ out.assign_unity_color(8 + i, v.get_color_2(c)); });
+                    }
+                    else if name.starts_with("MtHair2") || name.starts_with("MtOdd") {
+                        out.assign_unity_color(14, v.get_color_2("_BaseColor"));
+                    }
+                });
             }
-            if let Some(hair2) = try_get_material_from_go(go, 2) { out.assign_unity_color(14, hair2.get_color_2("_BaseColor"), ); }
             let result = UnitAssetMenuData::get_result();
             if let Some(voice) = db.try_get_asset_hash(result.get_sound().voice_id) { out.voice = voice; }
             for i in 0..16 {
@@ -590,7 +597,6 @@ impl PlayerOutfitData {
             let scale = self.scale[x] & 1023;
             let scale = if scale > 1000 { 0 } else { scale };
             let on = self.scale[x] & 1024 != 0 && scale != 0;
-            println!("{}: {}, [{}] {}", SCALE_NAME[x], scale, self.scale[x], on);
             string.push_str(format!("{}={} ({})\n", SCALE_NAME[x],  (scale as f32) / 100.0, if on { "on" } else { "off"}).as_str());
         }
         for x in 0..15 {

@@ -1,15 +1,15 @@
-
 pub use engage::{
     app::{
         assettable::*, unit::*,
         hubaccessoryroom::*,
         unitinfo::*, unitinfowindowcharamodel::*, unitinfowindowcharaupdater::*,
     },
-    unity_engine::{component::*},
+    unity_engine::component::*,
     combat::{character::*, characterbuilder::*, characterappearance::*, Kaneko},
 };
 use engage::{
     app::{
+        Ut,
         photographsequence::*, IProcInstMethods,
         IPhotographDisposInfo, IPhotographDisposManager, IPhotographSequence, ISingletonProcInst_1Methods,
         JobData, talk3_d::CharacterFactoryAsync_2
@@ -21,12 +21,13 @@ use engage::{
     unity_engine::{
         animator::*, camera::*, material::*, gameobject::*, transform::*,
         IRendererMethods, SkinnedMeshRenderer, Screen, Vector3, IObject_2Methods,
-    }
+    },
+    unity_engine::{Color, ParticleSystemRenderer, Renderer}
 };
 use super::*;
 use unity::Cast;
 use crate::{EquipmentBoxMode, Mount, UnitAssetData, UnitAssetMenuData, FACIAL_STATES};
-
+const RENDERER_FILTER: [&'static str; 3] = ["EyeHL", "EyeLash", "Mucous"];
 #[derive(PartialEq, Clone, Copy)]
 pub enum ReloadType {
     All,
@@ -134,7 +135,10 @@ pub fn hub_room_set_by_result(result: Option<AssetTable_Result>, reload_type: Re
             }
             ReloadType::HeadColor => {
                 let go = builder.get_game_object();
-                if !go.is_null() { apply_preview_head_hair_color(appearance, go); }
+                if !go.is_null() {
+                    apply_colors_2(appearance, go);
+                }
+                // apply_preview_head_hair_color(appearance, go); }
             }
             ReloadType::ColorScale => {
                 let result = result.or_else(||Some(UnitAssetMenuData::get_result())).unwrap();
@@ -208,7 +212,7 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: OptionalMethod) {
         let update = unit_info_window.m_chara_updater();
         update.set_m_is_request_to_offset(true);
         update.try_update_offset(char);
-        let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
+        let camera = UnitInfo::get_face_camera_component(UnitInfo_Side::left());
         if !this.is_job() {
             update.late_update();
             let trans = char.get_transform();
@@ -216,7 +220,7 @@ pub fn create_char_model(this: CreateUnitInfoModel, _: OptionalMethod) {
             let ride = Kaneko::find_in_children(char.get_transform(), "lookAt_ride_loc");
             if !ride.is_null(){
                 trans.set_local_scale(Vector3{x: 0.60, y: 0.60, z: 0.60});
-                let camera = engage::app::UnitInfo::get_face_camera_component(UnitInfo_Side::left());
+                let camera = UnitInfo::get_face_camera_component(UnitInfo_Side::left());
                 let h = Screen::get_height() as f32;
                 let w = Screen::get_width() as f32;
                 let head_world_1 = ride.get_position();
@@ -274,8 +278,6 @@ impl AnimatorStates {
         self.states.iter().for_each(|&(index, hash, fixed_time)|{ animator.play_in_fixed_time_4(hash, index, fixed_time) });
     }
 }
-
-
 fn exist_in_hierarchy(transform: Transform, s: &str) -> bool{
     let mut search = transform;
     loop {
@@ -283,153 +285,6 @@ fn exist_in_hierarchy(transform: Transform, s: &str) -> bool{
         if name.starts_with(s) { return true }
         else { search = search.get_parent(); }
         if search.is_null() { return false }
-    }
-}
-pub fn try_get_material_from_go(go: GameObject, edit_kind: i32) -> Option<Material> {
-    go.get_components_in_children_3::<SkinnedMeshRenderer>(true)
-        .iter().find_map(|r|{ try_get_material(r, edit_kind, true).or_else(|| try_get_material(r, edit_kind, false)) })
-}
-pub fn for_each_skinned_mesh_material(go: GameObject, material_name: &str, action: impl Fn(Material)) {
-    go.get_components_in_children_3::<SkinnedMeshRenderer>(true)
-        .iter().flat_map(|v| v.get_materials().iter())
-        .filter(|m| m.get_name().to_rust_string() == material_name)
-        .for_each(|m| action(m));
-}
-pub fn try_get_material(renderer: SkinnedMeshRenderer, kind: i32, shared: bool) -> Option<Material> {
-    let mats = if shared { renderer.get_shared_materials() } else { renderer.get_materials() };
-    let transform = renderer.get_transform();
-    let materials =
-        mats.iter().
-            flat_map(|m| il2str(m.get_name()))
-            .map(|s| s.split_whitespace().next().map(|s| s.to_string()).unwrap_or(s))
-            .collect::<Vec<_>>();
-
-    if materials.len() == 0 { return None; }
-    match kind {
-        1 => {
-            materials.iter()
-                .position(|m| m == "MtHair")
-                .and_then(|pos|
-                    if exist_in_hierarchy(transform, "c_spine1_jnt") || exist_in_hierarchy(transform, "uHair") || exist_in_hierarchy(transform, "meshHairGP") { Some(mats.get(pos)) }
-                    else { None  }
-                )
-        }
-        2 => {
-            materials.iter()
-                .position(|m| m == "MtHair2")
-                .or_else(|| materials.iter().position(|m| m == "MtOdd"))
-                .and_then(|pos|
-                    if exist_in_hierarchy(transform, "c_spine1_jnt") || exist_in_hierarchy(transform, "uHair") || exist_in_hierarchy(transform, "meshHairGP") {
-                        Some(mats.get(pos))
-                    }
-                    else { None }
-                )
-        }
-        3 => {
-            materials.iter().position(|m| m == "MtEye").map(|pos| mats.get(pos))
-        }
-        4|5 => {
-            let search = if kind == 4 { "uHead" } else { "meshGP" };
-            materials.iter()
-                .position(|m| m == "MtSkin")
-                .and_then(|pos| if exist_in_hierarchy(transform, search) { Some(mats.get(pos)) } else { None })
-        }
-        _ => None,
-    }
-}
-pub fn get_head_hair_colors(go: GameObject) {
-    if go.is_null() { return; }
-    let data = UnitAssetMenuData::get();
-    if data.is_preview {
-        let update = data.preview.update;
-        if update != 0{
-            if update & 1 != 0 {
-                data.preview.has_hair_acc = false;
-                for x in 0..4 {
-                    data.preview.original_color[56+x] = 0;
-                    data.preview.original_color[x] = 0;
-                    data.preview.original_color[x+4] = 0;
-                }
-                if let Some(hair) = try_get_material_from_go(go, 1){
-                    ["_BaseColor", "_GradationColor"].into_iter().enumerate().for_each(|(i, x)|{
-                        let color = hair.get_color_2(x);
-                        data.preview.original_color[4*i] = (color.r * 255.0) as u8;
-                        data.preview.original_color[4*i + 1] = (color.g * 255.0) as u8;
-                        data.preview.original_color[4*i + 2] = (color.b * 255.0) as u8;
-                        data.preview.original_color[4*i + 3] = 1;
-                    });
-                }
-                if let Some(hair2) = try_get_material_from_go(go, 2){
-                    let color = hair2.get_color_2("_BaseColor");
-                    data.preview.original_color[56] = (color.r * 255.0) as u8;
-                    data.preview.original_color[57] = (color.g * 255.0) as u8;
-                    data.preview.original_color[58] = (color.b * 255.0) as u8;
-                    data.preview.original_color[59] = 1;
-                }
-            }
-            if update & 2 != 0 {
-                for i in 0..4 { data.preview.original_color[8+i] = 0; }
-                for i in 0..24 { data.preview.original_color[32+i] =0; }
-                if let Some(skin) = try_get_material_from_go(go, 4){
-                    let color = skin.get_color_2("_BaseColor");
-                    data.preview.original_color[8] = (color.r * 255.0) as u8;
-                    data.preview.original_color[9] = (color.g * 255.0) as u8;
-                    data.preview.original_color[10] = (color.b * 255.0) as u8;
-                    data.preview.original_color[12] = 1;
-                }
-                if let Some(eye) = try_get_material_from_go(go, 3){
-                    UnitAssetData::EYE_COLOR.iter()
-                        .enumerate()
-                        .for_each(|(i, x)| {
-                            let color = eye.get_color_2(*x);
-                            data.preview.original_color[32+i*4] = (color.r * 255.0) as u8;
-                            data.preview.original_color[33+i*4] = (color.g * 255.0) as u8;
-                            data.preview.original_color[34+i*4] = (color.b * 255.0) as u8;
-                            data.preview.original_color[35+i*4] = 1;
-                        });
-                }
-            }
-            data.preview.update = 0;
-        }
-    }
-}
-pub fn apply_preview_head_hair_color(this: CharacterAppearance, go: GameObject) {
-    if go.is_null() { return; }
-    let data = UnitAssetMenuData::get();
-    let mut rgb: Option<[u8; 3]>;
-    let data2 =
-        if data.is_preview { Some(data.preview.preview_data.clone()) }
-        else {
-            let hash = unity::field_get_value_at_offset::<i32>(this, 0xd4);
-            UnitAssetMenuData::get_by_person_data(hash, false).and_then(|p| p.profile.get(p.profile_index(false) as usize).cloned())
-        };
-    if let Some(data2) = data2 {
-        let eye = try_get_material_from_go(go, 3);
-        let hair2 = try_get_material_from_go(go, 2);
-        for j in [2, 8, 9, 10, 11, 12, 13, 14]{
-            rgb = None;
-            let i = 4 * j;
-            if data.is_preview && data.preview.color_preview[i+3] == 1 { rgb = Some([data.preview.color_preview[i], data.preview.color_preview[i + 1], data.preview.color_preview[i + 2]]); }
-            else { if data2.colors[j].values[3] != 0 { rgb = Some([data2.colors[j].values[0], data2.colors[j].values[1], data2.colors[j].values[2]]); } }
-            if let Some(rgb) = rgb.filter(|r| r[0] > 0 || r[1] > 0 || r[2] > 0) {
-                let (r, g, b) = (rgb[0] as f32 / 255.0, rgb[1] as f32 / 255.0, rgb[2] as f32 / 255.0);
-                let color = engage::unity_engine::Color{ r, g, b, a: 1.0 };
-                match j {
-                    2 => {
-                        for_each_skinned_mesh_material(go, "MtSkin", |m|{
-                            m.set_float("_Makeup", 0.0);
-                            m.set_color_2(UnitAssetData::EYE_COLOR[0], color);
-                        });
-                    }
-                    8..14 => { if let Some(eye) = eye.as_ref() { eye.set_color_2(UnitAssetData::EYE_COLOR[j-8], color); } }
-                    14 => { if let Some(hair2) = hair2.as_ref() { hair2.set_color_2(UnitAssetData::EYE_COLOR[0], color); } }
-                    _ => {}
-                }
-            }
-        }
-        let flag = data2.flag;
-        head_acc(go, flag & 64 != 0);
-        hair_acc(go, flag & 16 != 0);
     }
 }
 pub fn hair_acc(go: GameObject, enable: bool){
@@ -472,7 +327,7 @@ fn update_result_for_preview(result: AssetTable_Result) {
         if let Some(asset) = db.try_get_asset(kind, hash){
             match kind {
                 AssetType::AOC(_) => {
-                    crate::anim::AnimData::remove(result, true, true);
+                    anim::AnimData::remove(result, true, true);
                     result.set_body_anim(asset.as_str());
                     return;
                 }
@@ -480,15 +335,15 @@ fn update_result_for_preview(result: AssetTable_Result) {
                 AssetType::Rig => { result.set_body_model(asset.as_str()); }
                 AssetType::Head => { result.set_head_model(asset.as_str()); }
                 AssetType::Hair => {
-                    crate::apply_result_hair(asset, result);
-                    result.replace(engage::app::AssetTable_Modes::combat());
+                    apply_result_hair(asset, result);
+                    result.replace(AssetTable_Modes::combat());
                 }
                 AssetType::Acc(kind) => {
                     if asset.contains("Msc0AT") { result.set_left_hand(asset.as_str()); }
                     else {
-                        let acc_locator = crate::ACC_LOC[kind as usize];
-                        result.commit_8(crate::new_asset_table_accessory(asset.as_str(), acc_locator));
-                        result.replace(engage::app::AssetTable_Modes::combat());
+                        let acc_locator = ACC_LOC[kind as usize];
+                        result.commit_8(new_asset_table_accessory(asset.as_str(), acc_locator));
+                        result.replace(AssetTable_Modes::combat());
                     }
                 }
                 AssetType::Mount(k) => {
@@ -525,7 +380,7 @@ fn update_result_for_preview(result: AssetTable_Result) {
                             result.set_body_anim(anim.as_str());
                             body_anims.add(anim.as_str().into());
                         }
-                        _ => {} // result.body_anims.add(format!("Com0A{}-No1_c000_N", gender).into()); }
+                        _ => {}
                     }
                     return;
                 }
@@ -534,4 +389,162 @@ fn update_result_for_preview(result: AssetTable_Result) {
             result.set_body_anim(if db.get_dress_gender(result.get_dress_model()) == engage::app::Gender::male() { "AOC_Hub_Hum0M" } else { "AOC_Hub_Hum0F" });
         }
     }
+}
+pub fn get_eyes_colors(this: CharacterAppearance, go: GameObject) {
+    if this.is_null() || go.is_null() { return;}
+    let renderer = go.get_components_in_children_3::<Renderer>(true);
+    let stencil = CharacterAppearance::s_stencil_value() + 1.0;
+    if stencil != 127.0 || stencil.is_nan() { CharacterAppearance::set_s_stencil_value(1.0); }
+    let data = UnitAssetMenuData::get();
+    let update = if data.is_preview { data.preview.update } else { 0 };
+    if update & 1 != 0 {
+        for x in 0..4 {
+            data.preview.original_color[56 + x] = 0;
+            data.preview.original_color[x] = 0;
+            data.preview.original_color[x + 4] = 0;
+        }
+    }
+    if update & 2 != 0 {
+        for i in 0..4 { data.preview.original_color[8+i] = 0; }
+        for i in 0..24 { data.preview.original_color[32+i] =0; }
+    }
+    let list = List_1::<Material>::new_2(32);
+    renderer.iter().for_each(|r| {
+        if !r.is_null() && !r.is_direct_subclass_of::<ParticleSystemRenderer>() {
+            let transform = r.get_transform();
+            let renderer_name = r.get_name().to_rust_string();
+            if exist_in_hierarchy(transform, "meshHead") && !RENDERER_FILTER.iter().any(|v| renderer_name.contains(v)) {
+                let materials = Ut::get_instance_materials(r);
+                materials.iter().for_each(|m| {
+                    let material_name = m.get_name().to_rust_string();
+                    list.add(m);
+                    material_set_color_from_appearance(m, this);
+                    if update & 2 != 0 {
+                        if !material_name.contains("Eye2") && material_name.starts_with("MtEye"){
+                            UnitAssetData::EYE_COLOR.iter()
+                                .enumerate()
+                                .for_each(|(i, x)| {
+                                    let color = m.get_color_2(*x);
+                                    data.preview.original_color[32 + i * 4] = (color.r * 255.0) as u8;
+                                    data.preview.original_color[33 + i * 4] = (color.g * 255.0) as u8;
+                                    data.preview.original_color[34 + i * 4] = (color.b * 255.0) as u8;
+                                    data.preview.original_color[35 + i * 4] = 1;
+                                });
+                        }
+                        if material_name.starts_with("MtSkin") || material_name.starts_with("MtuSkin"){
+                            let color = m.get_color_3(CharacterAppearance::hash_base_color());
+                            data.preview.original_color[8] = (color.r * 255.0) as u8;
+                            data.preview.original_color[9] = (color.g * 255.0) as u8;
+                            data.preview.original_color[10] = (color.b * 255.0) as u8;
+                            data.preview.original_color[11] = 1;
+                        }
+                    }
+                })
+            }
+            else {
+                let shared = r.get_shared_materials();
+                if this.has_material_to_modify(shared) {
+                    let materials = Ut::get_instance_materials(r);
+                    materials.iter().for_each(|m| {
+                        if !m.is_null() {
+                            list.add(m);
+                            material_set_color_from_appearance(m, this);
+                            let name = m.get_name().to_rust_string();
+                            if update & 1 != 0 {
+                                if name.contains("MtHair2") || name.contains("MtOdd"){
+                                    let color = m.get_color_3(CharacterAppearance::hash_base_color());
+                                    data.preview.original_color[56] = (color.r * 255.0) as u8;
+                                    data.preview.original_color[57] = (color.g * 255.0) as u8;
+                                    data.preview.original_color[58] = (color.b * 255.0) as u8;
+                                    data.preview.original_color[59] = 1;
+                                }
+                                else if name.starts_with("MtHair") && !name.contains("Hair2"){
+                                    ["_BaseColor", "_GradationColor"].into_iter().enumerate().for_each(|(i, x)|{
+                                        let color = m.get_color_2(x);
+                                        data.preview.original_color[4 * i] = (color.r * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 1] = (color.g * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 2] = (color.b * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 3] = 1;
+                                    });
+                                }
+                            }
+                        }
+                    })
+                }
+            }
+        }
+    });
+    data.preview.update = 0;
+    // println!("Instanced Materials: {}", list.count());
+    this.set_m_instanced_materials(list);
+}
+fn material_set_color_from_appearance(m: Material, app: CharacterAppearance) {
+    let name = m.get_name().to_rust_string();
+    let grad_color = app.grad_color();
+    if m.has_property(CharacterAppearance::hash_stencil_group()) { m.set_float_2(CharacterAppearance::hash_stencil_group(), CharacterAppearance::s_stencil_value()); }
+    if AssetTable::has_color(grad_color) && m.has_property(CharacterAppearance::hash_gradation_color()) && grad_color.a > 0.0 { m.set_color_3(CharacterAppearance::hash_gradation_color(), grad_color); }
+    if AssetTable::has_color(app.toon_shadow_color()) && m.has_property(CharacterAppearance::hash_toon_shadow_color()) { m.set_color_3(CharacterAppearance::hash_toon_shadow_color(), app.toon_shadow_color()); }
+    if AssetTable::has_color(app.mask_color100()) && m.has_property(CharacterAppearance::hash_mask_color100()) { m.set_color_3(CharacterAppearance::hash_mask_color100(), app.mask_color100()); }
+    if AssetTable::has_color(app.mask_color075()) && m.has_property(CharacterAppearance::hash_mask_color075()) { m.set_color_3(CharacterAppearance::hash_mask_color075(), app.mask_color075()); }
+    if AssetTable::has_color(app.mask_color050()) && m.has_property(CharacterAppearance::hash_mask_color050()) { m.set_color_3(CharacterAppearance::hash_mask_color050(), app.mask_color075()); }
+    if AssetTable::has_color(app.mask_color025()) && m.has_property(CharacterAppearance::hash_mask_color025()) { m.set_color_3(CharacterAppearance::hash_mask_color025(), app.mask_color025()); }
+    if name.starts_with("MtHair") && AssetTable::has_color(app.hair_color()) && m.has_property(CharacterAppearance::hash_base_color()){
+        m.set_color_3(CharacterAppearance::hash_base_color(), app.hair_color());
+    }
+    if (name.starts_with("MtSkin") || name.starts_with("MtuSkin")) && AssetTable::has_color(app.skin_color()) && m.has_property(CharacterAppearance::hash_base_color()){
+        m.set_color_3(CharacterAppearance::hash_base_color(), app.skin_color());
+    }
+}
+pub fn apply_colors_2(this: CharacterAppearance, go: GameObject) {
+    if go.is_null() { return; }
+    let data = UnitAssetMenuData::get();
+    let data2 =
+        if data.is_preview { Some(data.preview.preview_data.clone()) }
+        else {
+            let hash = unity::field_get_value_at_offset::<i32>(this, 0xd4);
+            UnitAssetMenuData::get_by_person_data(hash, false)
+                .and_then(|p| p.profile.get(p.profile_index(false) as usize).cloned())
+        };
+    if let Some(data2) = data2.as_ref() {
+        let flag = data2.flag;
+        this.m_instanced_materials().iter().for_each(|m| {
+            let material_name = m.get_name().to_rust_string();
+            if material_name.starts_with("MtHair2") || material_name.starts_with("MtOdd") {
+                if let Some(color) = try_get_preview_color(14, data, data2) {
+                    if m.has_property(CharacterAppearance::hash_base_color()) {
+                        m.set_color_3(CharacterAppearance::hash_base_color(), color);
+                    }
+                }
+            }
+            else if material_name.starts_with("MtSkin") {
+                if try_get_preview_color(2, data, data2).is_some() {
+                    if AssetTable::has_color(this.skin_color()) { m.set_float("_Makeup", 0.0); }
+                }
+            }
+            else if material_name.starts_with("MtEye") && !material_name.contains("Eye2"){
+                for j in 0..6 {
+                    if let Some(color) = try_get_preview_color(j+8, data, data2) {
+                        m.set_color_2(UnitAssetData::EYE_COLOR[j as usize], color);
+                    }
+                }
+            }
+        });
+        head_acc(go, flag & 64 != 0);
+        hair_acc(go, flag & 16 != 0);
+    }
+}
+fn try_get_preview_color(color_index: i32, data: &UnitAssetMenuData, d: &PlayerOutfitData) -> Option<Color> {
+    let mut rgb = None;
+    let j = color_index as usize;
+    if data.is_preview && data.preview.color_preview[j * 4 + 3] == 1 {
+        rgb = Some([data.preview.color_preview[j*4], data.preview.color_preview[j * 2], data.preview.color_preview[j*4 + 3]]);
+    }
+    else { if d.colors[j].values[3] != 0 {
+        rgb = Some([d.colors[j].values[0], d.colors[j].values[1], d.colors[j].values[2]]); }
+    }
+    if let Some(rgb) = rgb.filter(|r| r[0] > 0 || r[1] > 0 || r[2] > 0) {
+        let (r, g, b) = (rgb[0] as f32 / 255.0, rgb[1] as f32 / 255.0, rgb[2] as f32 / 255.0);
+        return Some(Color { r, g, b, a: 1.0 });
+    }
+    None
 }

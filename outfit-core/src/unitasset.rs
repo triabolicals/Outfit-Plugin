@@ -2,12 +2,14 @@ use std::{cmp::PartialEq, fs::{read_dir, read_to_string}};
 use engage::{
     app::{
         unit::*, assettable::*,
+        ISingletonProcInst_1Methods,
         IBitField32, IGameUserDataMethods, IPersonDataMethods,
         ISingletonClass_1Methods, IStructBase, IStructData_1Methods, IUnitEdit, IGodDataMethods
     },
     List_1Ext,
     system::collections::generic::IList_1,
 };
+use engage::app::PhotographTopSequence;
 use unity::Cast;
 use crate::playerdata::*;
 use crate::{
@@ -44,7 +46,6 @@ pub struct UnitAssetPreview {
     pub update_dress_gender: bool,
     pub update: u8,
     pub has_head_acc: bool,
-    pub has_hair_acc: bool,
     pub preview_asset: Option<(AssetType, i32)>,
 
 }
@@ -65,7 +66,6 @@ impl UnitAssetPreview {
             update: 0,
             has_head_acc: false,
             preview_asset: None,
-            has_hair_acc: false,
         }
     }
     pub fn get_original_asset_hash(&self, asset_type: AssetType) -> i32 {
@@ -106,7 +106,6 @@ pub struct UnitAssetMenuData {
     pub photo_profiles: Vec<PlayerOutfitData>,
     pub unit_select: UnitSelectList,
     pub unit_select_index: i32,
-    pub hair_colors: Vec<(f32, f32, f32, f32, f32 ,f32, f32, f32)>,
     pub hairs: Vec<String>,
     pub asset: Vec<String>,
 }
@@ -182,7 +181,7 @@ impl UnitAssetMenuData {
         if !alt { gender } else if gender == 2 { 1 } else { 2 }
     }
     pub fn get() -> &'static mut UnitAssetMenuData { unsafe { &mut UNIT_ASSET } }
-    pub fn get_unit() -> Option<engage::app::Unit>{
+    pub fn get_unit() -> Option<Unit>{
         let person = engage::app::PersonData::try_get_from_hash(Self::get().preview.person);
         if !person.is_null() {
             let unit = engage::app::UnitPool::get_from_person(person, false);
@@ -197,7 +196,6 @@ impl UnitAssetMenuData {
     const fn default() -> Self {
         Self {
             asset: Vec::new(),
-            hair_colors: Vec::new(),
             hairs: Vec::new(),
             unit_select_index: 0,
             mode: MenuMode::Inactive,
@@ -269,17 +267,16 @@ impl UnitAssetMenuData {
         }
         menu.data.iter().find(|x| x.person == hash)
     }
-    pub fn get_unit_data(unit: engage::app::Unit) -> Option<&'static UnitAssetData>  {
+    pub fn get_unit_data(unit: Unit) -> Option<&'static UnitAssetData>  {
         let person = unit.get_person();
         let hash = person.hash();
-        if unit.check_status(Unit_Status::dispos_guset()) { return None; }
-        Self::get_by_person_data(hash, false)
-            .or_else(||
-                if person.is_hero() || ((1  << unit.get_force_type().value) & 25 != 0 && !unit.is_summon() && !unit.is_vision()){
-                    Self::get_by_person_data(hash, true)
-                }
-                else { None }
-            )
+        if unit.check_status(Unit_Status::dispos_guset()) || unit.check_status(Unit_Status::summon()) { return None; }
+        if let Some(data) = Self::get_by_person_data(hash, false) { Some(data) }
+        else if person.is_hero() || ((1  << unit.get_force_type().value) & 25 != 0 && !unit.is_summon() && !unit.is_vision()) {
+            println!("Cannot find Data for {} [Hash: {}]", unit.get_name(), hash);
+            Self::get_by_person_data(hash, true)
+        }
+        else { None }
     }
     pub fn set_god(god: engage::app::GodData){ Self::set_by_hash(god.hash()); }
     pub fn set_by_hash(person: i32) -> bool {
@@ -460,7 +457,10 @@ impl UnitAssetMenuData {
             data.flag ^= flag;
         }
     }
-    pub fn toggle_profile_flag(flag: i32) { Self::get_preview().preview_data.flag ^= flag; }
+    pub fn toggle_profile_flag(flag: i32) -> bool {
+        Self::get_preview().preview_data.flag ^= flag;
+        Self::get_preview().preview_data.flag & flag != 0
+    }
     pub fn commit() {
         let menu = Self::get();
         let preview = Self::get_preview();
@@ -495,14 +495,14 @@ impl UnitAssetMenuData {
         let hash = Self::get_preview().person;
         Self::get().data.iter().find(|x| x.person == hash ).map(|x| x.flag).unwrap_or(0)
     }
-    pub fn set_assets(result: AssetTable_Result, unit: engage::app::Unit, asset_conditions: &AssetConditions) {
+    pub fn set_assets(result: AssetTable_Result, unit: Unit, asset_conditions: &AssetConditions) {
         if il2str(result.get_body_model()).is_some_and(|v| v.contains("AT")) { return; }
         if il2str(result.get_dress_model()).is_some_and(|v| v.contains("AT")) { return; }
         let mode = asset_conditions.mode;
         let menu = Self::get();
-        let is_preview =  menu.is_preview;
+        let is_preview = menu.is_preview;
         let is_engaged = unit.is_engaging_2();
-        let is_photo = menu.mode == MenuMode::PhotoGraph;
+        let is_photo = !PhotographTopSequence::get_instance().is_null();
         let person_hash = unit.get_person().hash();
         if is_preview {
             if is_photo  { menu.preview.preview_data.set_result(result, mode, is_engaged, false); }
@@ -513,18 +513,18 @@ impl UnitAssetMenuData {
                     loaded.data.set_result(result, mode, is_engaged, false);
                     loaded.data.flag = flag;
                 }
-                else {
-                    menu.preview.preview_data.set_result(result, mode, is_engaged, false);
-                }
+                else { menu.preview.preview_data.set_result(result, mode, is_engaged, false); }
             }
+            return;
         }
         else if is_photo {
             if let Some(data) = menu.photo_profiles.iter().find(|x| x.break_body == person_hash) {
                 data.set_result(result, 2, false, false);
+                return;
             }
         }
-        else if let Some(data) = menu.data.iter().find(|s| s.person == person_hash){
-            data.set_result(result, mode, is_engaged, asset_conditions.broken);
+       if let Some(data) = menu.data.iter().find(|s| s.person == person_hash){
+            data.set_result(result, mode, is_engaged, false);
         }
     }
     pub fn set_god_assets(result: AssetTable_Result, mode: i32, god: engage::app::GodData, darkness: bool) {
@@ -624,8 +624,8 @@ impl UnitAssetMenuData {
         format!("{}/{}/{}", menu.values[0], menu.values[1], menu.values[2])
     }
     pub fn set_original_assets() -> (Vec<i32>, Vec<i32>){
-        let search_lists = engage::app::AssetTable::s_search_lists();
-        let flags = engage::app::AssetTable::s_condition_flags();
+        let search_lists = AssetTable::s_search_lists();
+        let flags = AssetTable::s_condition_flags();
         let db = get_outfit_data();
         let menu = Self::get_preview();
         let mut modes: (Vec<i32>, Vec<i32>) = (vec![], vec![]);

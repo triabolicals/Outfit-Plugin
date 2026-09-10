@@ -7,6 +7,7 @@ use engage::{
     },
     system::collections::generic::{IDictionary_2Methods, IList_1Methods}
 };
+use skyline::install_hook;
 use unity::Class;
 
 #[allow(static_mut_refs, non_contiguous_range_endpoints)] mod data;
@@ -42,7 +43,7 @@ pub use crate::{
     capture::reset_faces,
 };
 
-pub const VERSION: &'static str = "2.8.5a";
+pub const VERSION: &'static str = "2.8.5c";
 pub const GAME_USER_DATA_VERSION: i32 = 23;
 pub const OUTPUT_ASSET_TABLE_DIR: &str = "sd:/engage/outfits/results/";
 pub const OUTPUT_DATA: &str = "sd:/engage/outfits/data/";
@@ -54,7 +55,10 @@ pub static OUTFIT_DATA: OnceLock<OutfitData> = OnceLock::new();
 
 pub fn get_outfit_data() -> &'static OutfitData { OUTFIT_DATA.get_or_init(|| OutfitData::init()) }
 
-fn photo_off(_proc: engage::app::ProcInst, _: OptionalMethod) { UnitAssetMenuData::get().mode = MenuMode::Inactive; }
+fn photo_off(_proc: engage::app::ProcInst, _: OptionalMethod) {
+    UnitAssetMenuData::get().is_preview = false;
+    UnitAssetMenuData::get().mode = MenuMode::Inactive;
+}
 fn photo_on(_proc: engage::app::ProcInst, _optional_method: OptionalMethod) {
     UnitAssetMenuData::get().mode = MenuMode::PhotoGraph;
     UnitAssetMenuData::init_photo_profiles();
@@ -72,6 +76,8 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
+    install_hook!(anim::unit_model_play_anim);
+    // output_job_asset_data();
     if cobapi::injection::register::<CreateUnitInfoModel>().is_ok() {}
     if cobapi::injection::register::<CustomAssetMenu>().is_ok() {}
     if cobapi::injection::register::<CustomAssetMenuItem3>().is_ok() {}
@@ -89,10 +95,10 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         let data = OutfitData::init();
         data
     });
-    // output_job_asset_data();
     let vtable = PhotographTopSequence::class().raw_mut().get_vtable_mut();
     vtable[10].method_ptr = photo_off as _;
     vtable[11].method_ptr = photo_on as _;
+    vtable[14].method_ptr = photo_off as _;
     if let Some(y_call) =  PhotographEditDisposMenu::class().raw_mut().get_virtual_method_mut("YCall") {
         y_call.method_ptr = photo::photograph_edit_dispos_menu_minus as _;
     }

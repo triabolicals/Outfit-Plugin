@@ -9,6 +9,7 @@ use skyline::patching::Patch;
 pub use outfit_core::UnitAssetMenuData;
 #[allow(static_mut_refs)] pub mod enums;
 #[allow(static_mut_refs)] pub mod assets;
+
 const TITLE_LOOP_SEQUENCE: i32 = -988690862;
 const UNIT_SELECT_SUB_MENU: i32 = -845322556;
 // Required to get `event_install` function to fully compile?

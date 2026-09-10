@@ -113,14 +113,6 @@ impl OutfitLists {
                 asset: AssetItem { hash: sola_hash, count: 0, kind: AssetType::Acc(3), flags: AssetItemFlags::empty(), },
             }
         );
-        for x in 1..3 {
-            let head = format!("uHead_dummy{}", x);
-            if let Some(mut asset) = OtherAssetItem::new("Dummy", head.as_str(), false, 0, false) {
-                hashes.head.insert(asset.asset.hash, head);
-                asset.asset.flags.insert(AssetItemFlags::NoPhotograph);
-                self.other.push(asset);
-            }
-        }
         self.added.sort_by(|a, b| a.asset_name.cmp(&b.asset_name));
     }
     pub fn add_menu_items(&self, kind: AssetType, female: bool, char: bool, other: bool, labels: &AssetLabelTable, menu_item_list: List_1<BasicMenuItem>) {
@@ -218,10 +210,7 @@ impl OutfitLists {
             let color = i32::from_be_bytes(asset_data);
             let count = id_ % 10;
             let id = id_/10;
-            let id_str =
-                if id < 10 { format!("c00{}", id) }
-                else if id < 100 { format!("c0{}", id) }
-                else { format!("c{}", id) };
+            let id_str = format!("c{:03}", id);
             if let Some(label) = labels.suffix.get(&id_str).cloned() {
                 dat2a.push((id_, EyePreset{ color, label, count }));
             }

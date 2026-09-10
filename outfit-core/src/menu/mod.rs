@@ -124,7 +124,7 @@ impl CustomAssetMenu {
 			menu_data.control.initialize(MenuMode::UnitInfo);
 			UnitInfo::chara_only_on(false);
 			if GameUserData::get_instance().get_sequence().value != 3 { engage::app::UnitStatus::close(); }
-			let sortie: engage::app::SortieSequenceUnitSelect = engage::app::SortieSequenceUnitSelect::get_instance();
+			let sortie: SortieSequenceUnitSelect = SortieSequenceUnitSelect::get_instance();
 			if !sortie.is_null() { sortie.m_unit_select_menu().m_menu_content().get_game_object().set_active(false); }
 			let render_texture = UnitInfo::get_instance().m_windows().get(0).m_unit_info_window_chara_model().m_render_texture();
 			start_key_help(OutfitMenuKind::UnitInfo);
@@ -244,7 +244,7 @@ impl CustomAssetMenu {
 	}
 	pub fn toggle_animator_open_close_state(go: GameObject) {
 		if !go.is_null() {
-			let anim = go.get_component::<engage::unity_engine::Animator>();
+			let anim = go.get_component::<Animator>();
 			if !anim.is_null() {
 				let closed = anim.get_bool("isClosed");
 				if closed { anim.play_2("Open"); } else { anim.play_2("Close"); }
@@ -257,7 +257,7 @@ impl CustomAssetMenu {
 			let new_menu = if right { menu_kind.get_right() } else { menu_kind.get_left() };
 			if let Some(new_menu) = new_menu {
 				self.rebuild_menu(new_menu, true);
-				engage::app::GameSound::post_event("Category_Change", engage::combat::Character::null());
+				engage::app::GameSound::post_event("Category_Change", Character::null());
 			}
 		}
 	}
@@ -278,7 +278,7 @@ impl CustomAssetMenu {
 		hub_room_set_by_result(Some(result), ReloadType::All);
 		EquipmentBoxMode::CurrentProfilePage(EquipmentBoxPage::Assets).update();
 		if !self.unit_name().is_null() { self.unit_name().set_text(next.get_name()); }
-		engage::app::GameSound::post_event("Chara_Change", engage::combat::Character::null());
+		engage::app::GameSound::post_event("Chara_Change", Character::null());
 	}
 	pub fn open_sortie_unit_select() {
 		UnitInfo::chara_only_off();
@@ -417,11 +417,11 @@ impl CustomAssetMenu{
 			let menu_item_index = self.get_menu_item_kind().to_index();
 			let rgb = menu_item_index >= 100 && menu_item_index < 120;
 			let stick = model_camera_control(rgb);
-			let trigger = engage::app::Pad::is_trigger(NpadButton::plus());
+			let trigger = Pad::is_trigger(NpadButton::plus());
 			let menu_kind = self.menu_kind();
 			if self.pause() {
-				if engage::app::Pad::is_trigger(NpadButton::minus()) && unit_info {
-					crate::capture::capture_unit_info(self, false, false);
+				if Pad::is_trigger(NpadButton::minus()) && unit_info {
+					capture::capture_unit_info(self, false, false);
 				}
 				if trigger {
 					self.m_menu_content().get_game_object().set_active(true);
@@ -455,7 +455,7 @@ impl CustomAssetMenu{
 			self.set_next(None);
 		}
 		else if let Some(reload) = menu.reload_type{
-			if !engage::app::Pad::is_button(NpadButton::up()) && !engage::app::Pad::is_button(NpadButton::down()) { menu.reload_delay = false; }
+			if !Pad::is_button(NpadButton::up()) && !Pad::is_button(NpadButton::down()) { menu.reload_delay = false; }
 			if !menu.reload_delay { UnitAssetMenuData::reload_unit(reload); }
 		}
 		unsafe { tick_input_base(self, None) }

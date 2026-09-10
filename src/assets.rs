@@ -9,7 +9,7 @@ pub mod dress;
 use outfit_core::*;
 
 #[skyline::hook(offset=0x1bb4180)]
-pub fn asset_table_setup_person_outfit_outfit(
+pub fn asset_table_setup_person_outfit(
     this: AssetTable_Result,
     mode: i32,
     person: engage::app::PersonData,
@@ -47,9 +47,7 @@ pub fn appearance_create_from_result_outfit(this: AssetTable_Result, map_distanc
     if !appearance.is_null() {
         if !this.get_pid().is_null() {
             let person = engage::app::PersonData::get(this.get_pid());
-            if !person.is_null() {
-                unity::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash());
-            }
+            if !person.is_null() { unity::field_set_value_at_offset::<i32>(appearance, 0xd4, person.hash()); }
             else {
                 let god = engage::app::GodData::get(this.get_pid());
                 if !god.is_null() { unity::field_set_value_at_offset::<i32>(appearance, 0xd4, god.hash()); }

@@ -1,4 +1,5 @@
 use std::{collections::{HashSet, HashMap}, io::{Cursor, Read}};
+use bitflags::Flags;
 use engage::{
     app::{
         IGameUserDataMethods, IGodDataMethods, IGodUnit, IJobDataMethods, ISingletonClass_1Methods,
@@ -203,7 +204,7 @@ impl OutfitData {
             }
         }
         assets.retain(|(i, _)| !remove_hashes.contains(&i));
-        let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_"];
+        let kinds = ["ubody_", "uhead_c", "uhair_h", "uacc_spine2_hair", "uacc_head_", "uacc_spine", "uacc_eff", "uacc_shield_", "aoc_info_c"];
         let dic_map: HashMap<i32, String> =
             AssetTable::s_condition_indexes()
                 .iter()
@@ -265,6 +266,13 @@ impl OutfitData {
                                     let name = get_asset_name(&condition, gender);
                                     new_list.add(asset.as_str(), false, name, 1 << 28, false);
                                 }
+                            }
+                        }
+                        AssetType::AOC(0) => {
+                            if let Some((condition, gender)) = find_condition(2, asset, true, item.kind, &dic_map) {
+                                let name = get_asset_name(&condition, gender);
+                                hashes.add_hash(asset, *hash, item.kind, gender.value == 2);
+                                new_list.add(asset.as_str(), gender.value == 2, name, 0, false);
                             }
                         }
                         AssetType::Acc(_) => {
@@ -346,8 +354,15 @@ impl OutfitData {
             else { result.set_body_model("uRig_HumnF1"); }
         }
         let is_promoted = unit.get_level() > 20 || job_data.get_rank() > 0;
+        let ignore_engage = conditions.profile_flag & 256 != 0;
+        let job_dress_data = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data));
+        if ignore_engage || !engaged {
+            if let Some(dress_data) = job_dress_data.as_ref() {
+                dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
+            }
+        }
+        else { AnimData::remove(result, true, true); }
         if engaged {
-            AnimData::remove(result, true, true);
             let god_unit = unit.get_god_unit();
             if !god_unit.is_null(){
                 let god_data = god_unit.m_data().get_main_data().hash();
@@ -381,7 +396,6 @@ impl OutfitData {
             }
         }
         else {
-            let job_dress_data = self.dress.job.iter().find(|x| x.is_match(dress_gender, job_data));
             if job == 185671037 {   // Alear Fell Child
                 if let Some(d) = job_dress_data.as_ref() { d.apply(result, conditions.mode, true, engaged); }
             }
@@ -399,9 +413,6 @@ impl OutfitData {
                 }
             }
             if transforming { return; }
-            if let Some(dress_data) = job_dress_data.as_ref() {
-                dress_data.apply_ride(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted));
-            }
             if job != 1443627162 && JobDressData::is_sword_fighter(result, conditions.mode) {
                 if let Some(dress_data) = job_dress_data.as_ref() {
                     dress_data.apply(result, conditions.mode, conditions.flags.contains(AssetFlags::Corrupted), !engaged);
@@ -460,20 +471,17 @@ impl OutfitData {
         }
     }
     pub fn correct_anims(&self, result: AssetTable_Result, unit: Unit, profile_flags: i32, conditions: &AssetConditions){
-        if conditions.flags.contains(AssetFlags::SSupport) {
-            AnimData::remove(result, true, true);
-            return;
-        }
-        let dress_gender =
-            if conditions.mode == 2 { self.get_dress_gender(get_result_dress_body_model(result, conditions.mode)) } else { unit.get_dress_gender()};
+        let no_mount = conditions.flags.intersects(AssetFlags::NoMount);
+        if no_mount { AnimData::remove(result, true, true); }
+        if conditions.flags.contains(AssetFlags::SSupport) { return; }
+        let dress_gender = if conditions.mode == 2 { self.get_dress_gender(get_result_dress_body_model(result, conditions.mode)) } else { unit.get_dress_gender()};
         if dress_gender.value == 0 || dress_gender.value > 2 { return; }
         let kind_ =
             if conditions.flags.contains(AssetFlags::CombatTranforming) { 9 }
             else if conditions.flags.contains(AssetFlags::Bullet) { 10 }
             else { conditions.kind };
-        let mount =
-            if conditions.flags.contains(AssetFlags::CombatTranforming) { Mount::None }
-            else { self.anims.get_mount_type(unit, dress_gender).unwrap_or(Mount::None) };
+
+        let mount = if no_mount { Mount::None } else { self.anims.get_mount_type(unit, dress_gender).unwrap_or(Mount::None) };
 
         if conditions.flags.contains(AssetFlags::AxeStaff) && conditions.mode == 2 {
             let anim = format!("Com0{}-No1_c000_N", Mount::None.get_gender_race(dress_gender));
@@ -486,14 +494,13 @@ impl OutfitData {
         }
         let engaged = unit.is_engaging_2();
         let job = unit.get_job();
-        if engaged && profile_flags & 256 == 0 {
+        let no_engaged_anim = profile_flags & 256 != 0;
+        if engaged && !no_engaged_anim {
             if conditions.mode == 2 { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_); }
             else { result.set_body_anim(AnimData::add_uas_gen_str("UAS_Enb0A", dress_gender)); }
         }
-        let no_engaged_anim = profile_flags & 256 != 0;
         if conditions.mode == 2 {
             if conditions.flags.contains(AssetFlags::ClassChange) {
-                AnimData::remove(result, true, true);
                 let anim = format!("Com0{}-No1_c000_N", Mount::None.get_gender_race(dress_gender));
                 result.set_body_anim(anim.as_str());
                 result.m_body_anims().add(anim.into());
@@ -503,44 +510,33 @@ impl OutfitData {
                 let anim = format!("Bat0{}-Bw1_c000_L", Mount::None.get_gender_race(dress_gender));
                 result.set_body_anim(anim.as_str());
                 result.m_body_anims().add(anim.into());
-                AnimData::remove(result, true, true);
+            }
+            else if conditions.flags.contains(AssetFlags::DragonStone) || conditions.flags.contains(AssetFlags::CombatTranforming) {
+                result.m_body_anims().add(AnimData::get_transforming_anim(engaged && !no_engaged_anim, dress_gender.value == 2).into());
             }
             else if engaged {
                 let god_unit = unit.get_god_unit();
                 if !god_unit.is_null() {
-                    if unit.get_person().hash() == 258677212 {
-                        if conditions.engaged.is_some() {
-                            let asset_id = god_unit.m_data().get_asset_id();
-                            if let Some(god) = conditions.engaged.as_ref().and_then(|v| self.dress.get_engaged_dress(v.as_str().into()))
-                                .or_else(||self.dress.get_engaged_dress(asset_id))
-                            {
-                                god.apply(result, 2, dress_gender);
-                            }
-                        }
-                    }
-                    if no_engaged_anim {
+                    if no_engaged_anim && kind_ < 7 {
                         if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) || ((unit.get_job().hash() == 499211320) && conditions.kind > 0){
                             result.get_body_anims().clear();
-                            self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
+                            self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged && !no_engaged_anim);
                         }
                     }
-                    else { self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_); }
-                }
-                if conditions.flags.contains(AssetFlags::DragonStone) {
-                    result.get_body_anims().add(if dress_gender.value == 2 { "End0AF-No2_c099_N" } else {"End0AM-No2_c049_N"}.into());
+                    else {
+                        AnimData::remove(result, true, true);
+                        self.anims.set_engaged_anim(result, dress_gender, job.get_style().value, kind_);
+                    }
                 }
             }
             else {
                 if !unit.get_person().get_job().is_null() {
                     if unit.get_person().get_job().hash() == 499211320 && unit.get_job().hash() != 499211320 { result.get_body_anims().clear(); }
                 }
-                if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_){
+                if !self.anims.has_anim(result, dress_gender, mount, conditions.mode, kind_) {
                     result.get_body_anims().clear();
                     self.anims.set_basic_anims(result, unit, kind_, dress_gender, conditions.flags.contains(AssetFlags::Corrupted), engaged);
                 }
-            }
-            if conditions.flags.contains(AssetFlags::DragonStone) {
-                result.get_body_anims().add(if dress_gender.value == 2 { "Sds0AF-No2_c099_N" } else {"Sds0AM-No2_c049_N"}.into());
             }
         }
         else {
@@ -678,8 +674,14 @@ fn find_condition(mode: i32, model: &str, with_gender: bool, kind: AssetType, ma
             let filter =
                 if model.contains("uHair") { |e: AssetTable, a: &str| il2str(e.get_hair_model()).is_some_and(|s| s == a) }
                 else { |e: AssetTable, a: &str| try_find_acc_model_in_entry(e, a).is_some() };
-
             get_aid_condition(find_entries_with_model_field(mode, model, filter), with_gender, map)
+        }
+        AssetType::AOC(0) => {
+            if model.contains("c7") { None }
+            else {
+                let filter = |e: AssetTable, a: &str| il2str(e.get_info_anim()).is_some_and(|s| s == a);
+                get_jid_condition(find_entries_with_model_field(mode, model, filter), map)
+            }
         }
         AssetType::Acc(_) => {
             let filter =  |e: AssetTable, a: &str| try_find_acc_model_in_entry(e, a).is_some();

@@ -1,10 +1,15 @@
 use super::*;
 use engage::{
-    combat::{CharacterAppearance, CombatRecord, CombatStyle, ICharacterGameStatus, ICharacterGameStatusMethods, ICombatRecordMethods},
-    app::{AssetTable_Modes, BattleCalculator, BattleSide_Type, IGodDataMethods, IGodUnit, IItemDataMethods, IJobDataMethods, IPersonDataMethods, IUnitItem, IUnitMethods},
+    combat::{
+        characterappearance::*, combatrecord::*, charactergamestatus::*,
+        CombatStyle, Side, WeaponStyle,
+    },
+    app::{
+        AssetTable_Modes, BattleCalculator, BattleSide_Type, ItemData, Unit, UnitItem,
+        IGodDataMethods, IGodUnit, IItemDataMethods, IJobDataMethods, IPersonDataMethods, IUnitItem, IBitField32,
+    },
+    system::collections::generic::IList_1Methods,
 };
-use engage::app::{IBitField32, ItemData, Unit, UnitItem};
-use engage::combat::{Side, WeaponStyle};
 use outfit_core::anim::SpecialAttackType;
 
 pub const MONSTERS: [&str; 8] = ["JID_幻影飛竜", "JID_異形飛竜", "JID_幻影狼", "JID_異形狼",  "JID_E006ラスボス", "JID_幻影竜", "JID_異形竜", "JID_邪竜"];
@@ -46,7 +51,7 @@ fn set_transform_appearance(this: CombatRecord, unit: Unit, calculator: BattleCa
     let result = AssetTable_Result::get_from_unit(AssetTable_Modes::combat(), unit, array);
     let female = get_outfit_data().get_dress_gender(result.get_dress_model()).value == 2;
     anim::AnimData::remove(result, true, true);
-    let transform_anim = anim::AnimData::get_transforming_anim(unit.is_engaging_2(), female);
+    let transform_anim = anim::AnimData::get_transforming_anim(unit.is_engaging_2(), female);;
     result.set_body_anim(transform_anim);
     result.get_body_anims().add(transform_anim.into());
     drag.set_appearance(CharacterAppearance::create_from_result(result, distance));
@@ -115,8 +120,8 @@ pub fn change_dragon2(this: CombatRecord, calc_side: BattleSide_Type, param_3: &
                         if !god_unit.is_null() {
                             let data = god_unit.m_data();
                             let gid = data.get_gid().to_rust_string();
-                            if data.get_force_type().value == 1 && (gid.contains("M0") || gid.contains("E00")) { 
-                                conditions.add_2("PID_E001_Boss_竜化"); 
+                            if data.get_force_type().value == 1 && (gid.contains("M0") || gid.contains("E00")) {
+                                conditions.add_2("PID_E001_Boss_竜化");
                             }
                             else { conditions.add_2("AID_Person_チキ_竜化"); }
                         }
@@ -197,6 +202,5 @@ pub fn is_dragonstone(equipped: ItemData) -> bool {
     }
 }
 fn is_tiki_dragon_weapon(item: ItemData) -> bool {
-    if item.is_null() { false }
-    else { item.get_iid().to_rust_string().contains("チキ") && item.get_kind().value == 9 }
+    if item.is_null() { false } else { item.get_iid().to_rust_string().contains("チキ") && item.get_kind().value == 9 }
 }

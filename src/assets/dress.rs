@@ -40,7 +40,7 @@ pub fn commit_for_unit_dress(
         else if { if !equipped.is_null() { equipped.get_iid().to_rust_string().contains("_チキ") && equipped.get_kind().value == 9 } else { false }}{
             result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_G001_チキ_竜化".into()),conds);
         }
-        else if !get_outfit_data().apply_monster_asset(result, unit, mode) {
+        else if !get_outfit_data().apply_transformation_asset(result, unit, equipped, mode) {
             if jid == "JID_裏邪竜ノ子" || unit.get_dress_gender() == engage::app::Gender::male() {
                 result.setup_4(AssetTable_Modes::onmap(), PersonData::get("PID_ラファール_竜化".into()), conds);
             }
@@ -100,12 +100,7 @@ pub fn commit_for_unit_dress(
         return;
     }
     else { hair_adjustment(result); }
-    /*
-    if condition_unit.check_status(Unit_Status::engage_attack()) && conditions.mode == 2{
-        AnimData::adjust_engage_atk(result, db.get_dress_gender(result.get_dress_model()));
-        return;
-    }
-     */
+    if condition_unit.check_status(Unit_Status::engage_attack()) && conditions.mode == 2{ return; }
     if conditions.flags.contains(AssetFlags::CombatTranforming) { AnimData::remove(result, true, true); }
     db.correct_anims(result, unit, profile_flag, conditions);
 }
@@ -124,9 +119,15 @@ fn hair_adjustment(result: AssetTable_Result) {
 }
 #[unity::hook("Combat", "CharacterAppearance", "ModifyColors")]
 pub fn modify_colors_outfit(this: CharacterAppearance, go: engage::unity_engine::GameObject, method_info: OptionalMethod) {
-    get_head_hair_colors(go);
-    call_original!(this, go, None);
-    apply_preview_head_hair_color(this, go);
+    let hash = unity::field_get_value_at_offset::<i32>(this, 0xd4);
+    if hash == 0 {
+        call_original!(this, go, method_info);
+    }
+    else {
+        get_eyes_colors(this, go);
+        apply_colors_2(this, go);
+    }
+
 }
 #[skyline::hook(offset=0x2b011f0)]
 fn combat_character_play_facial_outfit(this: Character, state_hash: i32, transition: f32, optional_method: OptionalMethod) {

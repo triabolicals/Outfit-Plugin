@@ -166,13 +166,15 @@ impl CustomMenuItem for AssetFlag {
                 UnitAssetMenuData::toggle_profile_flag(256);
             }
             Self::DisableHeadAcc => {
-                UnitAssetMenuData::toggle_profile_flag(64);
+                let decided = UnitAssetMenuData::toggle_profile_flag(64);
+                menu_item.set_m_decided(decided);
                 menu_item.rebuild_text();
                 hub_room_set_by_result(None, ReloadType::HeadAcc);
                 return BasicMenu_Result::se_cursor();
             }
             Self::DisableHairAcc => {
-                UnitAssetMenuData::toggle_profile_flag(16);
+                let decided =  UnitAssetMenuData::toggle_profile_flag(16);
+                menu_item.set_m_decided(decided);
                 menu_item.rebuild_text();
                 hub_room_set_by_result(None, ReloadType::HairAcc);
                 return BasicMenu_Result::se_cursor();
