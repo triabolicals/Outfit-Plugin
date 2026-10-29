@@ -267,11 +267,11 @@ impl CustomMenuItem for AssetType {
                 else { preview.preview_data.ubody = hash; }
             }
             AssetType::Hair => {
-                preview.update = 1;
+                preview.update = 5;
                 preview.preview_data.uhair = hash;
             }
             AssetType::Head => {
-                preview.update = 2;
+                preview.update = 10;
                 preview.preview_data.uhead = hash;
             }
             AssetType::Mount(kind) => { preview.preview_data.mount[*kind as usize] = hash; }

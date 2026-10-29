@@ -376,7 +376,7 @@ pub fn reset_faces(title: bool) {
               let person = engage::app::PersonData::try_get_from_hash(d.person);
               if !person.is_null() {
                   let ascii_name = person.get_ascii_name();
-                  let ascii = if d.flag & 16 == 0 { ascii_name.to_rust_string() } else { format!("{}W", ascii_name) };
+                  let ascii = if d.flag & 32 == 0 { ascii_name.to_rust_string() } else { format!("{}W", ascii_name) };
                   load_png_to_by_ascii(&ascii, d.flag & 8 != 0);
               }
           });

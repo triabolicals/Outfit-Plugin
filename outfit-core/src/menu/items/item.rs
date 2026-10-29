@@ -567,7 +567,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             }
             FaceThumb => {
                 if let Some(unit) = UnitAssetMenuData::get_unit() {
-                    if let Some(keys) = crate::capture::get_unit_face_keys(unit){
+                    if let Some(keys) = capture::get_unit_face_keys(unit){
                         let table = engage::app::FaceThumbnail::s_face_thumb().m_cache_table();
                         let (found, sprite) = table.try_get_value(format!("LOAD_{}", menuitem.value()).into());
                         if found && !sprite.is_null(){
@@ -683,7 +683,7 @@ impl CustomMenuItem for CustomAssetMenuItemKind {
             Asset(AssetType::AOC(_)) => {
                 if !UnitAssetMenuData::get().god_mode && UnitAssetMenuData::is_unit_info() {
                     let use_thumbnail = UnitAssetMenuData::get_person_flag() & 8 != 0;
-                    crate::capture::capture_unit_info(menuitem.get_menu(), true, use_thumbnail);
+                    capture::capture_unit_info(menuitem.get_menu(), true, use_thumbnail);
                     BasicMenu_Result::se_cursor()
                 } else { BasicMenu_Result::se_miss() }
             }

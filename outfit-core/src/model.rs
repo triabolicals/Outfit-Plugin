@@ -9,23 +9,21 @@ pub use engage::{
 };
 use engage::{
     app::{
-        Ut,
         photographsequence::*, IProcInstMethods,
         IPhotographDisposInfo, IPhotographDisposManager, IPhotographSequence, ISingletonProcInst_1Methods,
         JobData, talk3_d::CharacterFactoryAsync_2
     },
     system::object::*,
-    combat::{
-        ICharacterAssetForm, characterproportion::*, proportionparameters::*, characterjoint::*,
-    },
+    combat::{ICharacterAssetForm, characterproportion::*, proportionparameters::*, characterjoint::*},
     unity_engine::{
+        Color,
         animator::*, camera::*, material::*, gameobject::*, transform::*,
         IRendererMethods, SkinnedMeshRenderer, Screen, Vector3, IObject_2Methods,
     },
-    unity_engine::{Color, ParticleSystemRenderer, Renderer}
 };
+use engage::unity_engine::Object_2;
 use super::*;
-use unity::Cast;
+use unity::{Cast, IlNull};
 use crate::{EquipmentBoxMode, Mount, UnitAssetData, UnitAssetMenuData, FACIAL_STATES};
 const RENDERER_FILTER: [&'static str; 3] = ["EyeHL", "EyeLash", "Mucous"];
 #[derive(PartialEq, Clone, Copy)]
@@ -390,111 +388,6 @@ fn update_result_for_preview(result: AssetTable_Result) {
         }
     }
 }
-pub fn get_eyes_colors(this: CharacterAppearance, go: GameObject) {
-    if this.is_null() || go.is_null() { return;}
-    let renderer = go.get_components_in_children_3::<Renderer>(true);
-    let stencil = CharacterAppearance::s_stencil_value() + 1.0;
-    if stencil != 127.0 || stencil.is_nan() { CharacterAppearance::set_s_stencil_value(1.0); }
-    let data = UnitAssetMenuData::get();
-    let update = if data.is_preview { data.preview.update } else { 0 };
-    if update & 1 != 0 {
-        for x in 0..4 {
-            data.preview.original_color[56 + x] = 0;
-            data.preview.original_color[x] = 0;
-            data.preview.original_color[x + 4] = 0;
-        }
-    }
-    if update & 2 != 0 {
-        for i in 0..4 { data.preview.original_color[8+i] = 0; }
-        for i in 0..24 { data.preview.original_color[32+i] =0; }
-    }
-    let list = List_1::<Material>::new_2(32);
-    renderer.iter().for_each(|r| {
-        if !r.is_null() && !r.is_direct_subclass_of::<ParticleSystemRenderer>() {
-            let transform = r.get_transform();
-            let renderer_name = r.get_name().to_rust_string();
-            if exist_in_hierarchy(transform, "meshHead") && !RENDERER_FILTER.iter().any(|v| renderer_name.contains(v)) {
-                let materials = Ut::get_instance_materials(r);
-                materials.iter().for_each(|m| {
-                    let material_name = m.get_name().to_rust_string();
-                    list.add(m);
-                    material_set_color_from_appearance(m, this);
-                    if update & 2 != 0 {
-                        if !material_name.contains("Eye2") && material_name.starts_with("MtEye"){
-                            UnitAssetData::EYE_COLOR.iter()
-                                .enumerate()
-                                .for_each(|(i, x)| {
-                                    let color = m.get_color_2(*x);
-                                    data.preview.original_color[32 + i * 4] = (color.r * 255.0) as u8;
-                                    data.preview.original_color[33 + i * 4] = (color.g * 255.0) as u8;
-                                    data.preview.original_color[34 + i * 4] = (color.b * 255.0) as u8;
-                                    data.preview.original_color[35 + i * 4] = 1;
-                                });
-                        }
-                        if material_name.starts_with("MtSkin") || material_name.starts_with("MtuSkin"){
-                            let color = m.get_color_3(CharacterAppearance::hash_base_color());
-                            data.preview.original_color[8] = (color.r * 255.0) as u8;
-                            data.preview.original_color[9] = (color.g * 255.0) as u8;
-                            data.preview.original_color[10] = (color.b * 255.0) as u8;
-                            data.preview.original_color[11] = 1;
-                        }
-                    }
-                })
-            }
-            else {
-                let shared = r.get_shared_materials();
-                if this.has_material_to_modify(shared) {
-                    let materials = Ut::get_instance_materials(r);
-                    materials.iter().for_each(|m| {
-                        if !m.is_null() {
-                            list.add(m);
-                            material_set_color_from_appearance(m, this);
-                            let name = m.get_name().to_rust_string();
-                            if update & 1 != 0 {
-                                if name.contains("MtHair2") || name.contains("MtOdd"){
-                                    let color = m.get_color_3(CharacterAppearance::hash_base_color());
-                                    data.preview.original_color[56] = (color.r * 255.0) as u8;
-                                    data.preview.original_color[57] = (color.g * 255.0) as u8;
-                                    data.preview.original_color[58] = (color.b * 255.0) as u8;
-                                    data.preview.original_color[59] = 1;
-                                }
-                                else if name.starts_with("MtHair") && !name.contains("Hair2"){
-                                    ["_BaseColor", "_GradationColor"].into_iter().enumerate().for_each(|(i, x)|{
-                                        let color = m.get_color_2(x);
-                                        data.preview.original_color[4 * i] = (color.r * 255.0) as u8;
-                                        data.preview.original_color[4 * i + 1] = (color.g * 255.0) as u8;
-                                        data.preview.original_color[4 * i + 2] = (color.b * 255.0) as u8;
-                                        data.preview.original_color[4 * i + 3] = 1;
-                                    });
-                                }
-                            }
-                        }
-                    })
-                }
-            }
-        }
-    });
-    data.preview.update = 0;
-    // println!("Instanced Materials: {}", list.count());
-    this.set_m_instanced_materials(list);
-}
-fn material_set_color_from_appearance(m: Material, app: CharacterAppearance) {
-    let name = m.get_name().to_rust_string();
-    let grad_color = app.grad_color();
-    if m.has_property(CharacterAppearance::hash_stencil_group()) { m.set_float_2(CharacterAppearance::hash_stencil_group(), CharacterAppearance::s_stencil_value()); }
-    if AssetTable::has_color(grad_color) && m.has_property(CharacterAppearance::hash_gradation_color()) && grad_color.a > 0.0 { m.set_color_3(CharacterAppearance::hash_gradation_color(), grad_color); }
-    if AssetTable::has_color(app.toon_shadow_color()) && m.has_property(CharacterAppearance::hash_toon_shadow_color()) { m.set_color_3(CharacterAppearance::hash_toon_shadow_color(), app.toon_shadow_color()); }
-    if AssetTable::has_color(app.mask_color100()) && m.has_property(CharacterAppearance::hash_mask_color100()) { m.set_color_3(CharacterAppearance::hash_mask_color100(), app.mask_color100()); }
-    if AssetTable::has_color(app.mask_color075()) && m.has_property(CharacterAppearance::hash_mask_color075()) { m.set_color_3(CharacterAppearance::hash_mask_color075(), app.mask_color075()); }
-    if AssetTable::has_color(app.mask_color050()) && m.has_property(CharacterAppearance::hash_mask_color050()) { m.set_color_3(CharacterAppearance::hash_mask_color050(), app.mask_color075()); }
-    if AssetTable::has_color(app.mask_color025()) && m.has_property(CharacterAppearance::hash_mask_color025()) { m.set_color_3(CharacterAppearance::hash_mask_color025(), app.mask_color025()); }
-    if name.starts_with("MtHair") && AssetTable::has_color(app.hair_color()) && m.has_property(CharacterAppearance::hash_base_color()){
-        m.set_color_3(CharacterAppearance::hash_base_color(), app.hair_color());
-    }
-    if (name.starts_with("MtSkin") || name.starts_with("MtuSkin")) && AssetTable::has_color(app.skin_color()) && m.has_property(CharacterAppearance::hash_base_color()){
-        m.set_color_3(CharacterAppearance::hash_base_color(), app.skin_color());
-    }
-}
 pub fn apply_colors_2(this: CharacterAppearance, go: GameObject) {
     if go.is_null() { return; }
     let data = UnitAssetMenuData::get();
@@ -547,4 +440,79 @@ fn try_get_preview_color(color_index: i32, data: &UnitAssetMenuData, d: &PlayerO
         return Some(Color { r, g, b, a: 1.0 });
     }
     None
+}
+const MAT_NAME: [&str; 6] = ["MtHair2", "MtOdd", "MtEye", "MtHair", "MtSkin", "MtuSkin"];
+#[skyline::hook(offset=0x2b0d8b0)]
+pub fn has_material_to_modify(this: CharacterAppearance, mats: Array<Material>, optional_method: OptionalMethod) -> bool {
+    let mut result = call_original!(this, mats, optional_method);
+    let data = UnitAssetMenuData::get();
+    let mut update = if data.is_preview { data.preview.update } else { 0 };
+    mats.iter().filter(|v| !Object_2::compare_base_objects(*v, Object_2::null()))
+        .for_each(|m|{
+            let name = m.get_name().to_rust_string();
+            if let Some(pos) = MAT_NAME.iter().position(|&r| name.starts_with(r)) {
+                match pos {
+                    0|1 => {
+                        if m.has_property(CharacterAppearance::hash_base_color()) {
+                            if update & 1 != 0 {
+                                let color = m.get_color_3(CharacterAppearance::hash_base_color());
+                                data.preview.original_color[56] = (color.r * 255.0) as u8;
+                                data.preview.original_color[57] = (color.g * 255.0) as u8;
+                                data.preview.original_color[58] = (color.b * 255.0) as u8;
+                                data.preview.original_color[59] = 1;
+                                update ^= 1;
+                            }
+                            result = true;
+                        }
+                    }
+                    2 => {
+                        if !name.starts_with("MtEye2") && m.has_property(CharacterAppearance::hash_base_color()) {
+                            if update & 2 != 0 {
+                                UnitAssetData::EYE_COLOR.iter()
+                                    .enumerate()
+                                    .for_each(|(i, x)| {
+                                        let color = m.get_color_2(*x);
+                                        data.preview.original_color[32 + i * 4] = (color.r * 255.0) as u8;
+                                        data.preview.original_color[33 + i * 4] = (color.g * 255.0) as u8;
+                                        data.preview.original_color[34 + i * 4] = (color.b * 255.0) as u8;
+                                        data.preview.original_color[35 + i * 4] = 1;
+                                    });
+                                update ^= 2;
+                            }
+                            result = true;
+                        }
+                    }
+                    3 => {
+                        if update & 4 != 0{
+                            [CharacterAppearance::hash_base_color(), CharacterAppearance::hash_gradation_color()]
+                                .into_iter()
+                                .enumerate()
+                                .for_each(|(i, x)| {
+                                    if m.has_property(x) {
+                                        let color = m.get_color_3(x);
+                                        data.preview.original_color[4 * i] = (color.r * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 1] = (color.g * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 2] = (color.b * 255.0) as u8;
+                                        data.preview.original_color[4 * i + 3] = 1;
+                                    }
+                                });
+                            update ^= 4;
+                        }
+                    }
+                    4 => {
+                        if update & 8 != 0 && m.has_property(CharacterAppearance::hash_base_color()) {
+                            let color = m.get_color_3(CharacterAppearance::hash_base_color());
+                            data.preview.original_color[8] = (color.r * 255.0) as u8;
+                            data.preview.original_color[9] = (color.g * 255.0) as u8;
+                            data.preview.original_color[10] = (color.b * 255.0) as u8;
+                            data.preview.original_color[11] = 1;
+                            update ^= 8;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        });
+    data.preview.update = update;
+    result
 }

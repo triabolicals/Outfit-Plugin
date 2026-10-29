@@ -409,8 +409,9 @@ impl AnimData {
             self.add_anim_to_result(result, dress_gender, "Com0B", 0, is_morph);
             self.add_anim_to_result(result, dress_gender, "Com0B", kind, is_morph);
         }
-        if mount == Mount::None {
+        else if mount == Mount::None {
             Self::remove(result, true, false);
+            if kind > 0 && kind < 9 { self.add_anim_to_result(result, dress_gender, "Com0A", kind, is_morph); }
             let set = if unit.get_job().is_low() && unit.get_level() <= 20 { INF_KIND[kind as usize] } else { INF_KIND2[kind as usize] };
             self.add_anim_to_result(result, dress_gender, set, 0, is_morph);
             if kind != 9 && kind > 0 { self.add_anim_to_result(result, dress_gender, set, kind, is_morph); }
@@ -431,12 +432,12 @@ impl AnimData {
         }
         if kind > 3 && kind < 10 { result.commit_8(new_asset_table_accessory("null", "l_shld_loc")); }
         if engaged { self.set_engaged_anim(result, dress_gender, unit.get_job().get_style().value, kind); }
+        else { self.add_class_anim(result, dress_gender, kind, job, is_morph); }
+
         if kind == 10 {
             result.set_right_hand("uWep_Mg28");
             result.commit_8(new_asset_table_accessory("uAcc_shield_Mcn3AM", "l_shld_loc"));
         }
-        let added_class_anim = self.add_class_anim(result, dress_gender, kind, job, is_morph);
-        if !added_class_anim && engaged { self.set_engaged_anim(result, dress_gender, job.get_style().value, kind); }
         result.replace(AssetTable_Modes::combat());
         true
     }
@@ -655,8 +656,8 @@ impl AnimData {
     }
     pub fn get_transforming_anim(engaged: bool, female: bool) -> &'static str {
         match (engaged, female) {
-            (true, false) => {"Enb0AM-No2_c049_N"}
-            (true, true) => {"Enb0AF-No2_c099_N"}
+            (true, false) => {"End0AM-No2_c049_N"}
+            (true, true) => {"End0AF-No2_c099_N"}
             (false, false) => {"Sds0AM-No2_c049_N"}
             (false, true) => {"Sds0AF-No2_c099_N"}
         }

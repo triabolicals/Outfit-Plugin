@@ -293,7 +293,7 @@ impl UnitAssetMenuData {
                 gender = unit.get_dress_gender().value;
                 if unit.get_person().index() == 1 {
                     if let Some(data) = UnitAssetMenuData::get().data.iter_mut().find(|v| v.person == person) {
-                        if unit.m_edit().m_gender().value == 2 { data.flag |= 16; }
+                        if unit.m_edit().m_gender().value == 2 { data.flag |= 32; } else { data.flag &= !32; }
                     }
                 }
             }

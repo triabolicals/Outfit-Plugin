@@ -76,7 +76,7 @@ pub fn install_outfit_plugin(is_dvc: bool) -> bool {
         UnitAssetMenuData::get().data.clear();
         return true;
     }
-    install_hook!(anim::unit_model_play_anim);
+    skyline::install_hooks!(has_material_to_modify, anim::unit_model_play_anim);
     // output_job_asset_data();
     if cobapi::injection::register::<CreateUnitInfoModel>().is_ok() {}
     if cobapi::injection::register::<CustomAssetMenu>().is_ok() {}

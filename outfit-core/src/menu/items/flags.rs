@@ -55,13 +55,13 @@ impl AssetFlag {
     pub fn is_decided(&self) -> bool {
         let mode = UnitAssetMenuData::get_flag();
         match self {
-            Self::RandomAppearance => { UnitAssetMenuData::get_person_flag() & 16 != 0 }
-            Self::EnableBattleAccessories => { mode & 32 != 0 }
-            Self::EnableCrossDressing => { mode & 128 != 0 }
-            Self::EngagedAnimation => { mode & 256 != 0 }
-            Self::UseFaceThumbnail => { UnitAssetMenuData::get_person_flag() & 8 != 0 }
-            Self::DisableHeadAcc => { mode & 64 != 0 }
-            Self::DisableHairAcc => { mode & 16 != 0 }
+            Self::RandomAppearance => UnitAssetMenuData::get_person_flag() & 16 != 0,
+            Self::EnableBattleAccessories => mode & 32 != 0,
+            Self::EnableCrossDressing => mode & 128 != 0,
+            Self::EngagedAnimation => mode & 256 != 0,
+            Self::UseFaceThumbnail => UnitAssetMenuData::get_person_flag() & 8 != 0,
+            Self::DisableHeadAcc => mode & 64 != 0,
+            Self::DisableHairAcc => mode & 16 != 0,
             _ => { false }
         }
     }
